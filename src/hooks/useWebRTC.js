@@ -12,6 +12,7 @@ export function useWebRTC(socketRef) {
     setLocalStream(stream);
     if (videoRef?.current) {
       videoRef.current.srcObject = stream;
+      videoRef.current.play?.().catch(() => {});
     }
     return stream;
   }
@@ -28,10 +29,15 @@ export function useWebRTC(socketRef) {
     };
 
     pc.ontrack = (event) => {
-      const [stream] = event.streams;
+      let [stream] = event.streams;
+      if (!stream) {
+        stream = new MediaStream();
+        stream.addTrack(event.track);
+      }
       setRemoteStream(stream);
       if (remoteVideoRef?.current) {
         remoteVideoRef.current.srcObject = stream;
+        remoteVideoRef.current.play?.().catch(() => {});
       }
     };
 

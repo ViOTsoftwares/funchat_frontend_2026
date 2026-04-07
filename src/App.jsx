@@ -128,6 +128,15 @@ export default function App() {
       cleanupPeer(remoteVideoRef);
     };
 
+    const onConversationCleared = () => {
+      dispatch(resetMessages());
+      dispatch(setPartnerId(""));
+      dispatch(setIsSearching(false));
+      dispatch(clearConversationId());
+      localStorage.removeItem("funchat_conversation");
+      cleanupPeer(remoteVideoRef);
+    };
+
     const onOffer = async ({ sdp }) => {
       await ensureLocalStream(localVideoRef);
       await ensurePeerConnection(localVideoRef, remoteVideoRef);
@@ -154,7 +163,9 @@ export default function App() {
     socket.on("connect", onConnect);
     socket.on("matched", onMatched);
     socket.on("message", onMessage);
+    socket.on("history", onHistory);
     socket.on("partner_left", onPartnerLeft);
+    socket.on("conversation_cleared", onConversationCleared);
     socket.on("offer", onOffer);
     socket.on("answer", onAnswer);
     socket.on("ice-candidate", onIce);
@@ -163,7 +174,9 @@ export default function App() {
       socket.off("connect", onConnect);
       socket.off("matched", onMatched);
       socket.off("message", onMessage);
+      socket.off("history", onHistory);
       socket.off("partner_left", onPartnerLeft);
+      socket.off("conversation_cleared", onConversationCleared);
       socket.off("offer", onOffer);
       socket.off("answer", onAnswer);
       socket.off("ice-candidate", onIce);

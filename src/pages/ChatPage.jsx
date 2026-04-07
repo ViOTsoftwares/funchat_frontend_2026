@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -39,6 +40,17 @@ export default function ChatPage({
   backendUrl,
   socketId
 }) {
+  const messageListRef = useRef(null);
+
+  useEffect(() => {
+    const container = messageListRef.current;
+    if (!container) return;
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth"
+    });
+  }, [messages.length]);
+
   return (
     <>
       <Paper className="hero-card" elevation={0}>
@@ -93,21 +105,21 @@ export default function ChatPage({
       </Paper>
 
       {showVideo && (
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
-          <Paper className="video-card" elevation={0}>
-            <Typography variant="caption" sx={{ opacity: 0.7 }}>You</Typography>
-            <Box component="video" ref={localVideoRef} autoPlay playsInline muted className="video-feed" />
-          </Paper>
-          <Paper className="video-card" elevation={0}>
+        <Box className="video-layout">
+          <Paper className="video-stage" elevation={0}>
             <Typography variant="caption" sx={{ opacity: 0.7 }}>Stranger</Typography>
-            <Box component="video" ref={remoteVideoRef} autoPlay playsInline className="video-feed" />
+            <Box component="video" ref={remoteVideoRef} autoPlay playsInline className="video-feed video-feed-main" />
+            <Paper className="video-pip" elevation={0}>
+              <Typography variant="caption" sx={{ opacity: 0.7 }}>You</Typography>
+              <Box component="video" ref={localVideoRef} autoPlay playsInline muted className="video-feed video-feed-pip" />
+            </Paper>
           </Paper>
-        </Stack>
+        </Box>
       )}
 
       <Paper className="chat-card phone-chat" elevation={0}>
         <Stack spacing={2} className="chat-stack">
-          <Stack spacing={1} className="message-list">
+          <Stack spacing={1} className="message-list" ref={messageListRef}>
             {messages.map((m, i) => (
               <Stack key={i} direction="row" justifyContent={m.from === "me" ? "flex-end" : "flex-start"}>
                 <Paper className={m.from === "me" ? "bubble bubble-me" : "bubble"} elevation={0}>
