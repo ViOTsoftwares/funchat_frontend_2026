@@ -6,7 +6,7 @@
         <video ref={localVideoRef} autoPlay playsInline muted />
       </div>
       <div className="video-box">
-        <div className="label">Stranger 👋</div>
+        <div className="label">Conversation Partner</div>
         <video ref={remoteVideoRef} autoPlay playsInline />
       </div>
     </div>

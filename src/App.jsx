@@ -43,6 +43,8 @@ export default function App() {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const inputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const lastTypingSentRef = useRef(false);
   const dispatch = useDispatch();
   const mode = useSelector((state) => state.chat.mode);
   const partnerId = useSelector((state) => state.chat.partnerId);
@@ -60,6 +62,7 @@ export default function App() {
   } = useWebRTC(socketRef);
 
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -67,9 +70,27 @@ export default function App() {
     const socket = socketRef.current;
     if (!socket) return;
 
+    // ── Restore session state after a page refresh ──
     const storedConversationId = localStorage.getItem("funchat_conversation");
+    const storedPartnerId      = localStorage.getItem("funchat_partner_id");
+    const storedMode           = localStorage.getItem("funchat_mode");
+
     if (storedConversationId && !conversationId) {
       dispatch(setConversationId(storedConversationId));
+    }
+    if (storedPartnerId && !partnerId) {
+      dispatch(setPartnerId(storedPartnerId));
+      dispatch(setIsSearching(false));
+    }
+    if (storedMode && storedMode !== mode) {
+      dispatch(setMode(storedMode));
+    }
+    // Navigate to the stored route if we're on the landing page with an active session
+    if (storedPartnerId && storedMode) {
+      const targetPath = `/${storedMode}`;
+      if (location.pathname === "/") {
+        navigate(targetPath, { replace: true });
+      }
     }
 
     const onConnect = () => {
@@ -86,6 +107,9 @@ export default function App() {
         dispatch(setConversationId(cid));
         localStorage.setItem("funchat_conversation", cid);
       }
+      // Persist so we can restore after refresh
+      if (pid) localStorage.setItem("funchat_partner_id", pid);
+      if (matchedMode) localStorage.setItem("funchat_mode", matchedMode);
       if (matchedMode === "video") {
         await ensureLocalStream(localVideoRef);
         await ensurePeerConnection(localVideoRef, remoteVideoRef);
@@ -107,33 +131,64 @@ export default function App() {
           normalizedParts = [{ type: "text", text: text || "" }];
         }
       }
-      dispatch(addMessage({ from, parts: normalizedParts }));
+      // Treat any server-generated "from" that isn't the local user as a partner message
+      const resolvedFrom =
+        !from || from === socket.id
+          ? from // will be undefined → partner-side in ChatPage (flex-start)
+          : from === "system"
+          ? "partner"   // backend auto-message → show on left
+          : from;       // normal partner socket id
+      dispatch(addMessage({ from: resolvedFrom, parts: normalizedParts }));
+      if (from && from !== socket.id) {
+        setIsPartnerTyping(false);
+      }
     };
 
     const onHistory = ({ messages: history = [] }) => {
-      const mapped = history.map((m) => ({
-        from: m.userId || m.from || "system",
-        parts:
-          m.parts ||
-          (m.emojiUrl
-            ? [{ type: "emoji", url: m.emojiUrl }]
-            : [{ type: "text", text: m.text || "" }])
-      }));
+      const mapped = history.map((m) => {
+        // Determine if the stored message belongs to the current user
+        const rawFrom = m.userId || m.from;
+        let resolvedFrom;
+        if (!rawFrom || rawFrom === "system") {
+          // Unknown sender → show as partner message (left side)
+          resolvedFrom = "partner";
+        } else if (rawFrom === socket.id) {
+          resolvedFrom = "me";
+        } else {
+          resolvedFrom = rawFrom; // partner's socket id → left side
+        }
+        return {
+          from: resolvedFrom,
+          parts:
+            m.parts ||
+            (m.emojiUrl
+              ? [{ type: "emoji", url: m.emojiUrl }]
+              : [{ type: "text", text: m.text || "" }]),
+        };
+      });
       dispatch(setMessages(mapped));
     };
 
     const onPartnerLeft = () => {
       dispatch(setPartnerId(""));
       dispatch(setIsSearching(false));
+      setIsPartnerTyping(false);
       cleanupPeer(remoteVideoRef);
+      // Partner disconnected — clear persisted session
+      localStorage.removeItem("funchat_partner_id");
+      localStorage.removeItem("funchat_mode");
+      localStorage.removeItem("funchat_conversation");
     };
 
     const onConversationCleared = () => {
       dispatch(resetMessages());
       dispatch(setPartnerId(""));
       dispatch(setIsSearching(false));
+      setIsPartnerTyping(false);
       dispatch(clearConversationId());
       localStorage.removeItem("funchat_conversation");
+      localStorage.removeItem("funchat_partner_id");
+      localStorage.removeItem("funchat_mode");
       cleanupPeer(remoteVideoRef);
     };
 
@@ -169,6 +224,9 @@ export default function App() {
     socket.on("offer", onOffer);
     socket.on("answer", onAnswer);
     socket.on("ice-candidate", onIce);
+    socket.on("typing", ({ isTyping }) => {
+      setIsPartnerTyping(Boolean(isTyping));
+    });
 
     return () => {
       socket.off("connect", onConnect);
@@ -180,6 +238,7 @@ export default function App() {
       socket.off("offer", onOffer);
       socket.off("answer", onAnswer);
       socket.off("ice-candidate", onIce);
+      socket.off("typing");
     };
   }, [socketRef, ensureLocalStream, ensurePeerConnection, cleanupPeer, pcRef]);
 
@@ -205,7 +264,10 @@ export default function App() {
     dispatch(setPartnerId(""));
     dispatch(setIsSearching(true));
     dispatch(clearConversationId());
+    // Starting a fresh session — clear all persisted session data
     localStorage.removeItem("funchat_conversation");
+    localStorage.removeItem("funchat_partner_id");
+    localStorage.removeItem("funchat_mode");
     socketRef.current.emit("join", { mode: resolvedMode }, (ack) => {
       console.log("[join ack]", ack);
     });
@@ -270,15 +332,63 @@ export default function App() {
     }
   }
 
+  function emitTyping(isTyping) {
+    if (!socketRef.current || !isMatched) return;
+    if (lastTypingSentRef.current === isTyping) return;
+    socketRef.current.emit("typing", { isTyping });
+    lastTypingSentRef.current = isTyping;
+  }
+
+  function scheduleTypingStop() {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTyping(false);
+    }, 1200);
+  }
+
+  function handleComposerInput() {
+    emitTyping(true);
+    scheduleTypingStop();
+  }
+
   function handleSend() {
-    const parts = getComposerParts();
+    let parts = getComposerParts();
     const hasEmoji = parts.some((part) => part.type === "emoji");
-    const textContent = parts
+    let textContent = parts
       .filter((part) => part.type === "text")
       .map((part) => part.text)
       .join("");
 
-    if (!hasEmoji && textContent.trim() === "") return;
+    const trimmedText = textContent.trim();
+    if (!hasEmoji && trimmedText === "") return;
+
+    if (parts.length) {
+      parts = parts.map((part) =>
+        part.type === "text" ? { ...part, text: part.text.replace(/\s+/g, " ") } : part
+      );
+      let start = 0;
+      let end = parts.length - 1;
+      while (start <= end && parts[start].type === "text" && parts[start].text.trim() === "") {
+        start += 1;
+      }
+      while (end >= start && parts[end].type === "text" && parts[end].text.trim() === "") {
+        end -= 1;
+      }
+      parts = parts.slice(start, end + 1);
+      if (parts.length && parts[0].type === "text") {
+        parts[0].text = parts[0].text.replace(/^\s+/, "");
+      }
+      if (parts.length && parts[parts.length - 1].type === "text") {
+        parts[parts.length - 1].text = parts[parts.length - 1].text.replace(/\s+$/, "");
+      }
+    }
+
+    textContent = parts
+      .filter((part) => part.type === "text")
+      .map((part) => part.text)
+      .join("");
 
     const firstEmoji = parts.find((part) => part.type === "emoji")?.url;
     const messagePayload = { parts, text: textContent };
@@ -287,27 +397,36 @@ export default function App() {
     }
     dispatch(addMessage({ from: "me", parts }));
     socketRef.current.emit("message", messagePayload);
+    emitTyping(false);
     clearComposer();
   }
 
   function handleNext() {
     socketRef.current.emit("next");
+    emitTyping(false);
     dispatch(resetMessages());
     cleanupPeer(remoteVideoRef);
     dispatch(setIsSearching(true));
     dispatch(clearConversationId());
+    // Explicit user action — clear all persisted session data
     localStorage.removeItem("funchat_conversation");
+    localStorage.removeItem("funchat_partner_id");
+    localStorage.removeItem("funchat_mode");
   }
 
   function handleCloseChat() {
     if (!socketRef.current) return;
     socketRef.current.emit("close_chat");
+    emitTyping(false);
     cleanupPeer(remoteVideoRef);
     dispatch(setPartnerId(""));
     dispatch(setIsSearching(false));
     dispatch(clearConversationId());
+    // Explicit user action — clear all persisted session data
     localStorage.removeItem("funchat_conversation");
-    dispatch(addMessage({ from: "system", parts: [{ type: "text", text: "Chat is closed." }] }));
+    localStorage.removeItem("funchat_partner_id");
+    localStorage.removeItem("funchat_mode");
+    dispatch(addMessage({ from: "system", parts: [{ type: "text", text: "Session ended successfully." }] }));
   }
 
   function handleReport() {
@@ -362,6 +481,13 @@ export default function App() {
     }
   }, [location.pathname, mode]);
 
+  useEffect(() => {
+    if (!isMatched) {
+      setIsPartnerTyping(false);
+      emitTyping(false);
+    }
+  }, [isMatched]);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -392,6 +518,7 @@ export default function App() {
                   localVideoRef={localVideoRef}
                   remoteVideoRef={remoteVideoRef}
                   messages={messages}
+                  isPartnerTyping={isPartnerTyping}
                   onJoin={handleJoin}
                   onNext={handleNext}
                   onClose={handleCloseChat}
@@ -403,6 +530,7 @@ export default function App() {
                   onToggleEmoji={() => setEmojiOpen((v) => !v)}
                   onEmojiSelect={handleEmojiSelect}
                   inputRef={inputRef}
+                  onComposerInput={handleComposerInput}
                   onSend={handleSend}
                   backendUrl={BACKEND_URL}
                   socketId={socketId}
@@ -420,6 +548,7 @@ export default function App() {
                   localVideoRef={localVideoRef}
                   remoteVideoRef={remoteVideoRef}
                   messages={messages}
+                  isPartnerTyping={isPartnerTyping}
                   onJoin={handleJoin}
                   onNext={handleNext}
                   onClose={handleCloseChat}
@@ -431,6 +560,7 @@ export default function App() {
                   onToggleEmoji={() => setEmojiOpen((v) => !v)}
                   onEmojiSelect={handleEmojiSelect}
                   inputRef={inputRef}
+                  onComposerInput={handleComposerInput}
                   onSend={handleSend}
                   backendUrl={BACKEND_URL}
                   socketId={socketId}
@@ -449,10 +579,10 @@ export default function App() {
               <CircularProgress size={28} />
               <Box>
                 <Typography variant="subtitle1" fontWeight={700}>
-                  Finding a match…
+                  Finding a suitable match...
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  We are pairing you with a {mode} partner.
+                  We are connecting you with an available {mode} partner.
                 </Typography>
               </Box>
             </Paper>

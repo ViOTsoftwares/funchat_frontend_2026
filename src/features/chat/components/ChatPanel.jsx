@@ -6,7 +6,7 @@ export default function ChatPanel({ messages, input, onInputChange, onSend, onEm
       <div className="messages">
         {messages.map((m, i) => (
           <div key={i} className={m.from === "me" ? "msg me" : "msg"}>
-            <span className="sender">{m.from === "me" ? "Me" : "Stranger"}</span>
+            <span className="sender">{m.from === "me" ? "You" : "Partner"}</span>
             <span className="text">{m.text}</span>
           </div>
         ))}

@@ -3,8 +3,8 @@
 export default function Footer({ socketId }) {
   return (
     <footer className="footer">
-      <div>Backend: {BACKEND_URL}</div>
-      <div>My ID: {socketId}</div>
+      <div>Connected service: {BACKEND_URL}</div>
+      <div>Session ID: {socketId}</div>
     </footer>
   );
 }

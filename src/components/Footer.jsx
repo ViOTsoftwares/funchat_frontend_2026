@@ -14,24 +14,24 @@ export default function Footer() {
               <Box className="brand-dot">
                 <BoltIcon fontSize="small" />
               </Box>
-              <Typography variant="subtitle1" fontWeight={700}>FunChat Pro</Typography>
+              <Typography variant="subtitle1" fontWeight={700}>FunChat Connect</Typography>
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Professional-grade matching with privacy-first controls and premium experience design.
+              A professional social platform for meaningful real-time conversations, built with privacy, safety, and reliability at its core.
             </Typography>
           </Box>
           <Stack direction="row" spacing={2} className="footer-links">
             <Stack direction="row" spacing={1} alignItems="center">
               <SecurityIcon fontSize="small" />
-              <Typography variant="body2">Security</Typography>
+              <Typography variant="body2">Privacy & Security</Typography>
             </Stack>
             <Stack direction="row" spacing={1} alignItems="center">
               <VerifiedIcon fontSize="small" />
-              <Typography variant="body2">Compliance</Typography>
+              <Typography variant="body2">Community Standards</Typography>
             </Stack>
             <Stack direction="row" spacing={1} alignItems="center">
               <SupportAgentIcon fontSize="small" />
-              <Typography variant="body2">Support</Typography>
+              <Typography variant="body2">Help & Support</Typography>
             </Stack>
           </Stack>
         </Stack>

@@ -2,21 +2,22 @@ import { useEffect, useRef } from "react";
 import {
   Box,
   Button,
+  Chip,
   Divider,
   IconButton,
-  Paper,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography
+  Tooltip,
+  Typography,
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
 import SkipNextIcon from "@mui/icons-material/SkipNext";
-import ReportIcon from "@mui/icons-material/Report";
-import SendIcon from "@mui/icons-material/Send";
-import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
+import ReportOutlinedIcon from "@mui/icons-material/ReportOutlined";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import EmojiEmotionsOutlinedIcon from "@mui/icons-material/EmojiEmotionsOutlined";
+import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import { Picker } from "ms-3d-emoji-picker";
 
 export default function ChatPage({
@@ -27,6 +28,7 @@ export default function ChatPage({
   localVideoRef,
   remoteVideoRef,
   messages,
+  isPartnerTyping,
   onJoin,
   onNext,
   onClose,
@@ -36,151 +38,351 @@ export default function ChatPage({
   onToggleEmoji,
   onEmojiSelect,
   inputRef,
+  onComposerInput,
   onSend,
   backendUrl,
-  socketId
+  socketId,
 }) {
   const messageListRef = useRef(null);
 
   useEffect(() => {
     const container = messageListRef.current;
     if (!container) return;
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: "smooth"
-    });
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [messages.length]);
 
+  const connectionStatus = isSearching
+    ? "Searching…"
+    : isMatched
+      ? "Connected"
+      : "Idle";
+
+  const statusColor = isSearching
+    ? "warning"
+    : isMatched
+      ? "success"
+      : "default";
   return (
-    <>
-      <Paper className="hero-card" elevation={0}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems={{ md: "center" }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h4" sx={{ mb: 1 }}>Meet someone new in seconds</Typography>
-            <Typography variant="body1" color="text.secondary">
-              Instant matching for private 1:1 chats and video calls with real-time safety controls.
-            </Typography>
+    <Box className="cp-root">
+      {/* ── TOP SESSION BAR ── */}
+      <Box className="cp-session-bar">
+        {/* Left: Mode badge + status */}
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box className="cp-mode-icon">
+            {mode === "video" ? (
+              <VideocamOutlinedIcon sx={{ fontSize: 18 }} />
+            ) : (
+              <ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />
+            )}
           </Box>
-          <Stack direction="row" spacing={2} className="stat-row">
-            <Box className="stat-card">
-              <Typography variant="caption" color="text.secondary">Mode</Typography>
-              <Typography variant="h6">{mode}</Typography>
-            </Box>
-            <Box className="stat-card">
-              <Typography variant="caption" color="text.secondary">Partner</Typography>
-              <Typography variant="h6">{isMatched ? "Connected" : "Waiting"}</Typography>
-            </Box>
+          <Stack spacing={0}>
+            <Typography className="cp-mode-label">
+              {mode === "video" ? "Video Chat" : "Text Chat"}
+            </Typography>
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <FiberManualRecordIcon
+                sx={{
+                  fontSize: 8,
+                  color: isMatched
+                    ? "#10b981"
+                    : isSearching
+                      ? "#f59e0b"
+                      : "#94a3b8",
+                }}
+              />
+              <Typography className="cp-status-text">{connectionStatus}</Typography>
+            </Stack>
           </Stack>
+          <Chip
+            label={connectionStatus}
+            color={statusColor}
+            size="small"
+            className="cp-status-chip"
+          />
         </Stack>
-      </Paper>
 
-      <Paper className="control-card" elevation={0}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
-          {mode === "chat" ? (
-            <ToggleButtonGroup value="chat" exclusive size="small">
-              <ToggleButton value="chat">
-                <ChatBubbleOutlineIcon sx={{ mr: 1 }} /> Chat
-              </ToggleButton>
-            </ToggleButtonGroup>
-          ) : (
-            <ToggleButtonGroup value="video" exclusive size="small">
-              <ToggleButton value="video">
-                <VideocamOutlinedIcon sx={{ mr: 1 }} /> Video
-              </ToggleButton>
-            </ToggleButtonGroup>
+        {/* Right: Actions */}
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Button
+            id="cp-btn-start"
+            size="small"
+            variant="contained"
+            className="cp-btn cp-btn-start"
+            startIcon={<PlayArrowRoundedIcon />}
+            onClick={() => onJoin()}
+            disabled={isSearching || isMatched}
+          >
+            {isSearching ? "Searching…" : "Start Session"}
+          </Button>
+
+          <Tooltip title="Find next match" arrow>
+            <span>
+              <Button
+                id="cp-btn-next"
+                size="small"
+                variant="outlined"
+                className="cp-btn cp-btn-next"
+                startIcon={<SkipNextIcon />}
+                onClick={onNext}
+                disabled={!isMatched || isSearching}
+              >
+                Next
+              </Button>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="End this session" arrow>
+            <span>
+              <Button
+                id="cp-btn-end"
+                size="small"
+                variant="outlined"
+                className="cp-btn cp-btn-end"
+                onClick={onClose}
+                disabled={!isMatched || isSearching}
+              >
+                End
+              </Button>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Report this user" arrow>
+            <span>
+              <IconButton
+                id="cp-btn-report"
+                size="small"
+                className="cp-icon-btn-report"
+                onClick={onReport}
+                disabled={!isMatched || isSearching}
+              >
+                <ReportOutlinedIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          {showVideo && (
+            <Tooltip title="Turn off your camera" arrow>
+              <span>
+                <IconButton
+                  id="cp-btn-stop-video"
+                  size="small"
+                  className="cp-icon-btn"
+                  onClick={onStopVideo}
+                  disabled={isSearching}
+                >
+                  <StopCircleOutlinedIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
           )}
+        </Stack>
+      </Box>
 
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button variant="contained" onClick={() => onJoin()} disabled={isSearching || isMatched}>
-              {isSearching ? "Matching..." : "Start"}
-            </Button>
-            <Button variant="contained" onClick={onNext} disabled={!isMatched || isSearching} startIcon={<SkipNextIcon />}>Next</Button>
-            <Button variant="outlined" color="secondary" onClick={onClose} disabled={!isMatched || isSearching}>Close Chat</Button>
-            <Button variant="outlined" color="secondary" onClick={onReport} disabled={!isMatched || isSearching} startIcon={<ReportIcon />}>Report</Button>
-            {showVideo && (
-              <Button variant="text" color="secondary" onClick={onStopVideo} startIcon={<StopCircleIcon />} disabled={isSearching}>Stop Video</Button>
+      {/* ── MAIN CONTENT ── */}
+      <Box className="cp-body">
+        {/* Video stage */}
+        {showVideo && (
+          <Box className="cp-video-stage">
+            <Box className="cp-video-label">
+              <FiberManualRecordIcon sx={{ fontSize: 8, color: "#ef4444" }} />
+              <Typography variant="caption">Partner</Typography>
+            </Box>
+            <Box
+              component="video"
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="cp-video-main"
+            />
+            {/* PiP */}
+            <Box className="cp-video-pip">
+              <Typography variant="caption" className="cp-pip-label">You</Typography>
+              <Box
+                component="video"
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="cp-video-pip-feed"
+              />
+            </Box>
+          </Box>
+        )}
+
+        {/* ── CHAT PANEL ── */}
+        <Box className="cp-chat-panel">
+          {/* Chat header */}
+          <Box className="cp-chat-header">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Box className="cp-chat-avatar">
+                {isMatched ? "P" : "–"}
+              </Box>
+              <Stack spacing={0}>
+                <Typography className="cp-chat-partner-name">
+                  {isMatched ? "Anonymous Partner" : "No partner yet"}
+                </Typography>
+                <Typography className="cp-chat-partner-sub">
+                  {isMatched
+                    ? isPartnerTyping
+                      ? "Typing…"
+                      : "Active now"
+                    : "Start a session to connect"}
+                </Typography>
+              </Stack>
+            </Stack>
+          </Box>
+
+          <Divider sx={{ opacity: 0.06 }} />
+
+          {/* Messages */}
+          <Stack
+            spacing={1}
+            className="cp-message-list"
+            ref={messageListRef}
+          >
+            {messages.length === 0 && !isMatched && (
+              <Box className="cp-empty-state">
+                <ChatBubbleOutlineIcon sx={{ fontSize: 40, color: "#c7d2fe", mb: 1 }} />
+                <Typography className="cp-empty-title">No conversation yet</Typography>
+                <Typography className="cp-empty-sub">
+                  Press <strong>Start Session</strong> to get matched instantly.
+                </Typography>
+              </Box>
+            )}
+
+            {messages.map((m, i) => {
+              const isMe = m.from === "me";
+              const isSystem = m.from === "system";
+              return (
+                <Stack
+                  key={i}
+                  direction="row"
+                  justifyContent={
+                    isSystem ? "center" : isMe ? "flex-end" : "flex-start"
+                  }
+                  sx={{ width: "100%" }}
+                >
+                  {isSystem ? (
+                    <Box className="cp-system-msg">
+                      {(m.parts || [{ type: "text", text: m.text || "" }]).map(
+                        (p, idx) => (
+                          <span key={idx}>{p.text}</span>
+                        )
+                      )}
+                    </Box>
+                  ) : (
+                    <Box className={isMe ? "cp-bubble cp-bubble-me" : "cp-bubble cp-bubble-them"}>
+                      <Typography className="cp-bubble-sender">
+                        {isMe ? "You" : "Partner"}
+                      </Typography>
+                      <Box className="cp-bubble-content">
+                        {(
+                          m.parts ||
+                          (m.emojiUrl
+                            ? [{ type: "emoji", url: m.emojiUrl }]
+                            : [{ type: "text", text: m.text || "" }])
+                        ).map((part, idx) =>
+                          part.type === "emoji" ? (
+                            <Box
+                              key={idx}
+                              component="img"
+                              src={part.url}
+                              alt="emoji"
+                              className="inline-emoji"
+                            />
+                          ) : (
+                            <Box key={idx} component="span" className="message-content">
+                              {part.text}
+                            </Box>
+                          )
+                        )}
+                      </Box>
+                    </Box>
+                  )}
+                </Stack>
+              );
+            })}
+
+            {/* Typing indicator */}
+            {isMatched && isPartnerTyping && (
+              <Stack direction="row" justifyContent="flex-start" sx={{ width: "100%" }}>
+                <Box className="cp-bubble cp-bubble-them cp-typing-bubble">
+                  <Box className="typing-dots" aria-label="Partner is typing">
+                    <span /><span /><span />
+                  </Box>
+                </Box>
+              </Stack>
             )}
           </Stack>
-        </Stack>
-      </Paper>
 
-      {showVideo && (
-        <Box className="video-layout">
-          <Paper className="video-stage" elevation={0}>
-            <Typography variant="caption" sx={{ opacity: 0.7 }}>Stranger</Typography>
-            <Box component="video" ref={remoteVideoRef} autoPlay playsInline className="video-feed video-feed-main" />
-            <Paper className="video-pip" elevation={0}>
-              <Typography variant="caption" sx={{ opacity: 0.7 }}>You</Typography>
-              <Box component="video" ref={localVideoRef} autoPlay playsInline muted className="video-feed video-feed-pip" />
-            </Paper>
-          </Paper>
-        </Box>
-      )}
-
-      <Paper className="chat-card phone-chat" elevation={0}>
-        <Stack spacing={2} className="chat-stack">
-          <Stack spacing={1} className="message-list" ref={messageListRef}>
-            {messages.map((m, i) => (
-              <Stack key={i} direction="row" justifyContent={m.from === "me" ? "flex-end" : "flex-start"}>
-                <Paper className={m.from === "me" ? "bubble bubble-me" : "bubble"} elevation={0}>
-                  <Typography variant="caption" color="text.secondary">
-                    {m.from === "me" ? "Me" : "Stranger"}
-                  </Typography>
-                  <Box className="message-content">
-                    {(m.parts || (m.emojiUrl ? [{ type: "emoji", url: m.emojiUrl }] : [{ type: "text", text: m.text || "" }])).map((part, idx) =>
-                      part.type === "emoji" ? (
-                        <Box
-                          key={`emoji-${idx}`}
-                          component="img"
-                          src={part.url}
-                          alt="emoji"
-                          className="inline-emoji"
-                        />
-                      ) : (
-                        <Box key={`text-${idx}`} component="span">
-                          {part.text}
-                        </Box>
-                      )
-                    )}
+          {/* Composer */}
+          <Box className="cp-composer">
+            <Stack direction="row" spacing={1} alignItems="flex-end">
+              {/* Emoji toggle */}
+              <Box sx={{ position: "relative" }}>
+                <Tooltip title="Emoji" arrow>
+                  <IconButton
+                    size="small"
+                    className="cp-emoji-btn"
+                    onClick={onToggleEmoji}
+                  >
+                    <EmojiEmotionsOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                {emojiOpen && (
+                  <Box className="emoji-picker">
+                    <Picker isOpen handleEmojiSelect={onEmojiSelect} />
                   </Box>
-                </Paper>
-              </Stack>
-            ))}
-          </Stack>
+                )}
+              </Box>
 
-          <Divider className="chat-divider" />
+              {/* Input */}
+              <Box
+                className="cp-input"
+                contentEditable
+                role="textbox"
+                aria-label="Message input"
+                data-placeholder={
+                  isMatched
+                    ? "Write a message…"
+                    : "Connect to start chatting…"
+                }
+                ref={inputRef}
+                onInput={onComposerInput}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    onSend();
+                  }
+                }}
+                suppressContentEditableWarning
+              />
 
-          <Stack className="chat-composer" direction="row" spacing={1} alignItems="center">
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ position: "relative" }}>
-              <IconButton size="small" onClick={onToggleEmoji}>
-                <EmojiEmotionsIcon fontSize="small" />
-              </IconButton>
-              {emojiOpen && (
-                <Box className="emoji-picker">
-                  <Picker isOpen={true} handleEmojiSelect={onEmojiSelect} />
-                </Box>
-              )}
+              {/* Send */}
+              <Tooltip title="Send (Enter)" arrow>
+                <span>
+                  <IconButton
+                    id="cp-send-btn"
+                    className="cp-send-btn"
+                    onClick={onSend}
+                    disabled={!isMatched || isSearching}
+                  >
+                    <SendRoundedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
             </Stack>
-            <Box
-              className="message-input"
-              contentEditable
-              role="textbox"
-              aria-label="Message input"
-              data-placeholder="Type a message"
-              ref={inputRef}
-              suppressContentEditableWarning
-            />
-            <Button className="send-button" variant="contained" endIcon={<SendIcon />} onClick={onSend} disabled={!isMatched || isSearching}>
-              Send
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
+          </Box>
+        </Box>
+      </Box>
 
-      <Paper className="footer-card" elevation={0}>
-        <Typography variant="caption">Backend: {backendUrl}</Typography>
-        <Typography variant="caption">My ID: {socketId}</Typography>
-      </Paper>
-    </>
+      {/* ── SESSION FOOTER ── */}
+      <Box className="cp-footer">
+        <Typography className="cp-footer-text">
+          Session · {socketId ? `ID: ${socketId.slice(0, 8)}…` : "Not connected"}
+        </Typography>
+        <Typography className="cp-footer-text">{backendUrl}</Typography>
+      </Box>
+    </Box>
   );
 }
