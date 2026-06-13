@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --mode local",
+    "dev": "vite --mode development",
     "demo": "vite --mode demo",
     "build:demo": "vite build --mode demo",
     "build:prod": "vite build --mode production",
