@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --mode local",
+    "demo": "vite --mode demo",
+    "build:demo": "vite build --mode demo",
+    "build:prod": "vite build --mode production",
     "preview": "vite preview"
   },
   "dependencies": {
