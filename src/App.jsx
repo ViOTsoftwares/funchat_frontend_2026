@@ -397,6 +397,13 @@ export default function App() {
     socketRef.current.emit("message", messagePayload);
     emitTyping(false);
     clearComposer();
+
+    // Refocus the input box immediately to keep keyboard open on mobile
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 50);
   }
 
   function handleNext() {

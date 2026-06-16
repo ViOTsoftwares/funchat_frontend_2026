@@ -378,6 +378,7 @@ export default function ChatPage({
                     id="cp-send-btn"
                     className="cp-send-btn"
                     onClick={onSend}
+                    onMouseDown={(e) => e.preventDefault()}
                     disabled={!isMatched || isSearching}
                   >
                     <SendRoundedIcon fontSize="small" />
