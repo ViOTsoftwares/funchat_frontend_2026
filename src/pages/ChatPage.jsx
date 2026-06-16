@@ -318,45 +318,48 @@ export default function ChatPage({
           {/* Composer */}
           <Box className="cp-composer">
             <Stack direction="row" spacing={1} alignItems="flex-end">
-              {/* Emoji toggle */}
-              <Box sx={{ position: "relative" }}>
-                <Tooltip title="Emoji" arrow>
-                  <IconButton
-                    size="small"
-                    className="cp-emoji-btn"
-                    onClick={onToggleEmoji}
-                  >
-                    <EmojiEmotionsOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                {emojiOpen && (
-                  <Box className="emoji-picker">
-                    <Picker isOpen handleEmojiSelect={onEmojiSelect} />
-                  </Box>
-                )}
-              </Box>
+              {/* Capsule enclosing emoji + input */}
+              <Box className="cp-input-capsule">
+                {/* Emoji toggle */}
+                <Box sx={{ position: "relative" }} className="cp-emoji-wrapper">
+                  <Tooltip title="Emoji" arrow>
+                    <IconButton
+                      size="small"
+                      className="cp-emoji-btn"
+                      onClick={onToggleEmoji}
+                    >
+                      <EmojiEmotionsOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  {emojiOpen && (
+                    <Box className="emoji-picker">
+                      <Picker isOpen handleEmojiSelect={onEmojiSelect} />
+                    </Box>
+                  )}
+                </Box>
 
-              {/* Input */}
-              <Box
-                className="cp-input"
-                contentEditable
-                role="textbox"
-                aria-label="Message input"
-                data-placeholder={
-                  isMatched
-                    ? "Write a message…"
-                    : "Connect to start chatting…"
-                }
-                ref={inputRef}
-                onInput={onComposerInput}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    onSend();
+                {/* Input */}
+                <Box
+                  className="cp-input"
+                  contentEditable
+                  role="textbox"
+                  aria-label="Message input"
+                  data-placeholder={
+                    isMatched
+                      ? "Write a message…"
+                      : "Connect to start chatting…"
                   }
-                }}
-                suppressContentEditableWarning
-              />
+                  ref={inputRef}
+                  onInput={onComposerInput}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      onSend();
+                    }
+                  }}
+                  suppressContentEditableWarning
+                />
+              </Box>
 
               {/* Send */}
               <Tooltip title="Send (Enter)" arrow>

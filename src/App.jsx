@@ -132,19 +132,21 @@ export default function App() {
         }
       }
       // Treat any server-generated "from" that isn't the local user as a partner message
+      const localUserId = localStorage.getItem("funchat_user_id");
       const resolvedFrom =
-        !from || from === socket.id
-          ? from // will be undefined → partner-side in ChatPage (flex-start)
+        !from || from === localUserId
+          ? "me"
           : from === "system"
           ? "partner"   // backend auto-message → show on left
-          : from;       // normal partner socket id
+          : "partner";
       dispatch(addMessage({ from: resolvedFrom, parts: normalizedParts }));
-      if (from && from !== socket.id) {
+      if (from && from !== socket.id && from !== localUserId) {
         setIsPartnerTyping(false);
       }
     };
 
     const onHistory = ({ messages: history = [] }) => {
+      const localUserId = localStorage.getItem("funchat_user_id");
       const mapped = history.map((m) => {
         // Determine if the stored message belongs to the current user
         const rawFrom = m.userId || m.from;
@@ -152,10 +154,10 @@ export default function App() {
         if (!rawFrom || rawFrom === "system") {
           // Unknown sender → show as partner message (left side)
           resolvedFrom = "partner";
-        } else if (rawFrom === socket.id) {
+        } else if (rawFrom === localUserId) {
           resolvedFrom = "me";
         } else {
-          resolvedFrom = rawFrom; // partner's socket id → left side
+          resolvedFrom = "partner"; // partner's ID/socket id → left side
         }
         return {
           from: resolvedFrom,
@@ -241,10 +243,6 @@ export default function App() {
       socket.off("typing");
     };
   }, [socketRef, ensureLocalStream, ensurePeerConnection, cleanupPeer, pcRef]);
-
-  function getRouteMode() {
-    return location.pathname === "/video" ? "video" : "chat";
-  }
 
   function getRouteMode() {
     return location.pathname === "/video" ? "video" : "chat";
