@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -19,6 +19,8 @@ import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import { Picker } from "ms-3d-emoji-picker";
 
 export default function ChatPage({
@@ -45,6 +47,7 @@ export default function ChatPage({
   socketId,
 }) {
   const messageListRef = useRef(null);
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
 
   useEffect(() => {
     const container = messageListRef.current;
@@ -64,7 +67,7 @@ export default function ChatPage({
       ? "success"
       : "default";
   return (
-    <Box className="cp-root">
+    <Box className={`cp-root ${isChatExpanded ? "cp-root-expanded" : ""}`}>
       {/* ── TOP SESSION BAR ── */}
       <Box className="cp-session-bar">
         {/* Left: Mode badge + status */}
@@ -182,7 +185,7 @@ export default function ChatPage({
       {/* ── MAIN CONTENT ── */}
       <Box className="cp-body">
         {/* Video stage */}
-        {showVideo && (
+        {showVideo && !isChatExpanded && (
           <Box className="cp-video-stage">
             <Box className="cp-video-label">
               <FiberManualRecordIcon sx={{ fontSize: 8, color: "#ef4444" }} />
@@ -214,22 +217,35 @@ export default function ChatPage({
         <Box className="cp-chat-panel">
           {/* Chat header */}
           <Box className="cp-chat-header">
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Box className="cp-chat-avatar">
-                {isMatched ? "P" : "–"}
-              </Box>
-              <Stack spacing={0}>
-                <Typography className="cp-chat-partner-name">
-                  {isMatched ? "Anonymous Partner" : "No partner yet"}
-                </Typography>
-                <Typography className="cp-chat-partner-sub">
-                  {isMatched
-                    ? isPartnerTyping
-                      ? "Typing…"
-                      : "Active now"
-                    : "Start a session to connect"}
-                </Typography>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box className="cp-chat-avatar">
+                  {isMatched ? "P" : "–"}
+                </Box>
+                <Stack spacing={0}>
+                  <Typography className="cp-chat-partner-name">
+                    {isMatched ? "Anonymous Partner" : "No partner yet"}
+                  </Typography>
+                  <Typography className="cp-chat-partner-sub">
+                    {isMatched
+                      ? isPartnerTyping
+                        ? "Typing…"
+                        : "Active now"
+                      : "Start a session to connect"}
+                  </Typography>
+                </Stack>
               </Stack>
+
+              {/* Full Width Toggle Button */}
+              <Tooltip title={isChatExpanded ? "Exit Fullscreen Chat" : "Fullscreen Chat"} arrow>
+                <IconButton
+                  size="small"
+                  onClick={() => setIsChatExpanded(!isChatExpanded)}
+                  sx={{ color: "#64748b" }}
+                >
+                  {isChatExpanded ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                </IconButton>
+              </Tooltip>
             </Stack>
           </Box>
 
