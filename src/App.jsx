@@ -489,7 +489,7 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box className="app">
+      <Box className={`app ${location.pathname !== "/" ? "app-fullscreen-chat" : ""}`}>
         <Header status={status} />
 
         <Container maxWidth="lg" sx={{ pb: 4 }}>
@@ -569,7 +569,7 @@ export default function App() {
           </Routes>
         </Container>
 
-        <Footer />
+        {location.pathname !== "/chat" && location.pathname !== "/video" && <Footer />}
 
         {isSearching && !isMatched && (
           <Box className="match-overlay">

@@ -1672,25 +1672,66 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 640px) {
+  /* Ensure the app layout fills the dynamic viewport height on mobile to prevent scrolling behind keyboard */
+  .app-fullscreen-chat {
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .app-fullscreen-chat > .MuiContainer-root {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
   .cp-root {
-    margin: 12px 0 20px;
-    border-radius: 18px;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    height: 100% !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+
+  .cp-body {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+  }
+
+  .cp-chat-panel {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
   }
 
   .cp-session-bar {
-    padding: 12px 14px;
-    gap: 10px;
+    padding: 10px 14px;
+    gap: 8px;
+    flex-shrink: 0;
   }
 
   .cp-btn {
-    padding: 0 12px !important;
+    padding: 0 10px !important;
     font-size: 12px !important;
   }
 
   .cp-message-list {
-    padding: 14px 12px 8px;
-    min-height: clamp(240px, 40vh, 360px);
-    max-height: clamp(260px, 46vh, 400px);
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 14px 12px 8px !important;
+    min-height: 0 !important;
+    max-height: none !important;
     background: #efeae2 !important; /* WhatsApp beige wallpaper background */
   }
 
@@ -1719,6 +1760,7 @@ body {
     padding: 10px 12px 12px;
     background: #efeae2 !important; /* Floats seamlessly over the wallpaper background */
     border-top: none !important;
+    flex-shrink: 0;
   }
 
   .cp-input-capsule {
@@ -1758,6 +1800,10 @@ body {
     background: #2bb59c !important; /* Match mint teal design */
     color: #ffffff !important;
     box-shadow: 0 3px 10px rgba(43, 181, 156, 0.3) !important;
+  }
+
+  .cp-footer {
+    display: none !important; /* Hide details on mobile to save vertical space */
   }
 
   .cp-video-pip {
