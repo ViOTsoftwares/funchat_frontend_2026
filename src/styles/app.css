@@ -1256,41 +1256,7 @@ body {
   overflow: hidden;
 }
 
-/* Fullscreen expanded state for distraction-free typing */
-.cp-root-expanded {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 9999 !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  border: none !important;
-  display: flex !important;
-  flex-direction: column !important;
-  background: #ffffff !important;
-}
 
-.cp-root-expanded .cp-body {
-  flex: 1 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 0 !important;
-}
-
-.cp-root-expanded .cp-chat-panel {
-  flex: 1 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 0 !important;
-}
-
-.cp-root-expanded .cp-message-list {
-  flex: 1 !important;
-  overflow-y: auto !important;
-  min-height: 0 !important;
-  max-height: none !important;
-}
 
 /* ── Session bar ── */
 .cp-session-bar {
@@ -1711,53 +1677,94 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 640px) {
-  /* Ensure the app layout fills the dynamic viewport height on mobile to prevent scrolling behind keyboard */
+
+  /* ── Lock the overall app shell to viewport on chat/video routes ── */
   .app-fullscreen-chat {
-    height: 100dvh !important;
-    overflow: hidden !important;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Hide the site header on chat/video pages — session bar takes its place */
+  .app-fullscreen-chat .header {
+    display: none !important;
   }
 
   .app-fullscreen-chat > .MuiContainer-root {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     padding: 0 !important;
-    margin: 0 !important;
     max-width: 100% !important;
+    overflow: hidden;
   }
 
+  /* ── Chat root fills container exactly ── */
   .cp-root {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     margin: 0 !important;
     border-radius: 0 !important;
     border: none !important;
-    height: 100% !important;
+    height: 100%;
     backdrop-filter: none !important;
     box-shadow: none !important;
+    overflow: hidden;
   }
 
+  /* ── Body fills remaining space (below session bar) ── */
   .cp-body {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
   }
 
+  /* ── Chat panel is a flex column taking all space ── */
   .cp-chat-panel {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    /* The key: messages scroll, composer stays pinned at bottom */
   }
 
+  /* ── Session bar: shrink-wrap, never flex-grow ── */
   .cp-session-bar {
     padding: 10px 14px;
     gap: 8px;
     flex-shrink: 0;
+  }
+
+  /* ── Chat sub-header (partner name / expand button row) ── */
+  .cp-chat-header {
+    flex-shrink: 0;
+    padding: 10px 14px;
+    background: #2bb59c !important;
+  }
+
+  .cp-chat-partner-name {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+  }
+
+  .cp-chat-partner-sub {
+    color: rgba(255, 255, 255, 0.8) !important;
+  }
+
+  .cp-chat-avatar {
+    background: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
+  }
+
+  .cp-expand-btn {
+    color: #ffffff !important;
   }
 
   .cp-btn {
@@ -1765,22 +1772,25 @@ body {
     font-size: 12px !important;
   }
 
+  /* ── Message list scrolls, composer stays below ── */
   .cp-message-list {
-    flex: 1 !important;
-    overflow-y: auto !important;
-    padding: 14px 12px 8px !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    background: #efeae2 !important; /* WhatsApp beige wallpaper background */
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 12px 8px;
+    min-height: 0;
+    max-height: none;
+    background: #efeae2 !important;
   }
 
+  /* ── Bubble styles ── */
   .cp-bubble {
     max-width: 86%;
     border-radius: 16px !important;
   }
 
   .cp-bubble-them {
-    background: #2bb59c !important; /* Mint teal background */
+    background: #2bb59c !important;
     color: #ffffff !important;
     border: none !important;
     border-bottom-left-radius: 4px !important;
@@ -1788,25 +1798,32 @@ body {
   }
 
   .cp-bubble-me {
-    background: #e9e9eb !important; /* Soft grey background */
+    background: #e9e9eb !important;
     color: #0f172a !important;
     border: none !important;
     border-bottom-right-radius: 4px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
   }
 
+  /* ── Composer: pinned at the absolute bottom, never scrolls ──
+     position:sticky + bottom:0 works because .cp-chat-panel is
+     an overflow:hidden flex container — the composer naturally
+     sits after the scrollable list, always visible. */
   .cp-composer {
-    padding: 10px 12px 12px;
-    background: #efeae2 !important; /* Floats seamlessly over the wallpaper background */
-    border-top: none !important;
     flex-shrink: 0;
+    padding: 8px 10px 10px;
+    background: #efeae2 !important;
+    border-top: none !important;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
   }
 
   .cp-input-capsule {
     background: #ffffff !important;
     border: 1px solid rgba(148, 163, 184, 0.3) !important;
     border-radius: 24px !important;
-    padding: 4px 6px 4px 6px !important;
+    padding: 4px 6px !important;
   }
 
   .cp-input-capsule:focus-within {
@@ -1829,20 +1846,21 @@ body {
     min-height: 36px;
     max-height: 100px;
     padding: 8px 6px 8px 0;
-    font-size: 13.5px;
+    font-size: 14px;
+    line-height: 1.4;
   }
 
   .cp-send-btn {
     width: 40px !important;
     height: 40px !important;
     border-radius: 50% !important;
-    background: #2bb59c !important; /* Match mint teal design */
+    background: #2bb59c !important;
     color: #ffffff !important;
     box-shadow: 0 3px 10px rgba(43, 181, 156, 0.3) !important;
   }
 
   .cp-footer {
-    display: none !important; /* Hide details on mobile to save vertical space */
+    display: none !important;
   }
 
   .cp-video-pip {
@@ -1852,4 +1870,65 @@ body {
   .cp-video-pip-feed {
     height: 72px;
   }
+}
+
+/* ── Fullscreen expanded state ─────────────────────────────────────
+   When the user taps the expand icon, the chat panel rises to cover
+   the full screen (position:fixed). The same flex-column chain ensures
+   messages scroll and the composer stays pinned at the bottom.       */
+.cp-root-expanded {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+}
+
+.cp-root-expanded .cp-session-bar {
+  flex-shrink: 0 !important;
+}
+
+.cp-root-expanded .cp-body {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.cp-root-expanded .cp-chat-panel {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.cp-root-expanded .cp-message-list {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  background: #efeae2 !important;
+}
+
+.cp-root-expanded .cp-composer {
+  flex-shrink: 0 !important;
+  background: #efeae2 !important;
+  border-top: none !important;
+  padding: 8px 10px 12px !important;
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 10 !important;
+}
+
+.cp-root-expanded .cp-footer {
+  display: none !important;
 }

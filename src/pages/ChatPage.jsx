@@ -240,6 +240,7 @@ export default function ChatPage({
               <Tooltip title={isChatExpanded ? "Exit Fullscreen Chat" : "Fullscreen Chat"} arrow>
                 <IconButton
                   size="small"
+                  className="cp-expand-btn"
                   onClick={() => setIsChatExpanded(!isChatExpanded)}
                   sx={{ color: "#64748b" }}
                 >
