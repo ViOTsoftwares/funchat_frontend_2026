@@ -18,6 +18,7 @@ import EmojiEmotionsOutlinedIcon from "@mui/icons-material/EmojiEmotionsOutlined
 import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
 import { Picker } from "ms-3d-emoji-picker";
 
 export default function ChatPage({
@@ -318,25 +319,16 @@ export default function ChatPage({
           {/* Composer */}
           <Box className="cp-composer">
             <Stack direction="row" spacing={1} alignItems="flex-end">
-              {/* Capsule enclosing emoji + input */}
+              {/* Capsule enclosing attachment + input + emoji */}
               <Box className="cp-input-capsule">
-                {/* Emoji toggle */}
-                <Box sx={{ position: "relative" }} className="cp-emoji-wrapper">
-                  <Tooltip title="Emoji" arrow>
-                    <IconButton
-                      size="small"
-                      className="cp-emoji-btn"
-                      onClick={onToggleEmoji}
-                    >
-                      <EmojiEmotionsOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  {emojiOpen && (
-                    <Box className="emoji-picker">
-                      <Picker isOpen handleEmojiSelect={onEmojiSelect} />
-                    </Box>
-                  )}
-                </Box>
+                {/* Attachment icon */}
+                <IconButton
+                  size="small"
+                  className="cp-attach-btn"
+                  sx={{ color: "#94a3b8", p: "4px", mr: "2px", mb: "4px" }}
+                >
+                  <AttachFileIcon sx={{ fontSize: 20 }} />
+                </IconButton>
 
                 {/* Input */}
                 <Box
@@ -359,6 +351,24 @@ export default function ChatPage({
                   }}
                   suppressContentEditableWarning
                 />
+
+                {/* Emoji toggle */}
+                <Box sx={{ position: "relative" }} className="cp-emoji-wrapper">
+                  <Tooltip title="Emoji" arrow>
+                    <IconButton
+                      size="small"
+                      className="cp-emoji-btn"
+                      onClick={onToggleEmoji}
+                    >
+                      <EmojiEmotionsOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  {emojiOpen && (
+                    <Box className="emoji-picker">
+                      <Picker isOpen handleEmojiSelect={onEmojiSelect} />
+                    </Box>
+                  )}
+                </Box>
               </Box>
 
               {/* Send */}

@@ -1587,6 +1587,19 @@ body {
   background: rgba(79, 70, 229, 0.08) !important;
 }
 
+.cp-attach-btn {
+  color: #94a3b8 !important;
+  border-radius: 50% !important;
+  transition: color 0.18s, background 0.18s !important;
+  align-self: flex-end !important;
+  margin-bottom: 2px !important;
+}
+
+.cp-attach-btn:hover {
+  color: #4f46e5 !important;
+  background: rgba(79, 70, 229, 0.08) !important;
+}
+
 /* Emoji picker opens upwards (above the bottom input composer) */
 .emoji-picker {
   position: absolute;
@@ -1678,25 +1691,57 @@ body {
     padding: 14px 12px 8px;
     min-height: clamp(240px, 40vh, 360px);
     max-height: clamp(260px, 46vh, 400px);
+    background: #efeae2 !important; /* WhatsApp beige wallpaper background */
   }
 
   .cp-bubble {
     max-width: 86%;
+    border-radius: 16px !important;
+  }
+
+  .cp-bubble-them {
+    background: #2bb59c !important; /* Mint teal background */
+    color: #ffffff !important;
+    border: none !important;
+    border-bottom-left-radius: 4px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .cp-bubble-me {
+    background: #e9e9eb !important; /* Soft grey background */
+    color: #0f172a !important;
+    border: none !important;
+    border-bottom-right-radius: 4px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
   }
 
   .cp-composer {
     padding: 10px 12px 12px;
+    background: #efeae2 !important; /* Floats seamlessly over the wallpaper background */
+    border-top: none !important;
   }
 
   .cp-input-capsule {
-    background: #f8fafc;
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    border-radius: 22px;
-    padding: 2px 8px 2px 4px;
+    background: #ffffff !important;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+    border-radius: 24px !important;
+    padding: 4px 6px 4px 6px !important;
+  }
+
+  .cp-input-capsule:focus-within {
+    border-color: #2bb59c !important;
+    box-shadow: 0 0 0 3px rgba(43, 181, 156, 0.15) !important;
   }
 
   .cp-emoji-wrapper {
-    height: 36px;
+    height: 40px !important;
+    align-self: flex-end !important;
+    margin-right: 0 !important;
+  }
+
+  .cp-emoji-btn {
+    width: 36px !important;
+    height: 36px !important;
   }
 
   .cp-input {
@@ -1709,7 +1754,10 @@ body {
   .cp-send-btn {
     width: 40px !important;
     height: 40px !important;
-    box-shadow: 0 3px 10px rgba(79, 70, 229, 0.28) !important;
+    border-radius: 50% !important;
+    background: #2bb59c !important; /* Match mint teal design */
+    color: #ffffff !important;
+    box-shadow: 0 3px 10px rgba(43, 181, 156, 0.3) !important;
   }
 
   .cp-video-pip {
