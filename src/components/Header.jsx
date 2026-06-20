@@ -25,6 +25,7 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
+import EditIcon from "@mui/icons-material/Edit";
 
 const NAV_LINKS = [
   {
@@ -199,34 +200,66 @@ export default function Header({ status = "Online" }) {
               {/* Editable Name Field in Header */}
               <Box
                 sx={{
-                  display: { xs: "none", sm: "flex" },
+                  display: "flex",
                   alignItems: "center",
-                  background: "rgba(255, 255, 255, 0.08)",
-                  borderRadius: "10px",
+                  background: "rgba(255, 255, 255, 0.06)",
+                  borderRadius: "12px",
                   px: 1.5,
-                  py: 0.5,
-                  border: "1px solid rgba(255, 255, 255, 0.12)"
+                  py: 0.75,
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  transition: "all 0.2s ease",
+                  "&:hover, &:focus-within": {
+                    background: "rgba(255, 255, 255, 0.1)",
+                    borderColor: "rgba(99, 102, 241, 0.4)",
+                    boxShadow: "0 0 12px rgba(99, 102, 241, 0.15)"
+                  }
                 }}
               >
-                <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", mr: 1, fontWeight: 600 }}>
-                  Profile Name:
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "rgba(255,255,255,0.55)",
+                    mr: 1,
+                    fontWeight: 600,
+                    display: { xs: "none", sm: "block" }
+                  }}
+                >
+                  Name:
                 </Typography>
                 <Box
-                  component="input"
-                  type="text"
-                  value={profileName}
-                  onChange={(e) => handleProfileNameChange(e.target.value)}
                   sx={{
-                    background: "transparent",
-                    border: "none",
-                    outline: "none",
-                    color: "#fff",
-                    fontWeight: 700,
-                    fontSize: "12px",
-                    width: "90px",
-                    textAlign: "left"
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center"
                   }}
-                />
+                >
+                  <Box
+                    component="input"
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => handleProfileNameChange(e.target.value)}
+                    sx={{
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: "12px",
+                      width: { xs: "75px", sm: "95px" },
+                      paddingRight: "20px",
+                      textAlign: "left"
+                    }}
+                  />
+                  <EditIcon
+                    sx={{
+                      position: "absolute",
+                      right: 0,
+                      color: "rgba(255, 255, 255, 0.55)",
+                      fontSize: 14,
+                      pointerEvents: "none"
+                    }}
+                  />
+                </Box>
               </Box>
 
               <Tooltip title={`Server Status: ${status}`}>
@@ -331,6 +364,79 @@ export default function Header({ status = "Online" }) {
                 "rgba(255,255,255,.1)",
             }}
           />
+
+          {/* Mobile Profile Name Input */}
+          <Box
+            sx={{
+              mb: 2.5,
+              p: 2,
+              borderRadius: "16px",
+              background: "rgba(255, 255, 255, 0.04)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+            }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+              <Box
+                sx={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                }}
+              >
+                <Typography sx={{ fontSize: "8px", fontWeight: 800 }}>U</Typography>
+              </Box>
+              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 700, letterSpacing: "0.5px" }}>
+                MY DISPLAY NAME
+              </Typography>
+            </Stack>
+            <Box
+              sx={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center"
+              }}
+            >
+              <Box
+                component="input"
+                type="text"
+                value={profileName}
+                onChange={(e) => handleProfileNameChange(e.target.value)}
+                placeholder="Stranger"
+                sx={{
+                  width: "100%",
+                  padding: "10px 36px 10px 14px",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  outline: "none",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  color: "#fff",
+                  background: "rgba(15, 23, 42, 0.4)",
+                  transition: "all 0.18s ease",
+                  "&:focus": {
+                    borderColor: "#818cf8",
+                    background: "rgba(15, 23, 42, 0.75)",
+                    boxShadow: "0 0 0 3px rgba(129, 140, 248, 0.15)"
+                  }
+                }}
+              />
+              <EditIcon
+                sx={{
+                  position: "absolute",
+                  right: 12,
+                  color: "#818cf8",
+                  fontSize: 16,
+                  pointerEvents: "none",
+                  opacity: 0.8
+                }}
+              />
+            </Box>
+          </Box>
 
           <List>
             {NAV_LINKS.map(

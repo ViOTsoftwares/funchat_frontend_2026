@@ -6,6 +6,7 @@ import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import BoltOutlinedIcon from "@mui/icons-material/BoltOutlined";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StarOutlinedIcon from "@mui/icons-material/StarOutlined";
+import EditIcon from "@mui/icons-material/Edit";
 
 const STATS = [
   { value: "12K+", label: "Active Users" },
@@ -91,44 +92,86 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
         {/* Profile Name Card */}
         <Box
           sx={{
-            maxWidth: 320,
+            maxWidth: 340,
             mx: "auto",
             mb: 4,
             p: 2.5,
-            borderRadius: "18px",
-            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.75))",
-            border: "1px solid rgba(148, 163, 184, 0.25)",
-            backdropFilter: "blur(12px)",
-            boxShadow: "0 10px 30px rgba(15, 23, 42, 0.04)"
+            borderRadius: "20px",
+            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(241, 245, 249, 0.7))",
+            border: "1px solid rgba(99, 102, 241, 0.15)",
+            backdropFilter: "blur(16px)",
+            boxShadow: "0 12px 35px rgba(99, 102, 241, 0.06), 0 4px 12px rgba(15, 23, 42, 0.03)",
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            "&:hover": {
+              transform: "translateY(-2px)",
+              border: "1px solid rgba(99, 102, 241, 0.28)",
+              boxShadow: "0 16px 40px rgba(99, 102, 241, 0.12), 0 8px 18px rgba(15, 23, 42, 0.04)"
+            }
           }}
         >
-          <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", fontSize: "11px", letterSpacing: "0.5px" }}>
-            My Display Name
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5, justifyContent: "center" }}>
+            <Box
+              sx={{
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                boxShadow: "0 2px 6px rgba(99, 102, 241, 0.3)"
+              }}
+            >
+              <Typography sx={{ fontSize: "10px", fontWeight: 800 }}>U</Typography>
+            </Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#4f46e5", textTransform: "uppercase", fontSize: "11px", letterSpacing: "1px" }}>
+              My Display Name
+            </Typography>
+          </Stack>
           <Box
-            component="input"
-            type="text"
-            value={profileName}
-            onChange={(e) => handleProfileNameChange(e.target.value)}
-            placeholder="Stranger"
             sx={{
-              width: "100%",
-              padding: "10px 16px",
-              borderRadius: "12px",
-              border: "1.5px solid rgba(148, 163, 184, 0.35)",
-              outline: "none",
-              fontSize: "14px",
-              textAlign: "center",
-              fontWeight: 700,
-              color: "#0f172a",
-              background: "#ffffff",
-              transition: "all 0.18s ease",
-              "&:focus": {
-                borderColor: "#4f46e5",
-                boxShadow: "0 0 0 3px rgba(99, 102, 241, 0.12)"
-              }
+              position: "relative",
+              display: "flex",
+              alignItems: "center"
             }}
-          />
+          >
+            <Box
+              component="input"
+              type="text"
+              value={profileName}
+              onChange={(e) => handleProfileNameChange(e.target.value)}
+              placeholder="Stranger"
+              sx={{
+                width: "100%",
+                padding: "12px 42px 12px 16px",
+                borderRadius: "14px",
+                border: "1.5px solid rgba(99, 102, 241, 0.2)",
+                outline: "none",
+                fontSize: "14px",
+                textAlign: "center",
+                fontWeight: 700,
+                color: "#0f172a",
+                background: "#ffffff",
+                transition: "all 0.2s ease",
+                "&:focus": {
+                  borderColor: "#4f46e5",
+                  boxShadow: "0 0 0 4px rgba(99, 102, 241, 0.15)",
+                  background: "#ffffff"
+                }
+              }}
+            />
+            <EditIcon
+              sx={{
+                position: "absolute",
+                right: 14,
+                color: "#6366f1",
+                fontSize: 18,
+                pointerEvents: "none",
+                opacity: 0.8
+              }}
+            />
+          </Box>
         </Box>
 
         {/* CTA buttons */}
