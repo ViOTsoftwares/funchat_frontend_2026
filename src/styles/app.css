@@ -1687,7 +1687,7 @@ body {
   }
 
   /* Hide the site header on chat/video pages — session bar takes its place */
-  .app-fullscreen-chat .header {
+  .app-fullscreen-chat .MuiAppBar-root {
     display: none !important;
   }
 
