@@ -48,6 +48,61 @@ export default function ChatPage({
 }) {
   const messageListRef = useRef(null);
   const [isChatExpanded, setIsChatExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
+  const [hasClickedInput, setHasClickedInput] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 640);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isMatched) {
+      setHasClickedInput(false);
+    }
+  }, [isMatched]);
+
+  const QUICK_KEYWORDS = [
+    "Hi 👋",
+    "Hey!",
+    "How are you?",
+    "Where are you from?",
+    "Nice to meet you",
+    "Haha 😂",
+    "What's up?",
+    "M",
+    "F"
+  ];
+
+  const handleKeywordClick = (keyword) => {
+    const container = inputRef.current;
+    if (!container) return;
+    container.focus();
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      container.appendChild(document.createTextNode(keyword));
+      container.appendChild(document.createTextNode(" "));
+    } else {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const textNode = document.createTextNode(keyword);
+      range.insertNode(textNode);
+      const space = document.createTextNode(" ");
+      range.setStartAfter(textNode);
+      range.insertNode(space);
+      range.setStartAfter(space);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    if (onComposerInput) {
+      onComposerInput();
+    }
+  };
 
   useEffect(() => {
     const container = messageListRef.current;
@@ -335,6 +390,19 @@ export default function ChatPage({
 
           {/* Composer */}
           <Box className="cp-composer">
+            {isMobile && hasClickedInput && isMatched && (
+              <Box className="cp-keywords-container">
+                {QUICK_KEYWORDS.map((kw, idx) => (
+                  <Box
+                    key={idx}
+                    className="cp-keyword-chip"
+                    onClick={() => handleKeywordClick(kw)}
+                  >
+                    {kw}
+                  </Box>
+                ))}
+              </Box>
+            )}
             <Stack direction="row" spacing={1} alignItems="flex-end">
               {/* Capsule enclosing attachment + input + emoji */}
               <Box className="cp-input-capsule">
@@ -366,6 +434,8 @@ export default function ChatPage({
                       onSend();
                     }
                   }}
+                  onClick={() => setHasClickedInput(true)}
+                  onFocus={() => setHasClickedInput(true)}
                   suppressContentEditableWarning
                 />
 
