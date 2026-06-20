@@ -93,6 +93,7 @@ export default function App() {
 
       document.documentElement.style.setProperty("--visual-vh", `${vh}px`);
       document.documentElement.style.setProperty("--keyboard-offset", `${keyboardHeight}px`);
+      document.documentElement.style.setProperty("--visual-viewport-offset-y", `${offsetTop}px`);
 
       // Always reset scroll so the page never drifts under the keyboard
       window.scrollTo(0, 0);

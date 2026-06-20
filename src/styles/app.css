@@ -32,7 +32,7 @@ body.fullscreen-lock {
 /* bottom uses --keyboard-offset so the container shrinks above the keyboard */
 .app-fullscreen-chat {
   position: fixed !important;
-  top: 0 !important;
+  top: var(--visual-viewport-offset-y, 0px) !important;
   left: 0 !important;
   right: 0 !important;
   /* Push the bottom edge UP by the keyboard height so the layout always sits above it */
@@ -1763,7 +1763,7 @@ body.fullscreen-lock {
   /* bottom is pushed up by --keyboard-offset so composer floats above keyboard */
   .app-fullscreen-chat {
     position: fixed;
-    top: 0;
+    top: var(--visual-viewport-offset-y, 0px) !important;
     left: 0;
     right: 0;
     bottom: var(--keyboard-offset, 0px);
@@ -1823,7 +1823,7 @@ body.fullscreen-lock {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    overflow-y: auto; /* allow messages to scroll */
+    overflow: hidden !important;
     overflow-x: hidden;
     /* The key: messages scroll, composer stays pinned at bottom */
   }
