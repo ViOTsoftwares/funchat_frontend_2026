@@ -1680,7 +1680,7 @@ body {
 
   /* ── Lock the overall app shell to viewport on chat/video routes ── */
   .app-fullscreen-chat {
-    height: 100dvh;
+    height: var(--visual-vh, 100dvh);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1928,7 +1928,7 @@ body {
   inset: 0 !important;
   z-index: 9999 !important;
   width: 100vw !important;
-  height: 100dvh !important;
+  height: var(--visual-vh, 100dvh) !important;
   margin: 0 !important;
   border-radius: 0 !important;
   border: none !important;

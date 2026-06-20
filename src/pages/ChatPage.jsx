@@ -65,6 +65,14 @@ export default function ChatPage({
     }
   }, [isMatched]);
 
+  useEffect(() => {
+    if (isMatched) {
+      setIsChatExpanded(true);
+    } else {
+      setIsChatExpanded(false);
+    }
+  }, [isMatched]);
+
   const QUICK_KEYWORDS = [
     "Hi 👋",
     "Hey!",

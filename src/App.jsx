@@ -67,6 +67,21 @@ export default function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!window.visualViewport) return;
+    const updateVisualViewportHeight = () => {
+      const vh = window.visualViewport.height;
+      document.documentElement.style.setProperty("--visual-vh", `${vh}px`);
+    };
+    window.visualViewport.addEventListener("resize", updateVisualViewportHeight);
+    window.visualViewport.addEventListener("scroll", updateVisualViewportHeight);
+    updateVisualViewportHeight();
+    return () => {
+      window.visualViewport.removeEventListener("resize", updateVisualViewportHeight);
+      window.visualViewport.removeEventListener("scroll", updateVisualViewportHeight);
+    };
+  }, []);
+
+  useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
 
