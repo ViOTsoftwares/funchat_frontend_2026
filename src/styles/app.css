@@ -1629,9 +1629,12 @@ body.fullscreen-lock {
   padding: 12px 16px 14px;
   background: rgba(248, 250, 252, 0.95);
   border-top: 1px solid rgba(226, 232, 240, 0.6);
-  position: sticky;
+  position: absolute;
   bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
+  transition: bottom 0.1s ease-out;
 }
 
 /* New Capsule layout enclosing emoji wrapper and input box */
@@ -1811,6 +1814,7 @@ body.fullscreen-lock {
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+    position: relative; /* enable absolute children like composer */
   }
 
   /* ── Chat panel is a flex column taking all space ── */
@@ -1819,7 +1823,8 @@ body.fullscreen-lock {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    overflow: hidden;
+    overflow-y: auto; /* allow messages to scroll */
+    overflow-x: hidden;
     /* The key: messages scroll, composer stays pinned at bottom */
   }
 
