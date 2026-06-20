@@ -581,21 +581,14 @@ export default function App() {
               path="/chat"
               element={
                 <ChatPage
-                  mode={mode}
                   isMatched={isMatched}
                   isSearching={isSearching}
-                  showVideo={false}
-                  localVideoRef={localVideoRef}
-                  remoteVideoRef={remoteVideoRef}
                   messages={messages}
                   isPartnerTyping={isPartnerTyping}
                   onJoin={handleJoin}
                   onNext={handleNext}
                   onClose={handleCloseChat}
                   onReport={handleReport}
-                  onStopVideo={() =>
-                    stopLocalVideo(localVideoRef, remoteVideoRef)
-                  }
                   emojiOpen={emojiOpen}
                   onToggleEmoji={() => setEmojiOpen((v) => !v)}
                   onEmojiSelect={handleEmojiSelect}
@@ -605,10 +598,6 @@ export default function App() {
                   backendUrl={BACKEND_URL}
                   socketId={socketId}
                   partnerName={partnerName}
-                  isMuted={isMuted}
-                  isVideoOff={isVideoOff}
-                  onToggleMute={toggleMute}
-                  onToggleVideo={toggleVideo}
                 />
               }
             />
@@ -616,14 +605,10 @@ export default function App() {
               path="/video"
               element={
                 <VideoPage
-                  mode={mode}
                   isMatched={isMatched}
                   isSearching={isSearching}
-                  showVideo={true}
                   localVideoRef={localVideoRef}
                   remoteVideoRef={remoteVideoRef}
-                  messages={messages}
-                  isPartnerTyping={isPartnerTyping}
                   onJoin={handleJoin}
                   onNext={handleNext}
                   onClose={handleCloseChat}
@@ -631,19 +616,12 @@ export default function App() {
                   onStopVideo={() =>
                     stopLocalVideo(localVideoRef, remoteVideoRef)
                   }
-                  emojiOpen={emojiOpen}
-                  onToggleEmoji={() => setEmojiOpen((v) => !v)}
-                  onEmojiSelect={handleEmojiSelect}
-                  inputRef={inputRef}
-                  onComposerInput={handleComposerInput}
-                  onSend={handleSend}
-                  backendUrl={BACKEND_URL}
-                  socketId={socketId}
-                  partnerName={partnerName}
                   isMuted={isMuted}
                   isVideoOff={isVideoOff}
                   onToggleMute={toggleMute}
                   onToggleVideo={toggleVideo}
+                  backendUrl={BACKEND_URL}
+                  socketId={socketId}
                 />
               }
             />

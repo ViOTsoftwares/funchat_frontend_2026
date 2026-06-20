@@ -10,37 +10,26 @@ import {
   Typography,
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
-import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
 import SkipNextIcon from "@mui/icons-material/SkipNext";
 import ReportOutlinedIcon from "@mui/icons-material/ReportOutlined";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import EmojiEmotionsOutlinedIcon from "@mui/icons-material/EmojiEmotionsOutlined";
-import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
-import MicIcon from "@mui/icons-material/Mic";
-import MicOffIcon from "@mui/icons-material/MicOff";
-import VideocamIcon from "@mui/icons-material/Videocam";
-import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import { Picker } from "ms-3d-emoji-picker";
 
 export default function ChatPage({
-  mode,
   isMatched,
   isSearching,
-  showVideo,
-  localVideoRef,
-  remoteVideoRef,
   messages,
   isPartnerTyping,
   onJoin,
   onNext,
   onClose,
   onReport,
-  onStopVideo,
   emojiOpen,
   onToggleEmoji,
   onEmojiSelect,
@@ -50,10 +39,6 @@ export default function ChatPage({
   backendUrl,
   socketId,
   partnerName,
-  isMuted,
-  isVideoOff,
-  onToggleMute,
-  onToggleVideo,
 }) {
   const messageListRef = useRef(null);
   const [isChatExpanded, setIsChatExpanded] = useState(false);
@@ -80,12 +65,12 @@ export default function ChatPage({
   }, []);
 
   useEffect(() => {
-    if (isMatched && mode === "chat") {
+    if (isMatched) {
       setIsChatExpanded(true);
     } else {
       setIsChatExpanded(false);
     }
-  }, [isMatched, mode]);
+  }, [isMatched]);
 
   const QUICK_KEYWORDS = [
     "Hi 👋",
@@ -143,6 +128,7 @@ export default function ChatPage({
     : isMatched
       ? "success"
       : "default";
+
   return (
     <Box className={`cp-root ${isChatExpanded ? "cp-root-expanded" : ""}`}>
       {/* ── TOP SESSION BAR ── */}
@@ -151,16 +137,10 @@ export default function ChatPage({
           {/* Left: Mode badge + status */}
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box className="cp-mode-icon">
-              {mode === "video" ? (
-                <VideocamOutlinedIcon sx={{ fontSize: 18 }} />
-              ) : (
-                <ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />
-              )}
+              <ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />
             </Box>
             <Stack spacing={0}>
-              <Typography className="cp-mode-label">
-                {mode === "video" ? "Video Chat" : "Text Chat"}
-              </Typography>
+              <Typography className="cp-mode-label">Text Chat</Typography>
               <Stack direction="row" spacing={0.5} alignItems="center">
                 <FiberManualRecordIcon
                   sx={{
@@ -184,185 +164,70 @@ export default function ChatPage({
           </Stack>
 
           {/* Right: Actions */}
-          {!(showVideo && isMatched) && (
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-              <Button
-                id="cp-btn-start"
-                size="small"
-                variant="contained"
-                className="cp-btn cp-btn-start"
-                startIcon={<PlayArrowRoundedIcon />}
-                onClick={() => onJoin()}
-                disabled={isSearching || isMatched}
-              >
-                {isSearching ? "Searching…" : "Start Session"}
-              </Button>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Button
+              id="cp-btn-start"
+              size="small"
+              variant="contained"
+              className="cp-btn cp-btn-start"
+              startIcon={<PlayArrowRoundedIcon />}
+              onClick={() => onJoin()}
+              disabled={isSearching || isMatched}
+            >
+              {isSearching ? "Searching…" : "Start Session"}
+            </Button>
 
-              <Tooltip title="Find next match" arrow>
-                <span>
-                  <Button
-                    id="cp-btn-next"
-                    size="small"
-                    variant="outlined"
-                    className="cp-btn cp-btn-next"
-                    startIcon={<SkipNextIcon />}
-                    onClick={onNext}
-                    disabled={!isMatched || isSearching}
-                  >
-                    Next
-                  </Button>
-                </span>
-              </Tooltip>
+            <Tooltip title="Find next match" arrow>
+              <span>
+                <Button
+                  id="cp-btn-next"
+                  size="small"
+                  variant="outlined"
+                  className="cp-btn cp-btn-next"
+                  startIcon={<SkipNextIcon />}
+                  onClick={onNext}
+                  disabled={!isMatched || isSearching}
+                >
+                  Next
+                </Button>
+              </span>
+            </Tooltip>
 
-              <Tooltip title="End this session" arrow>
-                <span>
-                  <Button
-                    id="cp-btn-end"
-                    size="small"
-                    variant="outlined"
-                    className="cp-btn cp-btn-end"
-                    onClick={onClose}
-                    disabled={!isMatched || isSearching}
-                  >
-                    End
-                  </Button>
-                </span>
-              </Tooltip>
+            <Tooltip title="End this session" arrow>
+              <span>
+                <Button
+                  id="cp-btn-end"
+                  size="small"
+                  variant="outlined"
+                  className="cp-btn cp-btn-end"
+                  onClick={onClose}
+                  disabled={!isMatched || isSearching}
+                >
+                  End
+                </Button>
+              </span>
+            </Tooltip>
 
-              <Tooltip title="Report this user" arrow>
-                <span>
-                  <IconButton
-                    id="cp-btn-report"
-                    size="small"
-                    className="cp-icon-btn-report"
-                    onClick={onReport}
-                    disabled={!isMatched || isSearching}
-                  >
-                    <ReportOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-
-              {showVideo && (
-                <Tooltip title="Turn off your camera" arrow>
-                  <span>
-                    <IconButton
-                      id="cp-btn-stop-video"
-                      size="small"
-                      className="cp-icon-btn"
-                      onClick={onStopVideo}
-                      disabled={isSearching}
-                    >
-                      <StopCircleOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              )}
-            </Stack>
-          )}
+            <Tooltip title="Report this user" arrow>
+              <span>
+                <IconButton
+                  id="cp-btn-report"
+                  size="small"
+                  className="cp-icon-btn-report"
+                  onClick={onReport}
+                  disabled={!isMatched || isSearching}
+                >
+                  <ReportOutlinedIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Stack>
         </Box>
       )}
 
       {/* ── MAIN CONTENT ── */}
       <Box className="cp-body">
-        {/* Video stage */}
-        {showVideo && !isChatExpanded && (
-          <Box className={`cp-video-stage ${isMatched ? "cp-video-stage-fullscreen" : ""}`}>
-            <Box className="cp-video-label">
-              <FiberManualRecordIcon sx={{ fontSize: 8, color: "#ef4444" }} />
-              <Typography variant="caption">Partner</Typography>
-            </Box>
-            <Box
-              component="video"
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className="cp-video-main"
-            />
-            {/* PiP */}
-            <Box className="cp-video-pip">
-              <Typography variant="caption" className="cp-pip-label">You</Typography>
-              <Box
-                component="video"
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="cp-video-pip-feed"
-              />
-            </Box>
-            {/* Floating Controls Overlay */}
-            {isMatched && (
-              <Box className="cp-video-controls">
-                {/* Mic toggle */}
-                <Tooltip title={isMuted ? "Unmute microphone" : "Mute microphone"} arrow>
-                  <span>
-                    <IconButton
-                      onClick={onToggleMute}
-                      className={`cp-video-ctrl-btn ${isMuted ? "cp-video-ctrl-btn-muted" : ""}`}
-                    >
-                      {isMuted ? <MicOffIcon fontSize="small" /> : <MicIcon fontSize="small" />}
-                    </IconButton>
-                  </span>
-                </Tooltip>
-
-                {/* Camera toggle */}
-                <Tooltip title={isVideoOff ? "Turn camera on" : "Turn camera off"} arrow>
-                  <span>
-                    <IconButton
-                      onClick={onToggleVideo}
-                      className={`cp-video-ctrl-btn ${isVideoOff ? "cp-video-ctrl-btn-muted" : ""}`}
-                    >
-                      {isVideoOff ? <VideocamOffIcon fontSize="small" /> : <VideocamIcon fontSize="small" />}
-                    </IconButton>
-                  </span>
-                </Tooltip>
-
-                {/* Next button */}
-                <Tooltip title="Find next match" arrow>
-                  <span>
-                    <Button
-                      onClick={onNext}
-                      variant="contained"
-                      className="cp-video-ctrl-next"
-                      startIcon={<SkipNextIcon />}
-                    >
-                      Next
-                    </Button>
-                  </span>
-                </Tooltip>
-
-                {/* Report button */}
-                <Tooltip title="Report this user" arrow>
-                  <span>
-                    <IconButton
-                      onClick={onReport}
-                      className="cp-video-ctrl-btn cp-video-ctrl-btn-report"
-                    >
-                      <ReportOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-
-                {/* End button */}
-                <Tooltip title="End this session" arrow>
-                  <span>
-                    <IconButton
-                      onClick={onClose}
-                      className="cp-video-ctrl-btn cp-video-ctrl-btn-end"
-                    >
-                      <StopCircleOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              </Box>
-            )}
-          </Box>
-        )}
-
-        {/* ── CHAT PANEL ── */}
-        {(!showVideo || !isMatched) && (
-          <Box className="cp-chat-panel">
+        <Box className="cp-chat-panel">
           {/* Chat header */}
           <Box className="cp-chat-header">
             <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -577,7 +442,6 @@ export default function ChatPage({
             </Stack>
           </Box>
         </Box>
-        )}
       </Box>
 
       {/* ── SESSION FOOTER ── */}
