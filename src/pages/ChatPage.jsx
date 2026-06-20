@@ -184,110 +184,82 @@ export default function ChatPage({
           </Stack>
 
           {/* Right: Actions */}
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <Button
-              id="cp-btn-start"
-              size="small"
-              variant="contained"
-              className="cp-btn cp-btn-start"
-              startIcon={<PlayArrowRoundedIcon />}
-              onClick={() => onJoin()}
-              disabled={isSearching || isMatched}
-            >
-              {isSearching ? "Searching…" : "Start Session"}
-            </Button>
+          {!(showVideo && isMatched) && (
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Button
+                id="cp-btn-start"
+                size="small"
+                variant="contained"
+                className="cp-btn cp-btn-start"
+                startIcon={<PlayArrowRoundedIcon />}
+                onClick={() => onJoin()}
+                disabled={isSearching || isMatched}
+              >
+                {isSearching ? "Searching…" : "Start Session"}
+              </Button>
 
-            <Tooltip title="Find next match" arrow>
-              <span>
-                <Button
-                  id="cp-btn-next"
-                  size="small"
-                  variant="outlined"
-                  className="cp-btn cp-btn-next"
-                  startIcon={<SkipNextIcon />}
-                  onClick={onNext}
-                  disabled={!isMatched || isSearching}
-                >
-                  Next
-                </Button>
-              </span>
-            </Tooltip>
+              <Tooltip title="Find next match" arrow>
+                <span>
+                  <Button
+                    id="cp-btn-next"
+                    size="small"
+                    variant="outlined"
+                    className="cp-btn cp-btn-next"
+                    startIcon={<SkipNextIcon />}
+                    onClick={onNext}
+                    disabled={!isMatched || isSearching}
+                  >
+                    Next
+                  </Button>
+                </span>
+              </Tooltip>
 
-            <Tooltip title="End this session" arrow>
-              <span>
-                <Button
-                  id="cp-btn-end"
-                  size="small"
-                  variant="outlined"
-                  className="cp-btn cp-btn-end"
-                  onClick={onClose}
-                  disabled={!isMatched || isSearching}
-                >
-                  End
-                </Button>
-              </span>
-            </Tooltip>
+              <Tooltip title="End this session" arrow>
+                <span>
+                  <Button
+                    id="cp-btn-end"
+                    size="small"
+                    variant="outlined"
+                    className="cp-btn cp-btn-end"
+                    onClick={onClose}
+                    disabled={!isMatched || isSearching}
+                  >
+                    End
+                  </Button>
+                </span>
+              </Tooltip>
 
-            <Tooltip title="Report this user" arrow>
-              <span>
-                <IconButton
-                  id="cp-btn-report"
-                  size="small"
-                  className="cp-icon-btn-report"
-                  onClick={onReport}
-                  disabled={!isMatched || isSearching}
-                >
-                  <ReportOutlinedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-
-            {showVideo && isMatched && (
-              <>
-                <Tooltip title={isMuted ? "Unmute microphone" : "Mute microphone"} arrow>
-                  <span>
-                    <IconButton
-                      id="cp-btn-toggle-mute"
-                      size="small"
-                      className={`cp-icon-btn ${isMuted ? "cp-icon-btn-active" : ""}`}
-                      onClick={onToggleMute}
-                    >
-                      {isMuted ? <MicOffIcon fontSize="small" /> : <MicIcon fontSize="small" />}
-                    </IconButton>
-                  </span>
-                </Tooltip>
-
-                <Tooltip title={isVideoOff ? "Turn camera on" : "Turn camera off"} arrow>
-                  <span>
-                    <IconButton
-                      id="cp-btn-toggle-video"
-                      size="small"
-                      className={`cp-icon-btn ${isVideoOff ? "cp-icon-btn-active" : ""}`}
-                      onClick={onToggleVideo}
-                    >
-                      {isVideoOff ? <VideocamOffIcon fontSize="small" /> : <VideocamIcon fontSize="small" />}
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              </>
-            )}
-
-            {showVideo && (
-              <Tooltip title="Turn off your camera" arrow>
+              <Tooltip title="Report this user" arrow>
                 <span>
                   <IconButton
-                    id="cp-btn-stop-video"
+                    id="cp-btn-report"
                     size="small"
-                    className="cp-icon-btn"
-                    onClick={onStopVideo}
-                    disabled={isSearching}
+                    className="cp-icon-btn-report"
+                    onClick={onReport}
+                    disabled={!isMatched || isSearching}
                   >
-                    <StopCircleOutlinedIcon fontSize="small" />
+                    <ReportOutlinedIcon fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
-            )}
-          </Stack>
+
+              {showVideo && (
+                <Tooltip title="Turn off your camera" arrow>
+                  <span>
+                    <IconButton
+                      id="cp-btn-stop-video"
+                      size="small"
+                      className="cp-icon-btn"
+                      onClick={onStopVideo}
+                      disabled={isSearching}
+                    >
+                      <StopCircleOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              )}
+            </Stack>
+          )}
         </Box>
       )}
 
@@ -319,6 +291,72 @@ export default function ChatPage({
                 className="cp-video-pip-feed"
               />
             </Box>
+            {/* Floating Controls Overlay */}
+            {isMatched && (
+              <Box className="cp-video-controls">
+                {/* Mic toggle */}
+                <Tooltip title={isMuted ? "Unmute microphone" : "Mute microphone"} arrow>
+                  <span>
+                    <IconButton
+                      onClick={onToggleMute}
+                      className={`cp-video-ctrl-btn ${isMuted ? "cp-video-ctrl-btn-muted" : ""}`}
+                    >
+                      {isMuted ? <MicOffIcon fontSize="small" /> : <MicIcon fontSize="small" />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+
+                {/* Camera toggle */}
+                <Tooltip title={isVideoOff ? "Turn camera on" : "Turn camera off"} arrow>
+                  <span>
+                    <IconButton
+                      onClick={onToggleVideo}
+                      className={`cp-video-ctrl-btn ${isVideoOff ? "cp-video-ctrl-btn-muted" : ""}`}
+                    >
+                      {isVideoOff ? <VideocamOffIcon fontSize="small" /> : <VideocamIcon fontSize="small" />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+
+                {/* Next button */}
+                <Tooltip title="Find next match" arrow>
+                  <span>
+                    <Button
+                      onClick={onNext}
+                      variant="contained"
+                      className="cp-video-ctrl-next"
+                      startIcon={<SkipNextIcon />}
+                    >
+                      Next
+                    </Button>
+                  </span>
+                </Tooltip>
+
+                {/* Report button */}
+                <Tooltip title="Report this user" arrow>
+                  <span>
+                    <IconButton
+                      onClick={onReport}
+                      className="cp-video-ctrl-btn cp-video-ctrl-btn-report"
+                    >
+                      <ReportOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+
+                {/* End button */}
+                <Tooltip title="End this session" arrow>
+                  <span>
+                    <IconButton
+                      onClick={onClose}
+                      className="cp-video-ctrl-btn cp-video-ctrl-btn-end"
+                    >
+                      <StopCircleOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </Box>
+            )}
           </Box>
         )}
 
