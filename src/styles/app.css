@@ -11,6 +11,16 @@ body {
     #f5f7fb;
 }
 
+/* Prevent scroll or bounce on the main document */
+html.fullscreen-lock,
+body.fullscreen-lock {
+  overflow: hidden !important;
+  height: 100% !important;
+  width: 100% !important;
+  position: fixed !important;
+  overscroll-behavior: none !important;
+}
+
 .app {
   min-height: 100vh;
   display: flex;
@@ -25,19 +35,22 @@ body {
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  height: 100vh !important;
-  height: 100dvh !important;
+  height: var(--visual-vh, 100dvh) !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
   padding-top: 0 !important; /* we handle offsets in children */
 }
 
-/* Header app bar stays fixed size */
+/* Header app bar stays fixed size and full width */
 .app-fullscreen-chat .MuiAppBar-root {
   flex-shrink: 0 !important;
   height: 74px !important;
   position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
   box-sizing: border-box !important;
 }
 
@@ -65,6 +78,15 @@ body {
   margin: 0 !important;
   overflow: hidden !important;
   border-radius: 24px !important;
+}
+
+/* Body container fills the remaining height below the session bar */
+.app-fullscreen-chat .cp-body {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
 }
 
 .brand-dot {
@@ -1674,7 +1696,7 @@ body {
   padding: 10px 8px 10px 0; /* padding left is 0 because emoji wrapper creates gap */
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: 16px; /* 16px minimum to prevent auto-zoom on mobile focus */
   line-height: 1.45;
   color: #0f172a;
   outline: none;
@@ -1749,13 +1771,15 @@ body {
   }
 
   .app-fullscreen-chat > .MuiContainer-root {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    height: 100% !important; /* On mobile, since the site header is hidden, container fills full height */
     padding: 0 !important;
     max-width: 100% !important;
-    overflow: hidden;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
   }
 
   /* ── Chat root fills container exactly ── */
@@ -1903,7 +1927,7 @@ body {
     min-height: 36px;
     max-height: 100px;
     padding: 8px 6px 8px 0;
-    font-size: 14px;
+    font-size: 16px; /* 16px minimum to prevent auto-zoom on mobile focus */
     line-height: 1.4;
   }
 

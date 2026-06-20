@@ -97,6 +97,30 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const handleScroll = () => {
+      if (location.pathname === "/chat" || location.pathname === "/video") {
+        if (window.scrollY !== 0 || window.scrollX !== 0) {
+          window.scrollTo(0, 0);
+        }
+      }
+    };
+
+    if (location.pathname === "/chat" || location.pathname === "/video") {
+      document.documentElement.classList.add("fullscreen-lock");
+      document.body.classList.add("fullscreen-lock");
+      window.addEventListener("scroll", handleScroll, { passive: true });
+    } else {
+      document.documentElement.classList.remove("fullscreen-lock");
+      document.body.classList.remove("fullscreen-lock");
+    }
+    return () => {
+      document.documentElement.classList.remove("fullscreen-lock");
+      document.body.classList.remove("fullscreen-lock");
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [location.pathname]);
+
+  useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
 

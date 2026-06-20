@@ -56,21 +56,33 @@ export default function VideoPage({
 
   // Bind local stream to whichever ref element is currently active
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      if (localVideoRef.current.srcObject !== localStream) {
-        localVideoRef.current.srcObject = localStream;
+    const el = localVideoRef.current;
+    if (el) {
+      if (localStream) {
+        if (el.srcObject !== localStream) {
+          el.srcObject = localStream;
+        }
+        el.play?.().catch((err) => console.log("Local video play error:", err));
+      } else {
+        el.srcObject = null;
       }
     }
-  }, [localStream, isMatched, localVideoRef]);
+  }, [localStream, isMatched, localVideoRef, localVideoRef.current]);
 
   // Bind remote stream
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      if (remoteVideoRef.current.srcObject !== remoteStream) {
-        remoteVideoRef.current.srcObject = remoteStream;
+    const el = remoteVideoRef.current;
+    if (el) {
+      if (remoteStream) {
+        if (el.srcObject !== remoteStream) {
+          el.srcObject = remoteStream;
+        }
+        el.play?.().catch((err) => console.log("Remote video play error:", err));
+      } else {
+        el.srcObject = null;
       }
     }
-  }, [remoteStream, isMatched, remoteVideoRef]);
+  }, [remoteStream, isMatched, remoteVideoRef, remoteVideoRef.current]);
   const connectionStatus = isSearching
     ? "Searching…"
     : isMatched

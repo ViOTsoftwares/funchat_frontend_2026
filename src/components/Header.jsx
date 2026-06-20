@@ -245,7 +245,7 @@ export default function Header({ status = "Online" }) {
                       outline: "none",
                       color: "#fff",
                       fontWeight: 700,
-                      fontSize: "12px",
+                      fontSize: "16px",
                       width: { xs: "75px", sm: "95px" },
                       paddingRight: "20px",
                       textAlign: "left"
@@ -414,7 +414,7 @@ export default function Header({ status = "Online" }) {
                   borderRadius: "12px",
                   border: "1px solid rgba(255, 255, 255, 0.15)",
                   outline: "none",
-                  fontSize: "13px",
+                  fontSize: "16px",
                   fontWeight: 700,
                   color: "#fff",
                   background: "rgba(15, 23, 42, 0.4)",
