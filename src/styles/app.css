@@ -1924,6 +1924,27 @@ body {
       transform: translateY(0);
     }
   }
+
+  /* Restrict video overflow in mobile video */
+  .cp-video-stage {
+    overflow: hidden !important;
+    max-height: 100% !important;
+  }
+
+  .cp-video-main {
+    height: 200px !important;
+    object-fit: cover !important;
+  }
+
+  .cp-video-stage-fullscreen {
+    min-height: 0 !important;
+    height: 100% !important;
+    flex: 1 !important;
+  }
+
+  .cp-video-stage-fullscreen .cp-video-main {
+    height: 100% !important;
+  }
 }
 
 /* ── Fullscreen expanded state ─────────────────────────────────────
