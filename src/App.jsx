@@ -137,7 +137,7 @@ export default function App() {
       }
     };
 
-    const onMessage = ({ text, emojiUrl, parts, from }) => {
+    const onMessage = ({ text, emojiUrl, parts, from, senderName }) => {
       let normalizedParts = parts;
       if (!Array.isArray(parts)) {
         if (emojiUrl) {
@@ -154,7 +154,7 @@ export default function App() {
           : from === "system"
           ? "partner"   // backend auto-message → show on left
           : "partner";
-      dispatch(addMessage({ from: resolvedFrom, parts: normalizedParts }));
+      dispatch(addMessage({ from: resolvedFrom, senderName: senderName || "", parts: normalizedParts }));
       if (from && from !== socket.id && from !== localUserId) {
         setIsPartnerTyping(false);
       }
@@ -176,6 +176,7 @@ export default function App() {
         }
         return {
           from: resolvedFrom,
+          senderName: m.senderName || "",
           parts:
             m.parts ||
             (m.emojiUrl
@@ -404,7 +405,8 @@ export default function App() {
       .join("");
 
     const firstEmoji = parts.find((part) => part.type === "emoji")?.url;
-    const messagePayload = { parts, text: textContent };
+    const profileName = localStorage.getItem("funchat_profile_name") || "Stranger";
+    const messagePayload = { parts, text: textContent, senderName: profileName };
     if (firstEmoji && textContent.trim() === "") {
       messagePayload.emojiUrl = firstEmoji;
     }

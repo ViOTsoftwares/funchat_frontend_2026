@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import {
@@ -49,6 +49,23 @@ export default function Header({ status = "Online" }) {
   const location = useLocation();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileName, setProfileName] = useState(
+    localStorage.getItem("funchat_profile_name") || "Stranger"
+  );
+
+  useEffect(() => {
+    const handleNameChange = () => {
+      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
+    };
+    window.addEventListener("profileNameChanged", handleNameChange);
+    return () => window.removeEventListener("profileNameChanged", handleNameChange);
+  }, []);
+
+  const handleProfileNameChange = (val) => {
+    setProfileName(val);
+    localStorage.setItem("funchat_profile_name", val);
+    window.dispatchEvent(new Event("profileNameChanged"));
+  };
 
   const isOnline = status?.toLowerCase().includes("online");
 
@@ -179,6 +196,39 @@ export default function Header({ status = "Online" }) {
               spacing={2}
               alignItems="center"
             >
+              {/* Editable Name Field in Header */}
+              <Box
+                sx={{
+                  display: { xs: "none", sm: "flex" },
+                  alignItems: "center",
+                  background: "rgba(255, 255, 255, 0.08)",
+                  borderRadius: "10px",
+                  px: 1.5,
+                  py: 0.5,
+                  border: "1px solid rgba(255, 255, 255, 0.12)"
+                }}
+              >
+                <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", mr: 1, fontWeight: 600 }}>
+                  Profile Name:
+                </Typography>
+                <Box
+                  component="input"
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => handleProfileNameChange(e.target.value)}
+                  sx={{
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: "12px",
+                    width: "90px",
+                    textAlign: "left"
+                  }}
+                />
+              </Box>
+
               <Tooltip title={`Server Status: ${status}`}>
                 <Stack
                   direction="row"

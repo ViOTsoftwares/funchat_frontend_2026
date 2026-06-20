@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
@@ -41,6 +42,24 @@ const FEATURES = [
 ];
 
 export default function LandingPage({ status, onStartChat, onStartVideo }) {
+  const [profileName, setProfileName] = useState(
+    localStorage.getItem("funchat_profile_name") || "Stranger"
+  );
+
+  useEffect(() => {
+    const handleNameChange = () => {
+      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
+    };
+    window.addEventListener("profileNameChanged", handleNameChange);
+    return () => window.removeEventListener("profileNameChanged", handleNameChange);
+  }, []);
+
+  const handleProfileNameChange = (val) => {
+    setProfileName(val);
+    localStorage.setItem("funchat_profile_name", val);
+    window.dispatchEvent(new Event("profileNameChanged"));
+  };
+
   return (
     <Box className="lp-root">
       {/* ── Animated background orbs ── */}
@@ -68,6 +87,49 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
           Private one-to-one conversations with real people. Secure,
           anonymous, and beautifully designed for meaningful moments.
         </Typography>
+
+        {/* Profile Name Card */}
+        <Box
+          sx={{
+            maxWidth: 320,
+            mx: "auto",
+            mb: 4,
+            p: 2.5,
+            borderRadius: "18px",
+            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.75))",
+            border: "1px solid rgba(148, 163, 184, 0.25)",
+            backdropFilter: "blur(12px)",
+            boxShadow: "0 10px 30px rgba(15, 23, 42, 0.04)"
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 700, color: "#475569", textTransform: "uppercase", fontSize: "11px", letterSpacing: "0.5px" }}>
+            My Display Name
+          </Typography>
+          <Box
+            component="input"
+            type="text"
+            value={profileName}
+            onChange={(e) => handleProfileNameChange(e.target.value)}
+            placeholder="Stranger"
+            sx={{
+              width: "100%",
+              padding: "10px 16px",
+              borderRadius: "12px",
+              border: "1.5px solid rgba(148, 163, 184, 0.35)",
+              outline: "none",
+              fontSize: "14px",
+              textAlign: "center",
+              fontWeight: 700,
+              color: "#0f172a",
+              background: "#ffffff",
+              transition: "all 0.18s ease",
+              "&:focus": {
+                borderColor: "#4f46e5",
+                boxShadow: "0 0 0 3px rgba(99, 102, 241, 0.12)"
+              }
+            }}
+          />
+        </Box>
 
         {/* CTA buttons */}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} className="lp-cta-group">

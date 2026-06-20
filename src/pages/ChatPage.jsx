@@ -50,6 +50,17 @@ export default function ChatPage({
   const [isChatExpanded, setIsChatExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
   const [hasClickedInput, setHasClickedInput] = useState(false);
+  const [profileName, setProfileName] = useState(
+    localStorage.getItem("funchat_profile_name") || "Stranger"
+  );
+
+  useEffect(() => {
+    const handleNameChange = () => {
+      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
+    };
+    window.addEventListener("profileNameChanged", handleNameChange);
+    return () => window.removeEventListener("profileNameChanged", handleNameChange);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -350,7 +361,7 @@ export default function ChatPage({
                   ) : (
                     <Box className={isMe ? "cp-bubble cp-bubble-me" : "cp-bubble cp-bubble-them"}>
                       <Typography className="cp-bubble-sender">
-                        {isMe ? "You" : "Partner"}
+                        {isMe ? profileName : (m.senderName || "Partner")}
                       </Typography>
                       <Box className="cp-bubble-content">
                         {(
@@ -408,16 +419,25 @@ export default function ChatPage({
               </Box>
             )}
             <Stack direction="row" spacing={1} alignItems="flex-end">
-              {/* Capsule enclosing attachment + input + emoji */}
+              {/* Capsule enclosing emoji + input + attachment */}
               <Box className="cp-input-capsule">
-                {/* Attachment icon */}
-                <IconButton
-                  size="small"
-                  className="cp-attach-btn"
-                  sx={{ color: "#94a3b8", p: "4px", mr: "2px", mb: "4px" }}
-                >
-                  <AttachFileIcon sx={{ fontSize: 20 }} />
-                </IconButton>
+                {/* Emoji toggle */}
+                <Box sx={{ position: "relative" }} className="cp-emoji-wrapper">
+                  <Tooltip title="Emoji" arrow>
+                    <IconButton
+                      size="small"
+                      className="cp-emoji-btn"
+                      onClick={onToggleEmoji}
+                    >
+                      <EmojiEmotionsOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  {emojiOpen && (
+                    <Box className="emoji-picker">
+                      <Picker isOpen handleEmojiSelect={onEmojiSelect} />
+                    </Box>
+                  )}
+                </Box>
 
                 {/* Input */}
                 <Box
@@ -443,23 +463,14 @@ export default function ChatPage({
                   suppressContentEditableWarning
                 />
 
-                {/* Emoji toggle */}
-                <Box sx={{ position: "relative" }} className="cp-emoji-wrapper">
-                  <Tooltip title="Emoji" arrow>
-                    <IconButton
-                      size="small"
-                      className="cp-emoji-btn"
-                      onClick={onToggleEmoji}
-                    >
-                      <EmojiEmotionsOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  {emojiOpen && (
-                    <Box className="emoji-picker">
-                      <Picker isOpen handleEmojiSelect={onEmojiSelect} />
-                    </Box>
-                  )}
-                </Box>
+                {/* Attachment icon */}
+                <IconButton
+                  size="small"
+                  className="cp-attach-btn"
+                  sx={{ color: "#94a3b8", p: "4px", ml: "2px", mb: "4px" }}
+                >
+                  <AttachFileIcon sx={{ fontSize: 20 }} />
+                </IconButton>
               </Box>
 
               {/* Send */}
