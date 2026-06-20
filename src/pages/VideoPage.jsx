@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
@@ -8,6 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import SkipNextIcon from "@mui/icons-material/SkipNext";
 import ReportOutlinedIcon from "@mui/icons-material/ReportOutlined";
@@ -32,9 +35,42 @@ export default function VideoPage({
   isVideoOff,
   onToggleMute,
   onToggleVideo,
+  localStream,
+  remoteStream,
   backendUrl,
   socketId,
 }) {
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    onClose();
+    navigate("/");
+  };
+
+  // Stop video stream completely when leaving the VideoPage component
+  useEffect(() => {
+    return () => {
+      onStopVideo();
+    };
+  }, [onStopVideo]);
+
+  // Bind local stream to whichever ref element is currently active
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      if (localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream;
+      }
+    }
+  }, [localStream, isMatched, localVideoRef]);
+
+  // Bind remote stream
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      if (remoteVideoRef.current.srcObject !== remoteStream) {
+        remoteVideoRef.current.srcObject = remoteStream;
+      }
+    }
+  }, [remoteStream, isMatched, remoteVideoRef]);
   const connectionStatus = isSearching
     ? "Searching…"
     : isMatched
@@ -53,6 +89,11 @@ export default function VideoPage({
       <Box className="cp-session-bar">
         {/* Left: Mode badge + status */}
         <Stack direction="row" spacing={1.5} alignItems="center">
+          <Tooltip title="Back to Home" arrow>
+            <IconButton onClick={handleBack} size="small" sx={{ color: "#64748b", mr: 0.5 }}>
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Box className="cp-mode-icon">
             <VideocamOutlinedIcon sx={{ fontSize: 18 }} />
           </Box>
@@ -162,28 +203,31 @@ export default function VideoPage({
         {/* Video stage */}
         <Box className="cp-video-stage cp-video-stage-fullscreen">
           <Box className="cp-video-label">
-            <FiberManualRecordIcon sx={{ fontSize: 8, color: "#ef4444" }} />
-            <Typography variant="caption">Partner</Typography>
+            <FiberManualRecordIcon sx={{ fontSize: 8, color: isMatched ? "#ef4444" : "#10b981" }} />
+            <Typography variant="caption">{isMatched ? "Partner" : "You (Preview)"}</Typography>
           </Box>
           <Box
             component="video"
-            ref={remoteVideoRef}
+            ref={isMatched ? remoteVideoRef : localVideoRef}
             autoPlay
             playsInline
+            muted={!isMatched}
             className="cp-video-main"
           />
           {/* PiP */}
-          <Box className="cp-video-pip">
-            <Typography variant="caption" className="cp-pip-label">You</Typography>
-            <Box
-              component="video"
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="cp-video-pip-feed"
-            />
-          </Box>
+          {isMatched && (
+            <Box className="cp-video-pip">
+              <Typography variant="caption" className="cp-pip-label">You</Typography>
+              <Box
+                component="video"
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="cp-video-pip-feed"
+              />
+            </Box>
+          )}
           {/* Floating Controls Overlay */}
           {isMatched && (
             <Box className="cp-video-controls">

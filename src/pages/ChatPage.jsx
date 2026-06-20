@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
@@ -10,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SkipNextIcon from "@mui/icons-material/SkipNext";
 import ReportOutlinedIcon from "@mui/icons-material/ReportOutlined";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
@@ -41,6 +43,11 @@ export default function ChatPage({
   partnerName,
 }) {
   const messageListRef = useRef(null);
+  const navigate = useNavigate();
+  const handleBack = () => {
+    onClose();
+    navigate("/");
+  };
   const [isChatExpanded, setIsChatExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
   const [hasClickedInput, setHasClickedInput] = useState(false);
@@ -136,6 +143,11 @@ export default function ChatPage({
         <Box className="cp-session-bar">
           {/* Left: Mode badge + status */}
           <Stack direction="row" spacing={1.5} alignItems="center">
+            <Tooltip title="Back to Home" arrow>
+              <IconButton onClick={handleBack} size="small" sx={{ color: "#64748b", mr: 0.5 }}>
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
             <Box className="cp-mode-icon">
               <ChatBubbleOutlineIcon sx={{ fontSize: 18 }} />
             </Box>

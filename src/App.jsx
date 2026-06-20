@@ -65,6 +65,8 @@ export default function App() {
     isVideoOff,
     toggleMute,
     toggleVideo,
+    localStream,
+    remoteStream,
   } = useWebRTC(socketRef);
 
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -329,6 +331,11 @@ export default function App() {
     localStorage.removeItem("funchat_partner_id");
     localStorage.removeItem("funchat_partner_name");
     localStorage.removeItem("funchat_mode");
+    if (resolvedMode === "video") {
+      ensureLocalStream(localVideoRef).catch((err) =>
+        console.error("Error ensuring local stream:", err)
+      );
+    }
     const myName = localStorage.getItem("funchat_profile_name") || "Stranger";
     socketRef.current.emit("join", { mode: resolvedMode, name: myName }, (ack) => {
       console.log("[join ack]", ack);
@@ -488,7 +495,11 @@ export default function App() {
     if (!socketRef.current) return;
     socketRef.current.emit("close_chat");
     emitTyping(false);
-    cleanupPeer(remoteVideoRef);
+    if (mode === "video") {
+      stopLocalVideo(localVideoRef, remoteVideoRef);
+    } else {
+      cleanupPeer(remoteVideoRef);
+    }
     dispatch(setPartnerId(""));
     dispatch(setIsSearching(false));
     dispatch(clearConversationId());
@@ -620,6 +631,8 @@ export default function App() {
                   isVideoOff={isVideoOff}
                   onToggleMute={toggleMute}
                   onToggleVideo={toggleVideo}
+                  localStream={localStream}
+                  remoteStream={remoteStream}
                   backendUrl={BACKEND_URL}
                   socketId={socketId}
                 />
