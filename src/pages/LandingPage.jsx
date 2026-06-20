@@ -44,12 +44,12 @@ const FEATURES = [
 
 export default function LandingPage({ status, onStartChat, onStartVideo }) {
   const [profileName, setProfileName] = useState(
-    localStorage.getItem("funchat_profile_name") || "Stranger"
+    localStorage.getItem("funchat_profile_name") ?? "Stranger"
   );
 
   useEffect(() => {
     const handleNameChange = () => {
-      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
+      setProfileName(localStorage.getItem("funchat_profile_name") ?? "Stranger");
     };
     window.addEventListener("profileNameChanged", handleNameChange);
     return () => window.removeEventListener("profileNameChanged", handleNameChange);

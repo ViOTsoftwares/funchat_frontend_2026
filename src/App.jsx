@@ -35,6 +35,7 @@ import {
   setMessages,
   setMode,
   setPartnerId,
+  setPartnerName,
 } from "./store/chatSlice.js";
 import { BACKEND_URL } from "./lib/constants.js";
 import "./styles/app.css";
@@ -51,6 +52,7 @@ export default function App() {
   const messages = useSelector((state) => state.chat.messages);
   const isSearching = useSelector((state) => state.chat.isSearching);
   const conversationId = useSelector((state) => state.chat.conversationId);
+  const partnerName = useSelector((state) => state.chat.partnerName);
 
   const { socketRef, status, socketId } = useSocket();
   const {
@@ -88,6 +90,7 @@ export default function App() {
     // ── Restore session state after a page refresh ──
     const storedConversationId = localStorage.getItem("funchat_conversation");
     const storedPartnerId      = localStorage.getItem("funchat_partner_id");
+    const storedPartnerName    = localStorage.getItem("funchat_partner_name");
     const storedMode           = localStorage.getItem("funchat_mode");
 
     if (storedConversationId && !conversationId) {
@@ -96,6 +99,9 @@ export default function App() {
     if (storedPartnerId && !partnerId) {
       dispatch(setPartnerId(storedPartnerId));
       dispatch(setIsSearching(false));
+    }
+    if (storedPartnerName && !partnerName) {
+      dispatch(setPartnerName(storedPartnerName));
     }
     if (storedMode && storedMode !== mode) {
       dispatch(setMode(storedMode));
@@ -111,13 +117,18 @@ export default function App() {
     const onConnect = () => {
       const cid = localStorage.getItem("funchat_conversation");
       if (cid) {
-        socket.emit("resume", { conversationId: cid });
+        const myName = localStorage.getItem("funchat_profile_name") || "Stranger";
+        socket.emit("resume", { conversationId: cid, name: myName });
       }
     };
 
-    const onMatched = async ({ partnerId: pid, mode: matchedMode, conversationId: cid }) => {
+    const onMatched = async ({ partnerId: pid, mode: matchedMode, conversationId: cid, partnerName: pName }) => {
       dispatch(setPartnerId(pid));
       dispatch(setIsSearching(false));
+      const resolvedPartnerName = pName || "Partner";
+      dispatch(setPartnerName(resolvedPartnerName));
+      localStorage.setItem("funchat_partner_name", resolvedPartnerName);
+
       if (cid) {
         dispatch(setConversationId(cid));
         localStorage.setItem("funchat_conversation", cid);
@@ -189,11 +200,13 @@ export default function App() {
 
     const onPartnerLeft = () => {
       dispatch(setPartnerId(""));
+      dispatch(setPartnerName(""));
       dispatch(setIsSearching(false));
       setIsPartnerTyping(false);
       cleanupPeer(remoteVideoRef);
       // Partner disconnected — clear persisted session
       localStorage.removeItem("funchat_partner_id");
+      localStorage.removeItem("funchat_partner_name");
       localStorage.removeItem("funchat_mode");
       localStorage.removeItem("funchat_conversation");
     };
@@ -201,10 +214,12 @@ export default function App() {
     const onConversationCleared = () => {
       dispatch(resetMessages());
       dispatch(setPartnerId(""));
+      dispatch(setPartnerName(""));
       dispatch(setIsSearching(false));
       setIsPartnerTyping(false);
       dispatch(clearConversationId());
       localStorage.removeItem("funchat_conversation");
+      localStorage.removeItem("funchat_partner_name");
       localStorage.removeItem("funchat_partner_id");
       localStorage.removeItem("funchat_mode");
       cleanupPeer(remoteVideoRef);
@@ -233,6 +248,12 @@ export default function App() {
       }
     };
 
+    const onPartnerNameChanged = ({ name }) => {
+      const resolvedName = name || "Partner";
+      dispatch(setPartnerName(resolvedName));
+      localStorage.setItem("funchat_partner_name", resolvedName);
+    };
+
     socket.on("connect", onConnect);
     socket.on("matched", onMatched);
     socket.on("message", onMessage);
@@ -242,6 +263,7 @@ export default function App() {
     socket.on("offer", onOffer);
     socket.on("answer", onAnswer);
     socket.on("ice-candidate", onIce);
+    socket.on("partner_name_changed", onPartnerNameChanged);
     socket.on("typing", ({ isTyping }) => {
       setIsPartnerTyping(Boolean(isTyping));
     });
@@ -256,9 +278,21 @@ export default function App() {
       socket.off("offer", onOffer);
       socket.off("answer", onAnswer);
       socket.off("ice-candidate", onIce);
+      socket.off("partner_name_changed", onPartnerNameChanged);
       socket.off("typing");
     };
   }, [socketRef, ensureLocalStream, ensurePeerConnection, cleanupPeer, pcRef]);
+
+  useEffect(() => {
+    const handleNameChange = () => {
+      const newName = localStorage.getItem("funchat_profile_name") || "Stranger";
+      if (socketRef.current) {
+        socketRef.current.emit("update_name", { name: newName });
+      }
+    };
+    window.addEventListener("profileNameChanged", handleNameChange);
+    return () => window.removeEventListener("profileNameChanged", handleNameChange);
+  }, [socketRef]);
 
   function getRouteMode() {
     return location.pathname === "/video" ? "video" : "chat";
@@ -276,13 +310,16 @@ export default function App() {
     }
     dispatch(resetMessages());
     dispatch(setPartnerId(""));
+    dispatch(setPartnerName(""));
     dispatch(setIsSearching(true));
     dispatch(clearConversationId());
     // Starting a fresh session — clear all persisted session data
     localStorage.removeItem("funchat_conversation");
     localStorage.removeItem("funchat_partner_id");
+    localStorage.removeItem("funchat_partner_name");
     localStorage.removeItem("funchat_mode");
-    socketRef.current.emit("join", { mode: resolvedMode }, (ack) => {
+    const myName = localStorage.getItem("funchat_profile_name") || "Stranger";
+    socketRef.current.emit("join", { mode: resolvedMode, name: myName }, (ack) => {
       console.log("[join ack]", ack);
     });
   }
@@ -556,6 +593,7 @@ export default function App() {
                   onSend={handleSend}
                   backendUrl={BACKEND_URL}
                   socketId={socketId}
+                  partnerName={partnerName}
                 />
               }
             />
@@ -586,6 +624,7 @@ export default function App() {
                   onSend={handleSend}
                   backendUrl={BACKEND_URL}
                   socketId={socketId}
+                  partnerName={partnerName}
                 />
               }
             />

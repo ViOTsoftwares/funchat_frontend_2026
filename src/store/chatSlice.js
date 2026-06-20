@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   mode: "chat",
   partnerId: "",
+  partnerName: "",
   isSearching: false,
   messages: [],
   conversationId: ""
@@ -17,6 +18,9 @@ const chatSlice = createSlice({
     },
     setPartnerId(state, action) {
       state.partnerId = action.payload;
+    },
+    setPartnerName(state, action) {
+      state.partnerName = action.payload;
     },
     setIsSearching(state, action) {
       state.isSearching = action.payload;
@@ -42,6 +46,7 @@ const chatSlice = createSlice({
 export const {
   setMode,
   setPartnerId,
+  setPartnerName,
   setIsSearching,
   resetMessages,
   setMessages,

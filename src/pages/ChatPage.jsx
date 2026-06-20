@@ -45,6 +45,7 @@ export default function ChatPage({
   onSend,
   backendUrl,
   socketId,
+  partnerName,
 }) {
   const messageListRef = useRef(null);
   const [isChatExpanded, setIsChatExpanded] = useState(false);
@@ -290,11 +291,11 @@ export default function ChatPage({
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Stack direction="row" spacing={1} alignItems="center">
                 <Box className="cp-chat-avatar">
-                  {isMatched ? "P" : "–"}
+                  {isMatched ? (partnerName ? partnerName.charAt(0).toUpperCase() : "P") : "–"}
                 </Box>
                 <Stack spacing={0}>
                   <Typography className="cp-chat-partner-name">
-                    {isMatched ? "Anonymous Partner" : "No partner yet"}
+                    {isMatched ? (partnerName || "Partner") : "No partner yet"}
                   </Typography>
                   <Typography className="cp-chat-partner-sub">
                     {isMatched
@@ -360,9 +361,6 @@ export default function ChatPage({
                     </Box>
                   ) : (
                     <Box className={isMe ? "cp-bubble cp-bubble-me" : "cp-bubble cp-bubble-them"}>
-                      <Typography className="cp-bubble-sender">
-                        {isMe ? profileName : (m.senderName || "Partner")}
-                      </Typography>
                       <Box className="cp-bubble-content">
                         {(
                           m.parts ||
