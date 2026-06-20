@@ -61,6 +61,10 @@ export default function App() {
     ensurePeerConnection,
     cleanupPeer,
     stopLocalVideo,
+    isMuted,
+    isVideoOff,
+    toggleMute,
+    toggleVideo,
   } = useWebRTC(socketRef);
 
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -601,6 +605,10 @@ export default function App() {
                   backendUrl={BACKEND_URL}
                   socketId={socketId}
                   partnerName={partnerName}
+                  isMuted={isMuted}
+                  isVideoOff={isVideoOff}
+                  onToggleMute={toggleMute}
+                  onToggleVideo={toggleVideo}
                 />
               }
             />
@@ -632,6 +640,10 @@ export default function App() {
                   backendUrl={BACKEND_URL}
                   socketId={socketId}
                   partnerName={partnerName}
+                  isMuted={isMuted}
+                  isVideoOff={isVideoOff}
+                  onToggleMute={toggleMute}
+                  onToggleVideo={toggleVideo}
                 />
               }
             />

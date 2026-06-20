@@ -1,10 +1,12 @@
-﻿import { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ICE_CONFIG } from "../lib/constants";
 
 export function useWebRTC(socketRef) {
   const pcRef = useRef(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
 
   async function ensureLocalStream(videoRef) {
     if (localStream) return localStream;
@@ -62,7 +64,27 @@ export function useWebRTC(socketRef) {
       setLocalStream(null);
       if (localVideoRef?.current) localVideoRef.current.srcObject = null;
     }
+    setIsMuted(false);
+    setIsVideoOff(false);
     cleanupPeer(remoteVideoRef);
+  }
+
+  function toggleMute() {
+    if (localStream) {
+      localStream.getAudioTracks().forEach((track) => {
+        track.enabled = !track.enabled;
+      });
+      setIsMuted((prev) => !prev);
+    }
+  }
+
+  function toggleVideo() {
+    if (localStream) {
+      localStream.getVideoTracks().forEach((track) => {
+        track.enabled = !track.enabled;
+      });
+      setIsVideoOff((prev) => !prev);
+    }
   }
 
   return {
@@ -72,6 +94,10 @@ export function useWebRTC(socketRef) {
     ensureLocalStream,
     ensurePeerConnection,
     cleanupPeer,
-    stopLocalVideo
+    stopLocalVideo,
+    isMuted,
+    isVideoOff,
+    toggleMute,
+    toggleVideo
   };
 }

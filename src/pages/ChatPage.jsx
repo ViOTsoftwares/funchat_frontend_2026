@@ -21,6 +21,10 @@ import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
+import MicIcon from "@mui/icons-material/Mic";
+import MicOffIcon from "@mui/icons-material/MicOff";
+import VideocamIcon from "@mui/icons-material/Videocam";
+import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import { Picker } from "ms-3d-emoji-picker";
 
 export default function ChatPage({
@@ -46,6 +50,10 @@ export default function ChatPage({
   backendUrl,
   socketId,
   partnerName,
+  isMuted,
+  isVideoOff,
+  onToggleMute,
+  onToggleVideo,
 }) {
   const messageListRef = useRef(null);
   const [isChatExpanded, setIsChatExpanded] = useState(false);
@@ -234,6 +242,36 @@ export default function ChatPage({
               </span>
             </Tooltip>
 
+            {showVideo && isMatched && (
+              <>
+                <Tooltip title={isMuted ? "Unmute microphone" : "Mute microphone"} arrow>
+                  <span>
+                    <IconButton
+                      id="cp-btn-toggle-mute"
+                      size="small"
+                      className={`cp-icon-btn ${isMuted ? "cp-icon-btn-active" : ""}`}
+                      onClick={onToggleMute}
+                    >
+                      {isMuted ? <MicOffIcon fontSize="small" /> : <MicIcon fontSize="small" />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+
+                <Tooltip title={isVideoOff ? "Turn camera on" : "Turn camera off"} arrow>
+                  <span>
+                    <IconButton
+                      id="cp-btn-toggle-video"
+                      size="small"
+                      className={`cp-icon-btn ${isVideoOff ? "cp-icon-btn-active" : ""}`}
+                      onClick={onToggleVideo}
+                    >
+                      {isVideoOff ? <VideocamOffIcon fontSize="small" /> : <VideocamIcon fontSize="small" />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </>
+            )}
+
             {showVideo && (
               <Tooltip title="Turn off your camera" arrow>
                 <span>
@@ -257,7 +295,7 @@ export default function ChatPage({
       <Box className="cp-body">
         {/* Video stage */}
         {showVideo && !isChatExpanded && (
-          <Box className="cp-video-stage">
+          <Box className={`cp-video-stage ${isMatched ? "cp-video-stage-fullscreen" : ""}`}>
             <Box className="cp-video-label">
               <FiberManualRecordIcon sx={{ fontSize: 8, color: "#ef4444" }} />
               <Typography variant="caption">Partner</Typography>
@@ -285,7 +323,8 @@ export default function ChatPage({
         )}
 
         {/* ── CHAT PANEL ── */}
-        <Box className="cp-chat-panel">
+        {(!showVideo || !isMatched) && (
+          <Box className="cp-chat-panel">
           {/* Chat header */}
           <Box className="cp-chat-header">
             <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -500,6 +539,7 @@ export default function ChatPage({
             </Stack>
           </Box>
         </Box>
+        )}
       </Box>
 
       {/* ── SESSION FOOTER ── */}

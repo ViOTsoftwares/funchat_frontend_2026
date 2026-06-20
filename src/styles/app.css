@@ -1986,3 +1986,25 @@ body {
 .cp-root-expanded .cp-footer {
   display: none !important;
 }
+
+/* ── Fullscreen Video Stage ── */
+.cp-video-stage-fullscreen {
+  flex: 1 !important;
+  height: 100% !important;
+  min-height: 60vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.cp-video-stage-fullscreen .cp-video-main {
+  flex: 1 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* Active muting/video toggle icon button states */
+.cp-icon-btn-active {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+}
