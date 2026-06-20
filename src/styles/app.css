@@ -15,10 +15,10 @@ body {
 html.fullscreen-lock,
 body.fullscreen-lock {
   overflow: hidden !important;
-  height: 100% !important;
-  width: 100% !important;
-  position: fixed !important;
+  /* Do NOT use position:fixed here — it prevents Android Chrome from
+     resizing the layout when the keyboard opens, breaking composer visibility */
   overscroll-behavior: none !important;
+  touch-action: none;
 }
 
 .app {
@@ -29,17 +29,19 @@ body.fullscreen-lock {
 }
 
 /* Lock page viewport height to prevent page scrolling */
+/* bottom uses --keyboard-offset so the container shrinks above the keyboard */
 .app-fullscreen-chat {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  bottom: 0 !important;
-  height: var(--visual-vh, 100dvh) !important;
+  /* Push the bottom edge UP by the keyboard height so the layout always sits above it */
+  bottom: var(--keyboard-offset, 0px) !important;
+  height: auto !important;  /* height is driven by top+bottom, not an explicit value */
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  padding-top: 0 !important; /* we handle offsets in children */
+  padding-top: 0 !important;
 }
 
 /* Header app bar stays fixed size and full width */
@@ -1443,9 +1445,11 @@ body.fullscreen-lock {
 .cp-video-main {
   display: block;
   width: 100%;
-  height: 70vh;
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
   background: #0f172a;
+  flex: 1;
+  min-height: 0;
 }
 
 .cp-video-pip {
@@ -1621,6 +1625,7 @@ body.fullscreen-lock {
 
 /* ── Composer ── */
 .cp-composer {
+  flex-shrink: 0;          /* never compress — always fully visible */
   padding: 12px 16px 14px;
   background: rgba(248, 250, 252, 0.95);
   border-top: 1px solid rgba(226, 232, 240, 0.6);
@@ -1752,17 +1757,19 @@ body.fullscreen-lock {
 @media (max-width: 640px) {
 
   /* ── Lock the overall app shell to viewport on chat/video routes ── */
+  /* bottom is pushed up by --keyboard-offset so composer floats above keyboard */
   .app-fullscreen-chat {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    height: var(--visual-vh, 100dvh);
+    bottom: var(--keyboard-offset, 0px);
+    height: auto;  /* driven by top+bottom, keyboard offset adjusts automatically */
     overflow: hidden;
     display: flex;
     flex-direction: column;
     padding-top: 0 !important;
+    transition: bottom 0.05s linear; /* snappy follow of keyboard open/close */
   }
 
   /* Hide the site header on chat/video pages — session bar takes its place */
@@ -2005,19 +2012,25 @@ body.fullscreen-lock {
     max-height: 100% !important;
   }
 
+  /* Non-fullscreen video main — compact height for chat+video hybrid layouts */
   .cp-video-main {
-    height: 200px !important;
-    object-fit: cover !important;
+    height: 180px;
+    object-fit: cover;
   }
 
+  /* Fullscreen video stage takes all remaining space */
   .cp-video-stage-fullscreen {
+    position: relative !important;
     min-height: 0 !important;
     height: 100% !important;
     flex: 1 !important;
+    overflow: hidden !important;
   }
 
   .cp-video-stage-fullscreen .cp-video-main {
     height: 100% !important;
+    flex: 1 !important;
+    min-height: 0 !important;
   }
 }
 
@@ -2084,18 +2097,41 @@ body.fullscreen-lock {
 
 /* ── Fullscreen Video Stage ── */
 .cp-video-stage-fullscreen {
+  position: relative;
   flex: 1 !important;
   height: 100% !important;
   min-height: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+  background: #0b1120;
+}
+
+/* vp-root: video page removes the card border/padding of cp-root */
+.vp-root {
+  background: #0b1120 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.vp-root .cp-session-bar {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.vp-root .cp-mode-label {
+  color: #e2e8f0 !important;
+}
+
+.vp-root .cp-status-text {
+  color: #94a3b8 !important;
 }
 
 .cp-video-stage-fullscreen .cp-video-main {
   flex: 1 !important;
   width: 100% !important;
   height: 100% !important;
+  min-height: 0 !important;
   object-fit: cover !important;
 }
 

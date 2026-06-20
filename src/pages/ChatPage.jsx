@@ -410,22 +410,14 @@ export default function ChatPage({
                       onSend();
                     }
                   }}
-                  onClick={() => {
-                    setHasClickedInput(true);
-                    setTimeout(() => {
-                      window.scrollTo(0, 0);
-                      document.body.scrollTop = 0;
-                    }, 80);
-                  }}
-                  onFocus={() => {
-                    setHasClickedInput(true);
-                    setTimeout(() => {
-                      window.scrollTo(0, 0);
-                      document.body.scrollTop = 0;
-                    }, 80);
-                  }}
-                  suppressContentEditableWarning
-                />
+                    onClick={() => {
+                      setHasClickedInput(true);
+                    }}
+                    onFocus={() => {
+                      setHasClickedInput(true);
+                    }}
+                    suppressContentEditableWarning
+                  />
 
                 {/* Attachment icon */}
                 <IconButton

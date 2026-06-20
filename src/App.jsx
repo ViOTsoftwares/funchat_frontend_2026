@@ -75,25 +75,40 @@ export default function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!window.visualViewport) return;
-    const updateVisualViewportHeight = () => {
-      const vh = window.visualViewport.height;
+    // ── Visual Viewport / Keyboard tracking ──────────────────────────────────
+    // On Android Chrome & iOS Safari the keyboard OVERLAPS the page when the
+    // layout is position:fixed. We measure the real visible height every time
+    // the visual viewport changes (keyboard open/close) and expose two CSS vars:
+    //   --visual-vh        → the visible height in px
+    //   --keyboard-offset  → how many px the keyboard is covering from the bottom
+    // The fixed app shell reads both to stay exactly above the keyboard.
+    const update = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+
+      const vh = vv.height;
+      const offsetTop = vv.offsetTop;
+      // Keyboard height = total screen height minus visible area minus any top offset
+      const keyboardHeight = Math.max(0, window.innerHeight - vh - offsetTop);
+
       document.documentElement.style.setProperty("--visual-vh", `${vh}px`);
-      // Reset document body scroll to prevent empty space below keyboard
-      if (document.activeElement && 
-          (document.activeElement.tagName === "INPUT" || 
-           document.activeElement.getAttribute("contenteditable") === "true")) {
-        window.scrollTo(0, 0);
-        document.body.scrollTop = 0;
-      }
+      document.documentElement.style.setProperty("--keyboard-offset", `${keyboardHeight}px`);
+
+      // Always reset scroll so the page never drifts under the keyboard
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
     };
-    window.visualViewport.addEventListener("resize", updateVisualViewportHeight);
-    window.visualViewport.addEventListener("scroll", updateVisualViewportHeight);
-    updateVisualViewportHeight();
-    return () => {
-      window.visualViewport.removeEventListener("resize", updateVisualViewportHeight);
-      window.visualViewport.removeEventListener("scroll", updateVisualViewportHeight);
-    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", update);
+      window.visualViewport.addEventListener("scroll", update);
+      update();
+      return () => {
+        window.visualViewport.removeEventListener("resize", update);
+        window.visualViewport.removeEventListener("scroll", update);
+      };
+    }
   }, []);
 
   useEffect(() => {
@@ -105,10 +120,28 @@ export default function App() {
       }
     };
 
+    // When the user taps an input the browser may scroll the document to bring
+    // it into view — this resets that scroll immediately so the fixed container
+    // stays perfectly aligned.
+    const handleFocusIn = (e) => {
+      if (location.pathname !== "/chat" && location.pathname !== "/video") return;
+      const tag = e.target?.tagName;
+      const isEditable = e.target?.getAttribute("contenteditable") === "true";
+      if (tag === "INPUT" || tag === "TEXTAREA" || isEditable) {
+        // Use requestAnimationFrame so the browser finishes its own scroll first
+        requestAnimationFrame(() => {
+          window.scrollTo(0, 0);
+          document.body.scrollTop = 0;
+          document.documentElement.scrollTop = 0;
+        });
+      }
+    };
+
     if (location.pathname === "/chat" || location.pathname === "/video") {
       document.documentElement.classList.add("fullscreen-lock");
       document.body.classList.add("fullscreen-lock");
       window.addEventListener("scroll", handleScroll, { passive: true });
+      document.addEventListener("focusin", handleFocusIn, { passive: true });
     } else {
       document.documentElement.classList.remove("fullscreen-lock");
       document.body.classList.remove("fullscreen-lock");
@@ -117,6 +150,7 @@ export default function App() {
       document.documentElement.classList.remove("fullscreen-lock");
       document.body.classList.remove("fullscreen-lock");
       window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("focusin", handleFocusIn);
     };
   }, [location.pathname]);
 

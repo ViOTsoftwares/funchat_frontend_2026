@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -52,37 +52,39 @@ export default function VideoPage({
     return () => {
       onStopVideo();
     };
-  }, [onStopVideo]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Bind local stream to whichever ref element is currently active
+  // --- Bind local stream imperatively ---
+  // localVideoRef always points to the local <video> element (never changes).
+  // We just need to assign srcObject whenever localStream appears.
   useEffect(() => {
     const el = localVideoRef.current;
-    if (el) {
-      if (localStream) {
-        if (el.srcObject !== localStream) {
-          el.srcObject = localStream;
-        }
-        el.play?.().catch((err) => console.log("Local video play error:", err));
-      } else {
-        el.srcObject = null;
+    if (!el) return;
+    if (localStream) {
+      if (el.srcObject !== localStream) {
+        el.srcObject = localStream;
       }
+      el.play().catch(() => {});
+    } else {
+      el.srcObject = null;
     }
-  }, [localStream, isMatched, localVideoRef, localVideoRef.current]);
+  }, [localStream]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Bind remote stream
+  // --- Bind remote stream imperatively ---
+  // remoteVideoRef always points to the remote <video> element.
   useEffect(() => {
     const el = remoteVideoRef.current;
-    if (el) {
-      if (remoteStream) {
-        if (el.srcObject !== remoteStream) {
-          el.srcObject = remoteStream;
-        }
-        el.play?.().catch((err) => console.log("Remote video play error:", err));
-      } else {
-        el.srcObject = null;
+    if (!el) return;
+    if (remoteStream) {
+      if (el.srcObject !== remoteStream) {
+        el.srcObject = remoteStream;
       }
+      el.play().catch(() => {});
+    } else {
+      el.srcObject = null;
     }
-  }, [remoteStream, isMatched, remoteVideoRef, remoteVideoRef.current]);
+  }, [remoteStream]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const connectionStatus = isSearching
     ? "Searching…"
     : isMatched
@@ -96,7 +98,7 @@ export default function VideoPage({
       : "default";
 
   return (
-    <Box className="cp-root">
+    <Box className="cp-root vp-root">
       {/* ── TOP SESSION BAR ── */}
       <Box className="cp-session-bar">
         {/* Left: Mode badge + status */}
@@ -133,7 +135,7 @@ export default function VideoPage({
           />
         </Stack>
 
-        {/* Right: Actions */}
+        {/* Right: Actions — shown only when NOT matched */}
         {!isMatched && (
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
             <Button
@@ -143,166 +145,133 @@ export default function VideoPage({
               className="cp-btn cp-btn-start"
               startIcon={<PlayArrowRoundedIcon />}
               onClick={() => onJoin()}
-              disabled={isSearching || isMatched}
+              disabled={isSearching}
             >
               {isSearching ? "Searching…" : "Start Session"}
             </Button>
-
-            <Tooltip title="Find next match" arrow>
-              <span>
-                <Button
-                  id="cp-btn-next"
-                  size="small"
-                  variant="outlined"
-                  className="cp-btn cp-btn-next"
-                  startIcon={<SkipNextIcon />}
-                  onClick={onNext}
-                  disabled={!isMatched || isSearching}
-                >
-                  Next
-                </Button>
-              </span>
-            </Tooltip>
-
-            <Tooltip title="End this session" arrow>
-              <span>
-                <Button
-                  id="cp-btn-end"
-                  size="small"
-                  variant="outlined"
-                  className="cp-btn cp-btn-end"
-                  onClick={onClose}
-                  disabled={!isMatched || isSearching}
-                >
-                  End
-                </Button>
-              </span>
-            </Tooltip>
-
-            <Tooltip title="Report this user" arrow>
-              <span>
-                <IconButton
-                  id="cp-btn-report"
-                  size="small"
-                  className="cp-icon-btn-report"
-                  onClick={onReport}
-                  disabled={!isMatched || isSearching}
-                >
-                  <ReportOutlinedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-
-            <Tooltip title="Turn off your camera" arrow>
-              <span>
-                <IconButton
-                  id="cp-btn-stop-video"
-                  size="small"
-                  className="cp-icon-btn"
-                  onClick={onStopVideo}
-                  disabled={isSearching}
-                >
-                  <StopCircleOutlinedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
           </Stack>
         )}
       </Box>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* ── VIDEO STAGE ── */}
       <Box className="cp-body">
-        {/* Video stage */}
         <Box className="cp-video-stage cp-video-stage-fullscreen">
-          <Box className="cp-video-label">
-            <FiberManualRecordIcon sx={{ fontSize: 8, color: isMatched ? "#ef4444" : "#10b981" }} />
-            <Typography variant="caption">{isMatched ? "Partner" : "You (Preview)"}</Typography>
-          </Box>
+
+          {/* ── REMOTE VIDEO (main stage) — always rendered, hidden when not matched ── */}
           <Box
             component="video"
-            ref={isMatched ? remoteVideoRef : localVideoRef}
+            ref={remoteVideoRef}
             autoPlay
             playsInline
-            muted={!isMatched}
             className="cp-video-main"
+            sx={{ display: isMatched ? "block" : "none" }}
           />
-          {/* PiP */}
+
+          {/* ── LOCAL VIDEO full-screen — shown while searching, acts as preview ── */}
+          <Box
+            component="video"
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="cp-video-main"
+            sx={{ display: isMatched ? "none" : "block" }}
+          />
+
+          {/* ── "Partner" label overlay (only when matched) ── */}
+          {isMatched && (
+            <Box className="cp-video-label">
+              <FiberManualRecordIcon sx={{ fontSize: 8, color: "#ef4444" }} />
+              <Typography variant="caption">Partner</Typography>
+            </Box>
+          )}
+
+          {/* ── "You (Preview)" label overlay (when searching) ── */}
+          {!isMatched && (
+            <Box className="cp-video-label">
+              <FiberManualRecordIcon sx={{ fontSize: 8, color: "#10b981" }} />
+              <Typography variant="caption">You (Preview)</Typography>
+            </Box>
+          )}
+
+          {/* ── PiP: local video in top-right when matched ── */}
           {isMatched && (
             <Box className="cp-video-pip">
               <Typography variant="caption" className="cp-pip-label">You</Typography>
+              {/* Re-use a second independent video element for PiP.
+                  We drive it via a callback ref so srcObject is always in sync. */}
               <Box
                 component="video"
-                ref={localVideoRef}
                 autoPlay
                 playsInline
                 muted
                 className="cp-video-pip-feed"
+                ref={useCallback(
+                  (el) => {
+                    if (el && localStream && el.srcObject !== localStream) {
+                      el.srcObject = localStream;
+                      el.play().catch(() => {});
+                    }
+                  },
+                  [localStream]
+                )}
               />
             </Box>
           )}
-          {/* Floating Controls Overlay */}
+
+          {/* ── Floating Controls (only when matched) ── */}
           {isMatched && (
             <Box className="cp-video-controls">
               {/* Mic toggle */}
               <Tooltip title={isMuted ? "Unmute microphone" : "Mute microphone"} arrow>
-                <span>
-                  <IconButton
-                    onClick={onToggleMute}
-                    className={`cp-video-ctrl-btn ${isMuted ? "cp-video-ctrl-btn-muted" : ""}`}
-                  >
-                    {isMuted ? <MicOffIcon fontSize="small" /> : <MicIcon fontSize="small" />}
-                  </IconButton>
-                </span>
+                <IconButton
+                  onClick={onToggleMute}
+                  className={`cp-video-ctrl-btn ${isMuted ? "cp-video-ctrl-btn-muted" : ""}`}
+                >
+                  {isMuted ? <MicOffIcon /> : <MicIcon />}
+                </IconButton>
               </Tooltip>
 
               {/* Camera toggle */}
               <Tooltip title={isVideoOff ? "Turn camera on" : "Turn camera off"} arrow>
-                <span>
-                  <IconButton
-                    onClick={onToggleVideo}
-                    className={`cp-video-ctrl-btn ${isVideoOff ? "cp-video-ctrl-btn-muted" : ""}`}
-                  >
-                    {isVideoOff ? <VideocamOffIcon fontSize="small" /> : <VideocamIcon fontSize="small" />}
-                  </IconButton>
-                </span>
+                <IconButton
+                  onClick={onToggleVideo}
+                  className={`cp-video-ctrl-btn ${isVideoOff ? "cp-video-ctrl-btn-muted" : ""}`}
+                >
+                  {isVideoOff ? <VideocamOffIcon /> : <VideocamIcon />}
+                </IconButton>
               </Tooltip>
 
-              {/* Next button */}
+              {/* Next */}
               <Tooltip title="Find next match" arrow>
-                <span>
-                  <Button
-                    onClick={onNext}
-                    variant="contained"
-                    className="cp-video-ctrl-next"
-                    startIcon={<SkipNextIcon />}
-                  >
-                    Next
-                  </Button>
-                </span>
+                <Button
+                  onClick={onNext}
+                  variant="contained"
+                  className="cp-video-ctrl-next"
+                  startIcon={<SkipNextIcon />}
+                >
+                  Next
+                </Button>
               </Tooltip>
 
-              {/* Report button */}
+              {/* Report */}
               <Tooltip title="Report this user" arrow>
-                <span>
-                  <IconButton
-                    onClick={onReport}
-                    className="cp-video-ctrl-btn cp-video-ctrl-btn-report"
-                  >
-                    <ReportOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </span>
+                <IconButton
+                  onClick={onReport}
+                  className="cp-video-ctrl-btn cp-video-ctrl-btn-report"
+                >
+                  <ReportOutlinedIcon />
+                </IconButton>
               </Tooltip>
 
-              {/* End button */}
+              {/* End */}
               <Tooltip title="End this session" arrow>
-                <span>
-                  <IconButton
-                    onClick={onClose}
-                    className="cp-video-ctrl-btn cp-video-ctrl-btn-end"
-                  >
-                    <StopCircleOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </span>
+                <IconButton
+                  onClick={onClose}
+                  className="cp-video-ctrl-btn cp-video-ctrl-btn-end"
+                >
+                  <StopCircleOutlinedIcon />
+                </IconButton>
               </Tooltip>
             </Box>
           )}
