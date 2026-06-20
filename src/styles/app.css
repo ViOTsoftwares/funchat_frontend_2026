@@ -15,6 +15,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  padding-top: 74px;
 }
 
 .brand-dot {
@@ -1680,10 +1681,16 @@ body {
 
   /* ── Lock the overall app shell to viewport on chat/video routes ── */
   .app-fullscreen-chat {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     height: var(--visual-vh, 100dvh);
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    padding-top: 0 !important;
   }
 
   /* Hide the site header on chat/video pages — session bar takes its place */

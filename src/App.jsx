@@ -73,6 +73,13 @@ export default function App() {
     const updateVisualViewportHeight = () => {
       const vh = window.visualViewport.height;
       document.documentElement.style.setProperty("--visual-vh", `${vh}px`);
+      // Reset document body scroll to prevent empty space below keyboard
+      if (document.activeElement && 
+          (document.activeElement.tagName === "INPUT" || 
+           document.activeElement.getAttribute("contenteditable") === "true")) {
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+      }
     };
     window.visualViewport.addEventListener("resize", updateVisualViewportHeight);
     window.visualViewport.addEventListener("scroll", updateVisualViewportHeight);

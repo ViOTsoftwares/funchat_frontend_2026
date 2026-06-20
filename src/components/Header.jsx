@@ -78,12 +78,13 @@ export default function Header({ status = "Online" }) {
   return (
     <>
       <AppBar
-        position="sticky"
+        position="fixed"
         elevation={0}
         sx={{
           backdropFilter: "blur(20px)",
           background: "rgba(15,23,42,0.85)",
           borderBottom: "1px solid rgba(255,255,255,0.08)",
+          zIndex: 1100,
         }}
       >
         <Container maxWidth="xl">
