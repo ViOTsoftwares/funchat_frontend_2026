@@ -448,7 +448,7 @@ body.fullscreen-lock {
   opacity: 0.2;
 }
 
-.chat-composer {
+.cp-composer {
   margin-top: auto;
   position: sticky;
   bottom: 0;
@@ -1629,11 +1629,11 @@ body.fullscreen-lock {
   padding: 12px 16px 14px;
   background: rgba(248, 250, 252, 0.95);
   border-top: 1px solid rgba(226, 232, 240, 0.6);
-  position: absolute;
-  bottom: 0;
+  position: fixed;           /* fixed to viewport */
   left: 0;
   right: 0;
-  z-index: 10;
+  bottom: var(--keyboard-offset, 0px);
+  z-index: 1200;            /* above all content */
   transition: bottom 0.1s ease-out;
 }
 
