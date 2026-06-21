@@ -41,7 +41,7 @@ body.fullscreen-lock {
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  padding-top: 0 !important;
+  padding-top: 74px !important;
 }
 
 /* Header app bar stays fixed size and full width */
