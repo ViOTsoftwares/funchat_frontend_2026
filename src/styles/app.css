@@ -2023,11 +2023,9 @@ body.fullscreen-lock {
     object-fit: cover;
   }
 
-  /* Fullscreen video stage takes all remaining space */
   .cp-video-stage-fullscreen {
-    position: relative !important;
-    min-height: 0 !important;
-    flex: 1 !important;
+    position: absolute !important;
+    inset: 0 !important;
     overflow: hidden !important;
   }
 
