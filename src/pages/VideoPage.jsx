@@ -54,6 +54,17 @@ export default function VideoPage({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Define the PiP video ref callback at the top level to comply with the Rules of Hooks
+  const handlePipVideoRef = useCallback(
+    (el) => {
+      if (el && localStream && el.srcObject !== localStream) {
+        el.srcObject = localStream;
+        el.play().catch(() => {});
+      }
+    },
+    [localStream]
+  );
+
   // --- Bind local stream imperatively ---
   // localVideoRef always points to the local <video> element (never changes).
   // We just need to assign srcObject whenever localStream appears.
@@ -206,15 +217,7 @@ export default function VideoPage({
                 playsInline
                 muted
                 className="cp-video-pip-feed"
-                ref={useCallback(
-                  (el) => {
-                    if (el && localStream && el.srcObject !== localStream) {
-                      el.srcObject = localStream;
-                      el.play().catch(() => {});
-                    }
-                  },
-                  [localStream]
-                )}
+                ref={handlePipVideoRef}
               />
             </Box>
           )}
