@@ -12,6 +12,7 @@ import {
   CircularProgress,
   Container,
   CssBaseline,
+  IconButton,
   Paper,
   Stack,
   Typography,
@@ -23,6 +24,7 @@ import Footer from "./components/Footer.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import VideoPage from "./pages/VideoPage.jsx";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useSocket } from "./hooks/useSocket.js";
 import { useWebRTC } from "./hooks/useWebRTC.js";
@@ -705,6 +707,29 @@ export default function App() {
 
         {isSearching && !isMatched && (
           <Box className="match-overlay">
+            <IconButton
+              onClick={() => {
+                handleCloseChat();
+                navigate("/");
+              }}
+              sx={{
+                position: "absolute",
+                top: { xs: 16, sm: 24 },
+                left: { xs: 16, sm: 24 },
+                color: "#fff",
+                background: "rgba(255, 255, 255, 0.12)",
+                backdropFilter: "blur(8px)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                "&:hover": {
+                  background: "rgba(255, 255, 255, 0.22)",
+                  transform: "scale(1.05)",
+                },
+                transition: "all 0.2s ease",
+              }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+
             <Paper className="match-card" elevation={0}>
               <CircularProgress size={28} />
               <Box>
