@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Box, Button, Stack, Typography } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
@@ -7,6 +8,7 @@ import BoltOutlinedIcon from "@mui/icons-material/BoltOutlined";
 import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StarOutlinedIcon from "@mui/icons-material/StarOutlined";
 import EditIcon from "@mui/icons-material/Edit";
+import GroupsIcon from "@mui/icons-material/Groups";
 
 const STATS = [
   { value: "12K+", label: "Active Users" },
@@ -43,6 +45,7 @@ const FEATURES = [
 ];
 
 export default function LandingPage({ status, onStartChat, onStartVideo }) {
+  const navigate = useNavigate();
   const [profileName, setProfileName] = useState(
     localStorage.getItem("funchat_profile_name") ?? "Stranger"
   );
@@ -196,6 +199,26 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
           >
             Start Video Chat
           </Button>
+          <Button
+            id="lp-explore-communities-btn"
+            size="large"
+            variant="outlined"
+            className="lp-btn-secondary"
+            startIcon={<GroupsIcon />}
+            onClick={() => navigate("/community")}
+            sx={{
+              borderColor: "rgba(99, 102, 241, 0.4) !important",
+              color: "#4f46e5 !important",
+              background: "rgba(255, 255, 255, 0.6) !important",
+              "&:hover": {
+                background: "rgba(99, 102, 241, 0.07) !important",
+                borderColor: "#4f46e5 !important",
+                transform: "translateY(-2px) !important",
+              }
+            }}
+          >
+            Explore Communities
+          </Button>
         </Stack>
 
         {/* Trust pills */}
@@ -271,6 +294,25 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
             onClick={onStartVideo}
           >
             Start Video Chat
+          </Button>
+          <Button
+            id="lp-bottom-explore-communities-btn"
+            size="large"
+            variant="outlined"
+            className="lp-btn-secondary"
+            startIcon={<GroupsIcon />}
+            onClick={() => navigate("/community")}
+            sx={{
+              borderColor: "rgba(99, 102, 241, 0.35) !important",
+              color: "#4f46e5 !important",
+              background: "rgba(255, 255, 255, 0.7) !important",
+              "&:hover": {
+                background: "rgba(255, 255, 255, 0.95) !important",
+                borderColor: "#4f46e5 !important",
+              }
+            }}
+          >
+            Explore Communities
           </Button>
         </Stack>
       </Box>

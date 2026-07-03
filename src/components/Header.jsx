@@ -26,6 +26,7 @@ import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
 import EditIcon from "@mui/icons-material/Edit";
+import GroupsIcon from "@mui/icons-material/Groups";
 
 const NAV_LINKS = [
   {
@@ -42,6 +43,11 @@ const NAV_LINKS = [
     label: "Video",
     path: "/video",
     Icon: VideocamOutlinedIcon,
+  },
+  {
+    label: "Community",
+    path: "/community",
+    Icon: GroupsIcon,
   },
 ];
 
@@ -81,10 +87,17 @@ export default function Header({ status = "Online" }) {
         position="fixed"
         elevation={0}
         sx={{
-          backdropFilter: "blur(20px)",
-          background: "rgba(15,23,42,0.85)",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          backdropFilter: "blur(24px)",
+          background: "rgba(15, 23, 42, 0.8)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: { xs: "16px", md: "24px" },
           zIndex: 1100,
+          top: { xs: "12px", md: "16px" },
+          left: { xs: "12px", md: "20px" },
+          right: { xs: "12px", md: "20px" },
+          width: { xs: "calc(100% - 24px)", md: "calc(100% - 40px)" },
+          mx: "auto",
+          boxShadow: "0 8px 32px rgba(15, 23, 42, 0.15), 0 4px 12px rgba(99, 102, 241, 0.05)",
         }}
       >
         <Container maxWidth="xl">

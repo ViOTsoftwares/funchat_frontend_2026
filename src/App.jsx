@@ -24,6 +24,7 @@ import Footer from "./components/Footer.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import VideoPage from "./pages/VideoPage.jsx";
+import CommunityPage from "./pages/CommunityPage.jsx";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useSocket } from "./hooks/useSocket.js";
@@ -116,7 +117,7 @@ export default function App() {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (location.pathname === "/chat" || location.pathname === "/video") {
+      if (location.pathname === "/chat" || location.pathname === "/video" || location.pathname.startsWith("/community")) {
         if (window.scrollY !== 0 || window.scrollX !== 0) {
           window.scrollTo(0, 0);
         }
@@ -127,7 +128,7 @@ export default function App() {
     // it into view — this resets that scroll immediately so the fixed container
     // stays perfectly aligned.
     const handleFocusIn = (e) => {
-      if (location.pathname !== "/chat" && location.pathname !== "/video") return;
+      if (location.pathname !== "/chat" && location.pathname !== "/video" && !location.pathname.startsWith("/community")) return;
       const tag = e.target?.tagName;
       const isEditable = e.target?.getAttribute("contenteditable") === "true";
       if (tag === "INPUT" || tag === "TEXTAREA" || isEditable) {
@@ -140,7 +141,7 @@ export default function App() {
       }
     };
 
-    if (location.pathname === "/chat" || location.pathname === "/video") {
+    if (location.pathname === "/chat" || location.pathname === "/video" || location.pathname.startsWith("/community")) {
       document.documentElement.classList.add("fullscreen-lock");
       document.body.classList.add("fullscreen-lock");
       window.addEventListener("scroll", handleScroll, { passive: true });
@@ -699,11 +700,19 @@ export default function App() {
                 />
               }
             />
+            <Route
+              path="/community"
+              element={<CommunityPage />}
+            />
+            <Route
+              path="/community/:groupId"
+              element={<CommunityPage />}
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Container>
 
-        {location.pathname !== "/chat" && location.pathname !== "/video" && <Footer />}
+        {location.pathname !== "/chat" && location.pathname !== "/video" && !location.pathname.startsWith("/community") && <Footer />}
 
         {isSearching && !isMatched && (
           <Box className="match-overlay">
