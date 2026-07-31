@@ -35,131 +35,10 @@ import CircleIcon from "@mui/icons-material/Circle";
 
 import { useSocket } from "../hooks/useSocket.js";
 import { Picker } from "ms-3d-emoji-picker";
-import { BACKEND_URL } from "../lib/constants.js";
+import { ENV } from "../config/env.js";
 
 // Categories and Group Rooms Definition
-const CATEGORIES = [
-  {
-    id: "technology",
-    name: "Technology",
-    icon: "💻",
-    description: "Discuss code, AI developments, frameworks, and security.",
-    groups: [
-      { id: "tech-programming", name: "Programming", description: "General programming, code snippets, and software engineering." },
-      { id: "tech-ai", name: "AI & Machine Learning", description: "Chat about LLMs, neural networks, and future tech." },
-      { id: "tech-web-dev", name: "Web Development", description: "HTML/CSS, React, Vue, Node.js, and web standards." },
-      { id: "tech-mobile-dev", name: "Mobile Development", description: "iOS, Android, React Native, Flutter, and Swift." },
-      { id: "tech-security", name: "Cyber Security", description: "Ethical hacking, cryptography, and network defense." },
-      { id: "tech-data-science", name: "Data Science", description: "Python, R, Pandas, data visualization, and statistics." }
-    ]
-  },
-  {
-    id: "entertainment",
-    name: "Entertainment",
-    icon: "🎬",
-    description: "Share reviews, releases, playlists, and recommendations.",
-    groups: [
-      { id: "ent-movies", name: "Movies", description: "Hollywood, international cinema, reviews, and theories." },
-      { id: "ent-tv-shows", name: "TV Shows", description: "Binge-watching, series discussions, and streaming news." },
-      { id: "ent-anime", name: "Anime & Manga", description: "Anime discussions, fan art, manga releases, and recommendations." },
-      { id: "ent-music", name: "Music", description: "Share tracks, playlists, concert info, and instrument talk." }
-    ]
-  },
-  {
-    id: "gaming",
-    name: "Gaming",
-    icon: "🎮",
-    description: "Find teammates, discuss updates, and chat about games.",
-    groups: [
-      { id: "game-pubg", name: "PUBG", description: "Battlegrounds tactics, squad finding, and highlights." },
-      { id: "game-free-fire", name: "Free Fire", description: "Mobile survival battle royale tips and tournaments." },
-      { id: "game-valorant", name: "Valorant", description: "FPS strategies, agents, patches, and competitive play." },
-      { id: "game-minecraft", name: "Minecraft", description: "Show builds, share servers, and survival tips." },
-      { id: "game-chess", name: "Chess", description: "Openings, puzzles, analysis, and tournament play." }
-    ]
-  },
-  {
-    id: "sports",
-    name: "Sports",
-    icon: "⚽",
-    description: "Talk live matches, schedules, statistics, and highlights.",
-    groups: [
-      { id: "sports-cricket", name: "Cricket", description: "IPL, ICC tournaments, test matches, and discussions." },
-      { id: "sports-football", name: "Football (Soccer)", description: "Premier League, Champions League, World Cup, and transfers." },
-      { id: "sports-basketball", name: "Basketball", description: "NBA, college leagues, player stats, and highlights." }
-    ]
-  },
-  {
-    id: "business",
-    name: "Business",
-    icon: "💼",
-    description: "Network, share startup advice, marketing, and finance tips.",
-    groups: [
-      { id: "biz-founders", name: "Startup Founders", description: "Idea validation, funding, pitching, and growing a startup." },
-      { id: "biz-marketing", name: "Marketing", description: "SEO, social media growth, ads, and brand building." },
-      { id: "biz-finance", name: "Finance & Investing", description: "Stocks, macroeconomics, crypto, and saving tips." }
-    ]
-  },
-  {
-    id: "lifestyle",
-    name: "Lifestyle",
-    icon: "✨",
-    description: "Connect on everyday habits, hobbies, and wellness.",
-    groups: [
-      { id: "life-fitness", name: "Fitness & Gym", description: "Workouts, nutrition plans, goals, and motivation." },
-      { id: "life-cooking", name: "Cooking & Recipes", description: "Share dishes, culinary tips, baking, and diets." },
-      { id: "life-travel", name: "Travel & Explore", description: "Bucket list locations, itineraries, tips, and photos." },
-      { id: "life-photography", name: "Photography", description: "Camera gear, editing, composition, and shots." }
-    ]
-  },
-  {
-    id: "education",
-    name: "Education",
-    icon: "🎓",
-    description: "Study rooms, course advice, and professional certifications.",
-    groups: [
-      { id: "edu-college", name: "College Groups", description: "Assignments, admissions, campus life, and exams." },
-      { id: "edu-programming", name: "Learning Programming", description: "For beginners learning to code. Get help and guidance." },
-      { id: "edu-certs", name: "Certifications", description: "AWS, Cisco, Scrum, and professional certificates prep." }
-    ]
-  },
-  {
-    id: "books",
-    name: "Books & Knowledge",
-    icon: "📚",
-    description: "Deep dive into reading materials, scientific theories, and art history.",
-    groups: [
-      { id: "books-reading", name: "Reading & Literature", description: "Book clubs, recommendations, reviews, and fiction/non-fiction." },
-      { id: "books-science", name: "Science", description: "Physics, biology, space exploration, and discoveries." },
-      { id: "books-history", name: "History", description: "World history, ancient civilizations, and documentaries." },
-      { id: "books-art", name: "Art & Design", description: "Painting, sketching, digital art, UI/UX, and critique." }
-    ]
-  },
-  {
-    id: "languages",
-    name: "Language Exchange",
-    icon: "🗣️",
-    description: "Practice speaking and writing with fluent speakers and learners.",
-    groups: [
-      { id: "lang-english", name: "English", description: "English speaking practice, grammar, and vocabulary." },
-      { id: "lang-tamil", name: "Tamil", description: "தமிழ் language learning, culture, and conversation." },
-      { id: "lang-hindi", name: "Hindi", description: "हिन्दी language learning, practice, and conversation." },
-      { id: "lang-japanese", name: "Japanese", description: "日本語 grammar, kanji, anime talk, and practice." }
-    ]
-  },
-  {
-    id: "debates",
-    name: "Debates",
-    icon: "⚖️",
-    description: "Healthy discussions on popular arguments and viewpoints.",
-    groups: [
-      { id: "debates-cats-dogs", name: "Cats vs Dogs", description: "Which furry friend is the ultimate companion?" },
-      { id: "debates-android-iphone", name: "Android vs iPhone", description: "OS customization vs ecosystem smooth integration." },
-      { id: "debates-ai-jobs", name: "AI Will Replace Jobs?", description: "Automation impact, universal basic income, and future careers." },
-      { id: "debates-marvel-dc", name: "Marvel vs DC", description: "Comic book universes, cinematic storytelling, and heroes." }
-    ]
-  }
-];
+
 
 const QUICK_KEYWORDS = [
   "Hello everyone! 👋",
@@ -177,16 +56,23 @@ export default function CommunityPage() {
   const { socketRef, status, socketId } = useSocket();
 
   const [searchText, setSearchText] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [expandedCategories, setExpandedCategories] = useState({});
+
+  const [messageDelay, setMessageDelay] = useState(0);
+  const [lastMessageSentAt, setLastMessageSentAt] = useState(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
   const [messages, setMessages] = useState([]);
   const [typingUsers, setTypingUsers] = useState({});
   const [emojiOpen, setEmojiOpen] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState({
-    technology: true,
-  });
 
   const [profileName, setProfileName] = useState(
     localStorage.getItem("funchat_profile_name") || "Stranger"
   );
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [hasClickedInput, setHasClickedInput] = useState(false);
 
   const inputRef = useRef(null);
   const messageListRef = useRef(null);
@@ -202,11 +88,41 @@ export default function CommunityPage() {
     return () => window.removeEventListener("profileNameChanged", handleNameChange);
   }, []);
 
+  // Handle window resize for mobile check
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Fetch categories from backend
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(`${ENV.API_URL}/api/public/community`);
+        const json = await res.json();
+        if (json.ok && json.data) {
+          setCategories(json.data);
+          if (json.data.length > 0) {
+            setExpandedCategories({ [json.data[0].id]: true });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch communities", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   // Handle accordion expansions automatically if we search
   useEffect(() => {
     if (searchText.trim() !== "") {
       const allExp = {};
-      CATEGORIES.forEach((cat) => {
+      categories.forEach((cat) => {
         const match = cat.groups.some(
           (g) =>
             g.name.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -218,14 +134,14 @@ export default function CommunityPage() {
       });
       setExpandedCategories((prev) => ({ ...prev, ...allExp }));
     }
-  }, [searchText]);
+  }, [searchText, categories]);
 
   // Find currently active group object
   let activeGroup = null;
-  for (const cat of CATEGORIES) {
+  for (const cat of categories) {
     const found = cat.groups.find((g) => g.id === groupId);
     if (found) {
-      activeGroup = { ...found, categoryName: cat.name, categoryIcon: cat.icon };
+      activeGroup = { ...found, categoryName: cat.name, categoryImage: cat.image };
       break;
     }
   }
@@ -261,13 +177,21 @@ export default function CommunityPage() {
       }
     };
 
+    const handleSlowModeError = (data) => {
+      setCooldownRemaining(Math.ceil(data.remainingMs / 1000));
+      setLastMessageSentAt(Date.now() - (messageDelay * 60 * 1000 - data.remainingMs));
+    };
+
     currentSocket.on("group_message", handleGroupMessage);
     currentSocket.on("group_typing", handleGroupTyping);
+    currentSocket.on("slow_mode_error", handleSlowModeError);
 
     // Join room
     currentSocket.emit("join_group", { groupId, name: profileName }, (ack) => {
       if (ack && ack.ok) {
         setMessages(ack.history || []);
+        setMessageDelay(ack.messageDelay || 0);
+        setCooldownRemaining(ack.userRemainingMs ? Math.ceil(ack.userRemainingMs / 1000) : 0);
         // Scroll to bottom
         setTimeout(scrollToBottom, 80);
       }
@@ -276,9 +200,27 @@ export default function CommunityPage() {
     return () => {
       currentSocket.off("group_message", handleGroupMessage);
       currentSocket.off("group_typing", handleGroupTyping);
+      currentSocket.off("slow_mode_error", handleSlowModeError);
       currentSocket.emit("leave_group", { groupId });
     };
   }, [socketRef, status, groupId, profileName]);
+
+  // Countdown timer for slow mode
+  useEffect(() => {
+    let timer;
+    if (cooldownRemaining > 0) {
+      timer = setInterval(() => {
+        setCooldownRemaining((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [cooldownRemaining]);
 
   // Always scroll to bottom on new messages
   useEffect(() => {
@@ -287,7 +229,10 @@ export default function CommunityPage() {
 
   const scrollToBottom = () => {
     if (messageListRef.current) {
-      messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+      messageListRef.current.scrollTo({
+        top: messageListRef.current.scrollHeight,
+        behavior: "smooth",
+      });
     }
   };
 
@@ -393,6 +338,7 @@ export default function CommunityPage() {
 
   const handleSend = () => {
     if (!socketRef.current || status !== "connected" || !groupId) return;
+    if (cooldownRemaining > 0) return;
 
     let parts = getComposerParts();
     const hasEmoji = parts.some((part) => part.type === "emoji");
@@ -443,6 +389,11 @@ export default function CommunityPage() {
 
     socketRef.current.emit("group_message", messagePayload);
     emitTyping(false);
+
+    if (messageDelay > 0) {
+      setLastMessageSentAt(Date.now());
+      setCooldownRemaining(messageDelay * 60);
+    }
 
     if (inputRef.current) {
       inputRef.current.innerHTML = "";
@@ -507,7 +458,7 @@ export default function CommunityPage() {
   };
 
   // Sidebar filtering logic
-  const filteredCategories = CATEGORIES.map((cat) => {
+  const filteredCategories = categories.map((cat) => {
     const filteredGroups = cat.groups.filter(
       (g) =>
         g.name.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -619,7 +570,12 @@ export default function CommunityPage() {
                     },
                   }}
                 >
-                  <Typography sx={{ fontSize: 20 }}>{cat.icon}</Typography>
+                  <Box
+                    component="img"
+                    src={`${ENV.IMAGE_URL}/logos/${cat.image}`}
+                    alt={cat.name}
+                    sx={{ width: 28, height: 28, borderRadius: "6px", objectFit: "cover" }}
+                  />
                   <Box>
                     <Typography sx={{ fontWeight: 700, fontSize: "14px", letterSpacing: "0.2px" }}>
                       {cat.name}
@@ -730,15 +686,18 @@ export default function CommunityPage() {
                       height: 42,
                       borderRadius: "14px",
                       background: "linear-gradient(135deg, #e0f2fe, #eef2ff)",
-                      color: "#0369a1",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontWeight: "bold",
-                      fontSize: 18,
+                      overflow: "hidden",
                     }}
                   >
-                    {activeGroup.categoryIcon}
+                    <Box
+                      component="img"
+                      src={`${ENV.IMAGE_URL}/logos/${activeGroup.categoryImage}`}
+                      alt="Category"
+                      sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
                   </Box>
 
                   <Box>
@@ -761,6 +720,19 @@ export default function CommunityPage() {
                 </Stack>
 
                 <Stack direction="row" spacing={1} alignItems="center">
+                  {activeGroup.chat_timing && (
+                    <Chip
+                      label={`🕒 ${activeGroup.chat_timing}`}
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        fontWeight: 600,
+                        borderColor: "rgba(99,102,241,0.3)",
+                        color: "#6366f1",
+                        background: "rgba(99,102,241,0.03)",
+                      }}
+                    />
+                  )}
                   <Chip
                     icon={
                       <CircleIcon
@@ -887,17 +859,19 @@ export default function CommunityPage() {
 
             {/* Composer Section */}
             <Box className="comp-composer">
-              <Box className="comp-keywords-container">
-                {QUICK_KEYWORDS.map((kw, idx) => (
-                  <Box
-                    key={idx}
-                    className="comp-keyword-chip"
-                    onClick={() => handleKeywordClick(kw)}
-                  >
-                    {kw}
-                  </Box>
-                ))}
-              </Box>
+              {(!isMobile || (isMobile && hasClickedInput)) && (
+                <Box className="comp-keywords-container">
+                  {QUICK_KEYWORDS.map((kw, idx) => (
+                    <Box
+                      key={idx}
+                      className="comp-keyword-chip"
+                      onClick={() => handleKeywordClick(kw)}
+                    >
+                      {kw}
+                    </Box>
+                  ))}
+                </Box>
+              )}
               <Stack direction="row" spacing={1.5} alignItems="flex-end">
                 <Box className="comp-input-capsule">
                   <Box sx={{ position: "relative" }} className="comp-emoji-wrapper">
@@ -919,10 +893,10 @@ export default function CommunityPage() {
 
                   <Box
                     className="comp-input"
-                    contentEditable
+                    contentEditable={cooldownRemaining === 0}
                     role="textbox"
                     aria-label="Group message input"
-                    data-placeholder={`Message # ${activeGroup.name}...`}
+                    data-placeholder={cooldownRemaining > 0 ? `Slow mode active. Wait ${cooldownRemaining}s...` : `Message # ${activeGroup.name}...`}
                     ref={inputRef}
                     onInput={handleComposerInput}
                     onKeyDown={(e) => {
@@ -931,6 +905,8 @@ export default function CommunityPage() {
                         handleSend();
                       }
                     }}
+                    onClick={() => setHasClickedInput(true)}
+                    onFocus={() => setHasClickedInput(true)}
                     suppressContentEditableWarning
                   />
 
@@ -949,6 +925,7 @@ export default function CommunityPage() {
                       id="comp-send-btn"
                       className="comp-send-btn"
                       onClick={handleSend}
+                      disabled={cooldownRemaining > 0}
                       onMouseDown={(e) => e.preventDefault()}
                     >
                       <SendRoundedIcon fontSize="small" />

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import { BACKEND_URL } from "../lib/constants";
+import { ENV } from "../config/env.js";
 
 // Generate or retrieve stable user ID
 let localUserId = "";
@@ -18,7 +18,7 @@ export function useSocket() {
   const [socketId, setSocketId] = useState("");
 
   useEffect(() => {
-    const socket = io(BACKEND_URL, { 
+    const socket = io(ENV.API_URL, { 
       transports: ["websocket"],
       auth: { userId: localUserId }
     });

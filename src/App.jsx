@@ -40,7 +40,7 @@ import {
   setPartnerId,
   setPartnerName,
 } from "./store/chatSlice.js";
-import { BACKEND_URL } from "./lib/constants.js";
+import { ENV } from "./config/env.js";
 import "./styles/app.css";
 
 export default function App() {
@@ -668,7 +668,7 @@ export default function App() {
                   inputRef={inputRef}
                   onComposerInput={handleComposerInput}
                   onSend={handleSend}
-                  backendUrl={BACKEND_URL}
+                  backendUrl={ENV.API_URL}
                   socketId={socketId}
                   partnerName={partnerName}
                 />
@@ -695,7 +695,7 @@ export default function App() {
                   onToggleVideo={toggleVideo}
                   localStream={localStream}
                   remoteStream={remoteStream}
-                  backendUrl={BACKEND_URL}
+                  backendUrl={ENV.API_URL}
                   socketId={socketId}
                 />
               }
