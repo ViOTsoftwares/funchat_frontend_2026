@@ -122,7 +122,8 @@ body.fullscreen-lock {
 @media (max-width: 768px) {
   .app-fullscreen-chat .cp-root,
   .app-fullscreen-chat .comp-container {
-    border-radius: 16px !important;
+    border-radius: 0 !important;
+    border: none !important;
   }
 }
 
@@ -2658,6 +2659,6 @@ body.fullscreen-lock {
   }
 
   .comp-composer {
-    padding: 10px 16px 12px !important;
+    padding: 8px 10px 10px !important;
   }
 }
