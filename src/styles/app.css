@@ -106,8 +106,9 @@ body.fullscreen-lock {
   }
 }
 
-/* Chat/Video root container fits perfectly in the container */
-.app-fullscreen-chat .cp-root {
+/* Chat/Video/Community root container fits perfectly in the container */
+.app-fullscreen-chat .cp-root,
+.app-fullscreen-chat .comp-container {
   flex: 1 !important;
   display: flex !important;
   flex-direction: column !important;
@@ -119,7 +120,8 @@ body.fullscreen-lock {
 }
 
 @media (max-width: 768px) {
-  .app-fullscreen-chat .cp-root {
+  .app-fullscreen-chat .cp-root,
+  .app-fullscreen-chat .comp-container {
     border-radius: 16px !important;
   }
 }
