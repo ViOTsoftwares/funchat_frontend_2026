@@ -479,9 +479,8 @@ export default function CommunityPage() {
     <Box className="comp-container">
       {/* ── SIDEBAR PANEL ── */}
       <Box
-        className={`comp-sidebar ${
-          groupId ? "comp-sidebar-hidden-mobile" : ""
-        }`}
+        className={`comp-sidebar ${groupId ? "comp-sidebar-hidden-mobile" : ""
+          }`}
       >
         <Box className="comp-sidebar-header">
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2.5 }}>
@@ -659,9 +658,8 @@ export default function CommunityPage() {
 
       {/* ── CHAT PANEL ── */}
       <Box
-        className={`comp-chat-panel ${
-          !groupId ? "comp-chat-panel-hidden-mobile" : ""
-        }`}
+        className={`comp-chat-panel ${!groupId ? "comp-chat-panel-hidden-mobile" : ""
+          }`}
       >
         {activeGroup ? (
           <Box className="comp-chat-frame">
@@ -786,8 +784,8 @@ export default function CommunityPage() {
                         justifyContent: isSystem
                           ? "center"
                           : isMe
-                          ? "flex-end"
-                          : "flex-start",
+                            ? "flex-end"
+                            : "flex-start",
                         mb: 1.5,
                         width: "100%",
                       }}
@@ -858,7 +856,7 @@ export default function CommunityPage() {
             </Box>
 
             {/* Composer Section */}
-            <Box className="comp-composer">
+            <Box className="cp-composer">
               {(!isMobile || (isMobile && hasClickedInput)) && (
                 <Box className="comp-keywords-container">
                   {QUICK_KEYWORDS.map((kw, idx) => (
