@@ -2378,7 +2378,9 @@ body.fullscreen-lock {
   flex-direction: column;
   flex: 1;
   min-width: 0;
+  min-height: 0;
   height: 100%;
+  overflow: hidden;
   background: #f1f5f9;
 }
 
@@ -2387,6 +2389,8 @@ body.fullscreen-lock {
   flex-direction: column;
   height: 100%;
   width: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .comp-chat-header {
@@ -2401,6 +2405,7 @@ body.fullscreen-lock {
 .comp-message-list {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   padding: 24px 24px 16px;
   display: flex;
   flex-direction: column;
@@ -2487,7 +2492,7 @@ body.fullscreen-lock {
 /* ── Composer inside group chat ── */
 .comp-composer {
   flex-shrink: 0;
-  padding: 12px 24px calc(16px + var(--keyboard-offset, 0px));
+  padding: 12px 24px 16px;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(16px);
   border-top: 1px solid rgba(226, 232, 240, 0.7);
@@ -2651,6 +2656,6 @@ body.fullscreen-lock {
   }
 
   .comp-composer {
-    padding: 10px 16px calc(12px + var(--keyboard-offset, 0px)) !important;
+    padding: 10px 16px 12px !important;
   }
 }
