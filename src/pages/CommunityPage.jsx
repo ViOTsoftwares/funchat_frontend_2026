@@ -78,6 +78,8 @@ export default function CommunityPage() {
   const messageListRef = useRef(null);
   const lastTypingSentRef = useRef(false);
   const typingTimeoutRef = useRef(null);
+  const composerRef = useRef(null);
+  const [composerHeight, setComposerHeight] = useState(64);
 
   // Monitor global display name change
   useEffect(() => {
@@ -95,6 +97,18 @@ export default function CommunityPage() {
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Track composer height so message list can pad-bottom to avoid content hiding
+  useEffect(() => {
+    if (!composerRef.current) return;
+    const observer = new ResizeObserver(() => {
+      if (composerRef.current) {
+        setComposerHeight(composerRef.current.offsetHeight);
+      }
+    });
+    observer.observe(composerRef.current);
+    return () => observer.disconnect();
   }, []);
 
   // Fetch categories from backend
@@ -757,7 +771,11 @@ export default function CommunityPage() {
             <Divider sx={{ opacity: 0.07 }} />
 
             {/* Group Chat Messages List */}
-            <Box className="comp-message-list" ref={messageListRef}>
+            <Box
+              className="comp-message-list"
+              ref={messageListRef}
+              style={isMobile ? { paddingBottom: composerHeight + 8 } : undefined}
+            >
               {messages.length === 0 ? (
                 <Box className="comp-empty-state">
                   <ForumIcon sx={{ fontSize: 44, color: "#c7d2fe", mb: 1.5 }} />
@@ -855,9 +873,24 @@ export default function CommunityPage() {
               )}
             </Box>
 
-            {/* Composer Section */}
-            <Box className="comp-composer">
-              {(!isMobile || (isMobile && hasClickedInput)) && (
+            {/* Composer Section - WhatsApp style: fixed to bottom on mobile */}
+            <Box
+              className="comp-composer"
+              ref={composerRef}
+              style={isMobile ? {
+                position: "fixed",
+                left: 0,
+                right: 0,
+                bottom: "var(--keyboard-offset, 0px)",
+                zIndex: 200,
+                background: "rgba(255,255,255,0.98)",
+                backdropFilter: "blur(16px)",
+                borderTop: "1px solid rgba(226,232,240,0.8)",
+                padding: "8px 12px 10px",
+                boxShadow: "0 -2px 12px rgba(15,23,42,0.07)",
+              } : undefined}
+            >
+              {hasClickedInput && (
                 <Box className="comp-keywords-container">
                   {QUICK_KEYWORDS.map((kw, idx) => (
                     <Box
