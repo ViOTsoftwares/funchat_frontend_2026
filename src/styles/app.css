@@ -1835,7 +1835,7 @@ body.fullscreen-lock {
 }
 
 /* ── Responsive ── */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
 
   /* ── Lock the overall app shell to viewport on chat/video routes ── */
   /* bottom is pushed up by --keyboard-offset so composer floats above keyboard */
@@ -2655,22 +2655,54 @@ body.fullscreen-lock {
     width: 100% !important;
   }
 
+  /* On mobile, make the container a full-height column so the chat panel
+     (with the composer at its bottom) fills the entire screen */
   .comp-container {
+    flex-direction: column !important;
     height: 100% !important;
+    overflow: hidden !important;
+    border-radius: 0 !important;
+    border: none !important;
     margin-top: 0 !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+  }
+
+  /* Chat panel fills all remaining space in the column container */
+  .comp-chat-panel {
+    flex: 1 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    width: 100% !important;
+  }
+
+  /* Chat frame fills the panel completely as a flex column */
+  .comp-chat-frame {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Message list takes up all available space, composer gets pushed to bottom */
+  .comp-message-list {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding: 16px 16px 8px !important;
+  }
+
+  /* Composer always stays at the bottom, never clipped */
+  .comp-composer {
+    flex-shrink: 0 !important;
+    padding: 8px 10px 10px !important;
+    position: relative !important;
+    bottom: auto !important;
   }
 
   .comp-chat-header {
     padding: 10px 14px !important;
-  }
-
-  .comp-message-list {
-    padding: 16px 16px 8px !important;
-  }
-
-  .comp-composer {
-    padding: 8px 10px 10px !important;
+    flex-shrink: 0 !important;
   }
 }
