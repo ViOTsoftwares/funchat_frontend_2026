@@ -106,12 +106,22 @@ body.fullscreen-lock {
   }
 }
 
-/* Chat/Video/Community root container fits perfectly in the container */
-.app-fullscreen-chat .cp-root,
-.app-fullscreen-chat .comp-container {
+/* Chat/Video root container fits perfectly in the container */
+.app-fullscreen-chat .cp-root {
   flex: 1 !important;
   display: flex !important;
   flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  border-radius: 24px !important;
+}
+
+/* Community root container needs similar constraints but keeps row layout by default */
+.app-fullscreen-chat .comp-container {
+  flex: 1 !important;
+  display: flex !important;
   min-height: 0 !important;
   height: 100% !important;
   margin: 0 !important;
@@ -2541,6 +2551,7 @@ body.fullscreen-lock {
   flex: 1;
   display: flex;
   align-items: flex-end;
+  min-width: 0;
   background: #ffffff;
   border: 1.5px solid rgba(203, 213, 225, 0.8);
   border-radius: 22px;
@@ -2579,6 +2590,7 @@ body.fullscreen-lock {
 
 .comp-input {
   flex: 1;
+  min-width: 0;
   min-height: 20px;
   max-height: 110px;
   overflow-y: auto;
