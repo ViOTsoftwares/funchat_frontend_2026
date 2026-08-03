@@ -1835,7 +1835,7 @@ body.fullscreen-lock {
 }
 
 /* ── Responsive ── */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
 
   /* ── Lock the overall app shell to viewport on chat/video routes ── */
   /* bottom is pushed up by --keyboard-offset so composer floats above keyboard */

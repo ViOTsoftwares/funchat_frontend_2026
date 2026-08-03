@@ -856,7 +856,7 @@ export default function CommunityPage() {
             </Box>
 
             {/* Composer Section */}
-            <Box className="cp-composer">
+            <Box className="comp-composer">
               {(!isMobile || (isMobile && hasClickedInput)) && (
                 <Box className="comp-keywords-container">
                   {QUICK_KEYWORDS.map((kw, idx) => (
