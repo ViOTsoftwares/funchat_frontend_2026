@@ -2492,6 +2492,9 @@ body.fullscreen-lock {
   backdrop-filter: blur(16px);
   border-top: 1px solid rgba(226, 232, 240, 0.7);
   transition: padding-bottom 0.1s ease-out;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 .comp-keywords-container {
