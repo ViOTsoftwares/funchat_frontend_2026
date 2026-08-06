@@ -1858,6 +1858,25 @@ body.fullscreen-lock {
     display: none !important;
   }
 
+  /* Exception: Community page keeps the FunChat AppBar on mobile */
+  .app-fullscreen-chat:has(.comp-container) .MuiAppBar-root {
+    display: flex !important;
+  }
+  .app-fullscreen-chat:has(.comp-container) {
+    padding-top: 86px !important;
+  }
+  .app-fullscreen-chat:has(.comp-container) > .MuiContainer-root {
+    height: calc(100% - 86px) !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+  }
+
   .app-fullscreen-chat > .MuiContainer-root {
     flex: 1 !important;
     display: flex !important;
@@ -2332,6 +2351,11 @@ body.fullscreen-lock {
    COMMUNITY PAGE LAYOUT  (comp-*)
    ═══════════════════════════════════════════════ */
 
+/* Mobile-only top header bar — hidden on desktop */
+.comp-mobile-header {
+  display: none;
+}
+
 .comp-container {
   display: flex;
   width: 100%;
@@ -2588,6 +2612,7 @@ body.fullscreen-lock {
   border-radius: 50% !important;
 }
 
+
 .comp-input {
   flex: 1;
   min-width: 0;
@@ -2641,8 +2666,14 @@ body.fullscreen-lock {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
 }
 
-/* ── Mobile Layout Adjustments ── */
+/* ── Community Mobile Layout ── */
 @media (max-width: 768px) {
+
+  /* AppBar handles all navigation — hide the custom community header */
+  .comp-mobile-header {
+    display: none !important;
+  }
+
   .comp-sidebar-hidden-mobile {
     display: none !important;
   }
@@ -2651,12 +2682,7 @@ body.fullscreen-lock {
     display: none !important;
   }
 
-  .comp-sidebar {
-    width: 100% !important;
-  }
-
-  /* On mobile, make the container a full-height column so the chat panel
-     (with the composer at its bottom) fills the entire screen */
+  /* Container: full-height column */
   .comp-container {
     flex-direction: column !important;
     height: 100% !important;
@@ -2666,16 +2692,27 @@ body.fullscreen-lock {
     margin-top: 0 !important;
   }
 
-  /* Chat panel fills all remaining space in the column container */
+  /* Sidebar: full width, show the Communities heading */
+  .comp-sidebar {
+    width: 100% !important;
+  }
+
+  .comp-sidebar-header {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 14px 16px 12px !important;
+  }
+
+  /* Chat panel */
   .comp-chat-panel {
     flex: 1 !important;
-    height: 100% !important;
+    height: 0 !important;
     min-height: 0 !important;
     overflow: hidden !important;
     width: 100% !important;
   }
 
-  /* Chat frame fills the panel completely as a flex column */
+  /* Chat frame: full column */
   .comp-chat-frame {
     flex: 1 !important;
     display: flex !important;
@@ -2685,24 +2722,26 @@ body.fullscreen-lock {
     overflow: hidden !important;
   }
 
-  /* Message list takes up all available space, composer gets pushed to bottom */
+  /* Restore the chat header — shows back arrow + group info on mobile */
+  .comp-chat-header {
+    display: flex !important;
+    padding: 8px 14px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Message list */
   .comp-message-list {
     flex: 1 !important;
     min-height: 0 !important;
     overflow-y: auto !important;
-    padding: 16px 16px 8px !important;
+    padding: 14px 14px 8px !important;
   }
 
-  /* Composer always stays at the bottom, never clipped */
+  /* Composer */
   .comp-composer {
     flex-shrink: 0 !important;
     padding: 8px 10px 10px !important;
     position: relative !important;
     bottom: auto !important;
-  }
-
-  .comp-chat-header {
-    padding: 10px 14px !important;
-    flex-shrink: 0 !important;
   }
 }

@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
   IconButton,
   InputAdornment,
@@ -65,6 +66,9 @@ export default function CommunityPage() {
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   const [messages, setMessages] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [skipCount, setSkipCount] = useState(0);
   const [typingUsers, setTypingUsers] = useState({});
   const [emojiOpen, setEmojiOpen] = useState(false);
 
@@ -79,6 +83,7 @@ export default function CommunityPage() {
   const lastTypingSentRef = useRef(false);
   const typingTimeoutRef = useRef(null);
   const composerRef = useRef(null);
+  const prevScrollHeightRef = useRef(0);
   const [composerHeight, setComposerHeight] = useState(64);
 
   // Monitor global display name change
@@ -168,11 +173,16 @@ export default function CommunityPage() {
     // Reset messages and typing indicators when changing group
     setMessages([]);
     setTypingUsers({});
+    setHasMore(false);
+    setSkipCount(0);
+    setLoadingMore(false);
 
     // Listen to messages
     const handleGroupMessage = (msg) => {
       if (msg.groupId === groupId) {
         setMessages((prev) => [...prev, msg]);
+        // Scroll to bottom for new real-time messages
+        setTimeout(scrollToBottom, 80);
       }
     };
 
@@ -204,9 +214,11 @@ export default function CommunityPage() {
     currentSocket.emit("join_group", { groupId, name: profileName }, (ack) => {
       if (ack && ack.ok) {
         setMessages(ack.history || []);
+        setHasMore(ack.hasMore || false);
+        setSkipCount(0);
         setMessageDelay(ack.messageDelay || 0);
         setCooldownRemaining(ack.userRemainingMs ? Math.ceil(ack.userRemainingMs / 1000) : 0);
-        // Scroll to bottom
+        // Scroll to bottom after initial load
         setTimeout(scrollToBottom, 80);
       }
     });
@@ -236,10 +248,12 @@ export default function CommunityPage() {
     return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
-  // Always scroll to bottom on new messages
+  // Scroll to bottom on typing indicator change (don't re-scroll for history loads)
   useEffect(() => {
-    scrollToBottom();
-  }, [messages.length, typingUsers]);
+    if (typingUsers && Object.keys(typingUsers).length > 0) {
+      scrollToBottom();
+    }
+  }, [typingUsers]);
 
   const scrollToBottom = () => {
     if (messageListRef.current) {
@@ -249,6 +263,50 @@ export default function CommunityPage() {
       });
     }
   };
+
+  // Load more (older) messages when scrolled to top
+  const handleLoadMore = useCallback(() => {
+    if (!socketRef.current || status !== "connected" || !groupId || loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    // Snapshot current scroll height before prepending messages
+    if (messageListRef.current) {
+      prevScrollHeightRef.current = messageListRef.current.scrollHeight;
+    }
+
+    const nextSkip = skipCount + 10;
+    socketRef.current.emit("load_more_messages", { groupId, skip: nextSkip }, (res) => {
+      if (res && res.ok) {
+        setMessages((prev) => [...(res.messages || []), ...prev]);
+        setHasMore(res.hasMore || false);
+        setSkipCount(nextSkip);
+
+        // After DOM update: restore scroll so the user stays at the same position
+        setTimeout(() => {
+          if (messageListRef.current) {
+            const newScrollHeight = messageListRef.current.scrollHeight;
+            messageListRef.current.scrollTop = newScrollHeight - prevScrollHeightRef.current;
+          }
+        }, 0);
+      }
+      setLoadingMore(false);
+    });
+  }, [socketRef, status, groupId, loadingMore, hasMore, skipCount]);
+
+  // Attach scroll listener on the message list to detect reaching the top
+  useEffect(() => {
+    const el = messageListRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      if (el.scrollTop <= 60 && hasMore && !loadingMore) {
+        handleLoadMore();
+      }
+    };
+
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [hasMore, loadingMore, handleLoadMore]);
 
   const handleCategoryToggle = (catId) => {
     setExpandedCategories((prev) => ({
@@ -491,6 +549,85 @@ export default function CommunityPage() {
 
   return (
     <Box className="comp-container">
+
+      {/* ── MOBILE TOP HEADER (shown only on mobile) ── */}
+      <Box className="comp-mobile-header">
+        {groupId && activeGroup ? (
+          /* ── Chat view: back + group info ── */
+          <>
+            {/* Left: back + avatar + info */}
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+              <IconButton
+                onClick={handleBackToSidebar}
+                size="small"
+                className="comp-mhdr-back-btn"
+              >
+                <ArrowBackIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+
+              {/* Group avatar */}
+              <Box className="comp-mhdr-avatar">
+                <Box
+                  component="img"
+                  src={`${ENV.IMAGE_URL}/logos/${activeGroup.categoryImage}`}
+                  alt={activeGroup.name}
+                  sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </Box>
+
+              {/* Group name + category */}
+              <Box sx={{ minWidth: 0 }}>
+                <Typography className="comp-mhdr-title">
+                  # {activeGroup.name}
+                </Typography>
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <Typography className="comp-mhdr-subtitle">
+                    {activeGroup.categoryName}
+                  </Typography>
+                </Stack>
+              </Box>
+            </Stack>
+
+            {/* Right: live pill */}
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+              <Box className={`comp-mhdr-live-pill ${status === "connected" ? "live" : "offline"}`}>
+                <Box className="comp-mhdr-live-dot" />
+                <Typography className="comp-mhdr-live-text">
+                  {status === "connected" ? "Live" : "..."}
+                </Typography>
+              </Box>
+            </Stack>
+          </>
+        ) : (
+          /* ── Sidebar view: brand ── */
+          <>
+            {/* Left: logo + brand */}
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              {/* Logo badge */}
+              <Box className="comp-mhdr-brand-icon">
+                <GroupsIcon sx={{ fontSize: 20 }} />
+              </Box>
+              <Box>
+                <Typography className="comp-mhdr-brand-title">
+                  Communities
+                </Typography>
+                <Typography className="comp-mhdr-brand-sub">
+                  Real-time group chats
+                </Typography>
+              </Box>
+            </Stack>
+
+            {/* Right: live status */}
+            <Box className={`comp-mhdr-live-pill ${status === "connected" ? "live" : "offline"}`}>
+              <Box className="comp-mhdr-live-dot" />
+              <Typography className="comp-mhdr-live-text">
+                {status === "connected" ? "Live" : "Connecting"}
+              </Typography>
+            </Box>
+          </>
+        )}
+      </Box>
+
       {/* ── SIDEBAR PANEL ── */}
       <Box
         className={`comp-sidebar ${groupId ? "comp-sidebar-hidden-mobile" : ""
@@ -776,6 +913,35 @@ export default function CommunityPage() {
               ref={messageListRef}
               style={isMobile ? { paddingBottom: composerHeight + 8 } : undefined}
             >
+              {/* Load More Spinner */}
+              {hasMore && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    py: 1.5,
+                  }}
+                >
+                  {loadingMore ? (
+                    <CircularProgress size={22} thickness={4} sx={{ color: "#6366f1" }} />
+                  ) : (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "#94a3b8",
+                        cursor: "pointer",
+                        userSelect: "none",
+                        "&:hover": { color: "#6366f1" },
+                        transition: "color 0.15s",
+                      }}
+                      onClick={handleLoadMore}
+                    >
+                      ↑ Scroll up to load older messages
+                    </Typography>
+                  )}
+                </Box>
+              )}
               {messages.length === 0 ? (
                 <Box className="comp-empty-state">
                   <ForumIcon sx={{ fontSize: 44, color: "#c7d2fe", mb: 1.5 }} />
