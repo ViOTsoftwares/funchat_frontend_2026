@@ -1858,25 +1858,6 @@ body.fullscreen-lock {
     display: none !important;
   }
 
-  /* Exception: Community page keeps the FunChat AppBar on mobile */
-  .app-fullscreen-chat:has(.comp-container) .MuiAppBar-root {
-    display: flex !important;
-  }
-  .app-fullscreen-chat:has(.comp-container) {
-    padding-top: 86px !important;
-  }
-  .app-fullscreen-chat:has(.comp-container) > .MuiContainer-root {
-    height: calc(100% - 86px) !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 !important;
-    min-height: 0 !important;
-  }
-
   .app-fullscreen-chat > .MuiContainer-root {
     flex: 1 !important;
     display: flex !important;
