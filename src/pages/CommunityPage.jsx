@@ -107,41 +107,19 @@ export default function CommunityPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Visual Viewport tracking for smooth mobile keyboard handling (WhatsApp / Telegram behavior)
+  // Visual Viewport tracking — auto-scroll when keyboard opens/closes
+  // (Layout is handled by 100dvh CSS, no JS custom properties needed)
   useEffect(() => {
     const handleVisualViewportChange = () => {
-      const vv = window.visualViewport;
-      if (!vv) return;
-
-      const vh = vv.height;
-      const offsetTop = vv.offsetTop;
-      const kbHeight = Math.max(0, window.innerHeight - vh - offsetTop);
-
-      document.documentElement.style.setProperty("--visual-vh", `${vh}px`);
-      document.documentElement.style.setProperty("--keyboard-offset", `${kbHeight}px`);
-      document.documentElement.style.setProperty("--visual-viewport-offset-y", `${offsetTop}px`);
-
-      // Prevent page drift behind active keyboard
-      window.scrollTo(0, 0);
-      document.body.scrollTop = 0;
-      document.documentElement.scrollTop = 0;
-
-      // Staggered auto-scrolling during the 250ms keyboard animation (opens & closes)
-      if (messageListRef.current) {
-        messageListRef.current.scrollTo({
-          top: messageListRef.current.scrollHeight,
-          behavior: "auto",
-        });
-      }
-      setTimeout(() => scrollToBottom(true), 50);
-      setTimeout(() => scrollToBottom(true), 150);
-      setTimeout(() => scrollToBottom(true), 250);
+      // Instant-then-staggered scroll to keep latest message visible above the composer
+      setTimeout(() => scrollToBottom(false), 0);
+      setTimeout(() => scrollToBottom(false), 100);
+      setTimeout(() => scrollToBottom(false), 250);
     };
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", handleVisualViewportChange);
       window.visualViewport.addEventListener("scroll", handleVisualViewportChange);
-      handleVisualViewportChange();
     }
 
     return () => {
@@ -972,10 +950,6 @@ export default function CommunityPage() {
             <Box
               className="comp-message-list"
               ref={messageListRef}
-              style={isMobile ? {
-                paddingBottom: `calc(${composerHeight + 16}px + env(safe-area-inset-bottom, 0px))`,
-                WebkitOverflowScrolling: "touch",
-              } : undefined}
             >
               {/* Load More Spinner */}
               {hasMore && (
@@ -1179,26 +1153,10 @@ export default function CommunityPage() {
               <Box ref={messagesEndRef} sx={{ height: 14, width: "100%", flexShrink: 0 }} />
             </Box>
 
-            {/* Composer Section - Fixed above mobile keyboard with Visual Viewport & Safe Area support */}
+            {/* Composer Section — natural flex item, NOT fixed-position */}
             <Box
               className="comp-composer"
               ref={composerRef}
-              style={isMobile ? {
-                position: "fixed",
-                left: 0,
-                right: 0,
-                bottom: "calc(var(--keyboard-offset, 0px) + env(safe-area-inset-bottom, 0px))",
-                zIndex: 200,
-                background: "rgba(255, 255, 255, 0.98)",
-                backdropFilter: "blur(16px)",
-                borderTop: "1px solid rgba(226, 232, 240, 0.8)",
-                paddingTop: "8px",
-                paddingLeft: "12px",
-                paddingRight: "12px",
-                paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
-                boxShadow: "0 -2px 12px rgba(15, 23, 42, 0.07)",
-                transition: "bottom 0.15s cubic-bezier(0.2, 0, 0, 1)",
-              } : undefined}
             >
               {hasClickedInput && (
                 <Box className="comp-keywords-container">
