@@ -69,6 +69,7 @@ export default function CommunityPage() {
   const [messages, setMessages] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingGroupMessages, setLoadingGroupMessages] = useState(false);
   const [skipCount, setSkipCount] = useState(0);
   const [typingUsers, setTypingUsers] = useState({});
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -105,7 +106,7 @@ export default function CommunityPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Visual Viewport tracking for smooth mobile keyboard handling (iOS & Android)
+  // Visual Viewport tracking for smooth mobile keyboard handling (WhatsApp / Telegram behavior)
   useEffect(() => {
     const handleVisualViewportChange = () => {
       const vv = window.visualViewport;
@@ -124,15 +125,16 @@ export default function CommunityPage() {
       document.body.scrollTop = 0;
       document.documentElement.scrollTop = 0;
 
-      // Ensure message list smoothly scrolls to bottom when keyboard resizes/opens
-      setTimeout(() => {
-        if (messageListRef.current) {
-          messageListRef.current.scrollTo({
-            top: messageListRef.current.scrollHeight,
-            behavior: "smooth",
-          });
-        }
-      }, 60);
+      // Staggered auto-scrolling during the 250ms keyboard animation (opens & closes)
+      if (messageListRef.current) {
+        messageListRef.current.scrollTo({
+          top: messageListRef.current.scrollHeight,
+          behavior: "auto",
+        });
+      }
+      setTimeout(() => scrollToBottom(true), 50);
+      setTimeout(() => scrollToBottom(true), 150);
+      setTimeout(() => scrollToBottom(true), 250);
     };
 
     if (window.visualViewport) {
@@ -215,7 +217,8 @@ export default function CommunityPage() {
     const currentSocket = socketRef.current;
     if (!currentSocket || status !== "connected" || !groupId) return;
 
-    // Reset messages and typing indicators when changing group
+    // Set group loading state and reset messages
+    setLoadingGroupMessages(true);
     setMessages([]);
     setTypingUsers({});
     setHasMore(false);
@@ -226,8 +229,10 @@ export default function CommunityPage() {
     const handleGroupMessage = (msg) => {
       if (msg.groupId === groupId) {
         setMessages((prev) => [...prev, msg]);
-        // Scroll to bottom for new real-time messages
-        setTimeout(scrollToBottom, 80);
+        // Scroll to bottom for new real-time messages immediately & on next frame
+        scrollToBottom(true);
+        setTimeout(() => scrollToBottom(true), 50);
+        setTimeout(() => scrollToBottom(true), 150);
       }
     };
 
@@ -257,6 +262,7 @@ export default function CommunityPage() {
 
     // Join room
     currentSocket.emit("join_group", { groupId, name: profileName }, (ack) => {
+      setLoadingGroupMessages(false);
       if (ack && ack.ok) {
         setMessages(ack.history || []);
         setHasMore(ack.hasMore || false);
@@ -264,7 +270,7 @@ export default function CommunityPage() {
         setMessageDelay(ack.messageDelay || 0);
         setCooldownRemaining(ack.userRemainingMs ? Math.ceil(ack.userRemainingMs / 1000) : 0);
         // Scroll to bottom after initial load
-        setTimeout(scrollToBottom, 80);
+        setTimeout(() => scrollToBottom(true), 80);
       }
     });
 
@@ -293,18 +299,18 @@ export default function CommunityPage() {
     return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
-  // Scroll to bottom on typing indicator change (don't re-scroll for history loads)
+  // Scroll to bottom on typing indicator change
   useEffect(() => {
     if (typingUsers && Object.keys(typingUsers).length > 0) {
-      scrollToBottom();
+      scrollToBottom(true);
     }
   }, [typingUsers]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = (smooth = true) => {
     if (messageListRef.current) {
       messageListRef.current.scrollTo({
         top: messageListRef.current.scrollHeight,
-        behavior: "smooth",
+        behavior: smooth ? "smooth" : "auto",
       });
     }
   };
@@ -384,6 +390,9 @@ export default function CommunityPage() {
       selection.addRange(range);
     }
     handleComposerInput();
+    scrollToBottom(true);
+    setTimeout(() => scrollToBottom(true), 60);
+    setTimeout(() => scrollToBottom(true), 150);
   };
 
   // Typing event emissions
@@ -515,6 +524,10 @@ export default function CommunityPage() {
     if (inputRef.current) {
       inputRef.current.innerHTML = "";
     }
+
+    scrollToBottom(true);
+    setTimeout(() => scrollToBottom(true), 60);
+    setTimeout(() => scrollToBottom(true), 150);
 
     setTimeout(() => {
       if (inputRef.current) {
@@ -705,7 +718,14 @@ export default function CommunityPage() {
         </Box>
 
         <Box className="comp-sidebar-scroll">
-          {filteredCategories.length === 0 ? (
+          {loadingCategories ? (
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", p: 5 }}>
+              <CircularProgress size={30} thickness={4} sx={{ color: "#818cf8", mb: 2 }} />
+              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 500 }}>
+                Loading communities...
+              </Typography>
+            </Box>
+          ) : filteredCategories.length === 0 ? (
             <Box sx={{ p: 4, textAlign: "center" }}>
               <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.5)" }}>
                 No groups found matching "{searchText}"
@@ -965,7 +985,80 @@ export default function CommunityPage() {
                   )}
                 </Box>
               )}
-              {messages.length === 0 ? (
+              {loadingGroupMessages ? (
+                <Box
+                  className="comp-group-loader"
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flex: 1,
+                    minHeight: "320px",
+                    p: 4,
+                    textAlign: "center",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: "relative",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mb: 2.5,
+                    }}
+                  >
+                    {/* Outer glowing ring */}
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        width: 72,
+                        height: 72,
+                        borderRadius: "50%",
+                        background: "rgba(99, 102, 241, 0.15)",
+                        animation: "pulseGlow 2s infinite ease-in-out",
+                      }}
+                    />
+                    <CircularProgress
+                      size={60}
+                      thickness={3.5}
+                      sx={{
+                        color: "#6366f1",
+                        animationDuration: "1.1s",
+                      }}
+                    />
+                    <Box
+                      component="img"
+                      src={`${ENV.IMAGE_URL}/logos/${activeGroup.categoryImage}`}
+                      alt={activeGroup.name}
+                      sx={{
+                        position: "absolute",
+                        width: 30,
+                        height: 30,
+                        borderRadius: "9px",
+                        objectFit: "cover",
+                        boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+                      }}
+                    />
+                  </Box>
+
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: "15.5px",
+                      color: "#0f172a",
+                      mb: 0.5,
+                      letterSpacing: "-0.2px",
+                    }}
+                  >
+                    Connecting to # {activeGroup.name}
+                  </Typography>
+
+                  <Typography variant="body2" sx={{ color: "#64748b", fontSize: "13px", maxWidth: 260 }}>
+                    Fetching group messages and discussion history...
+                  </Typography>
+                </Box>
+              ) : messages.length === 0 ? (
                 <Box className="comp-empty-state">
                   <ForumIcon sx={{ fontSize: 44, color: "#c7d2fe", mb: 1.5 }} />
                   <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "15px" }}>
