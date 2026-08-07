@@ -586,6 +586,9 @@ export default function CommunityPage() {
     if (!emojiUrl) return;
     insertEmojiAtCursor(emojiUrl);
     setEmojiOpen(false);
+    scrollToBottom(true);
+    setTimeout(() => scrollToBottom(true), 60);
+    setTimeout(() => scrollToBottom(true), 150);
   };
 
   // Compile rendering variables for typing users text
@@ -1259,6 +1262,12 @@ export default function CommunityPage() {
                     size="small"
                     className="comp-attach-btn"
                     sx={{ color: "#94a3b8", p: "4px", ml: "2px", mb: "4px" }}
+                    onClick={() => {
+                      if (inputRef.current) inputRef.current.focus();
+                      scrollToBottom(true);
+                      setTimeout(() => scrollToBottom(true), 60);
+                      setTimeout(() => scrollToBottom(true), 150);
+                    }}
                   >
                     <AttachFileIcon sx={{ fontSize: 20 }} />
                   </IconButton>
