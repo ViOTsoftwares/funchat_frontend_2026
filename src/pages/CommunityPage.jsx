@@ -82,6 +82,7 @@ export default function CommunityPage() {
 
   const inputRef = useRef(null);
   const messageListRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const lastTypingSentRef = useRef(false);
   const typingTimeoutRef = useRef(null);
   const composerRef = useRef(null);
@@ -308,12 +309,28 @@ export default function CommunityPage() {
 
   const scrollToBottom = (smooth = true) => {
     if (messageListRef.current) {
-      messageListRef.current.scrollTo({
-        top: messageListRef.current.scrollHeight,
+      const el = messageListRef.current;
+      el.scrollTo({
+        top: el.scrollHeight,
         behavior: smooth ? "smooth" : "auto",
       });
     }
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: smooth ? "smooth" : "auto",
+        block: "end",
+      });
+    }
   };
+
+  // Auto-scroll to bottom whenever messages array changes (new message sent or received)
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom(true);
+      const timer = setTimeout(() => scrollToBottom(true), 60);
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length]);
 
   // Load more (older) messages when scrolled to top
   const handleLoadMore = useCallback(() => {
@@ -1154,6 +1171,9 @@ export default function CommunityPage() {
                   </Stack>
                 </Box>
               )}
+
+              {/* 14px Gap Spacer ensuring latest message stays 12-16px above input */}
+              <Box ref={messagesEndRef} sx={{ height: 14, width: "100%", flexShrink: 0 }} />
             </Box>
 
             {/* Composer Section - Fixed above mobile keyboard with Visual Viewport & Safe Area support */}
