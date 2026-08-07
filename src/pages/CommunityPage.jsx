@@ -80,7 +80,7 @@ export default function CommunityPage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [hasClickedInput, setHasClickedInput] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [composerHeight, setComposerHeight] = useState(64);
+  const [composerHeight, setComposerHeight] = useState(115);
 
   const inputRef = useRef(null);
   const messageListRef = useRef(null);
@@ -92,31 +92,27 @@ export default function CommunityPage() {
   const prevScrollHeightRef = useRef(0);
 
   // ── scrollToBottom ────────────────────────────────────────────────────────
-  // Robust scroll function using scrollHeight + 10000 to cleanly scroll the
-  // container all the way down, leaving the dynamic spacer underneath.
+  // Robust scroll function that guarantees message list is scrolled to the absolute bottom
   const scrollToBottom = useCallback((smooth = false) => {
     if (messageListRef.current) {
       const el = messageListRef.current;
-      el.scrollTo({
-        top: el.scrollHeight + 10000,
-        behavior: smooth ? "smooth" : "auto",
-      });
+      el.scrollTop = el.scrollHeight + 100000;
     }
   }, []);
 
-  // Whenever keyboard opens/closes, keywords appear, or composer resizes,
-  // automatically scroll so the latest message sits directly above the input!
+  // Whenever keyboard opens/closes, keywords appear, composer resizes, or messages change,
+  // ensure the newest message is perfectly positioned above the input with a generous clearance!
   useEffect(() => {
     scrollToBottom(false);
-    const t1 = setTimeout(() => scrollToBottom(false), 60);
-    const t2 = setTimeout(() => scrollToBottom(false), 180);
-    const t3 = setTimeout(() => scrollToBottom(false), 320);
+    const t1 = setTimeout(() => scrollToBottom(false), 40);
+    const t2 = setTimeout(() => scrollToBottom(false), 120);
+    const t3 = setTimeout(() => scrollToBottom(false), 260);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
     };
-  }, [keyboardHeight, composerHeight, hasClickedInput, scrollToBottom]);
+  }, [keyboardHeight, composerHeight, hasClickedInput, messages.length, scrollToBottom]);
 
   // Monitor global display name change
   useEffect(() => {
@@ -1211,11 +1207,12 @@ export default function CommunityPage() {
                 </Box>
               )}
 
-              {/* Dynamic Spacer: Guarantees latest message is positioned exactly 20-24px above the composer & keywords at all times */}
+              {/* Dynamic Spacer: Guarantees latest message is positioned with generous breathing room above composer & keywords */}
               <Box
                 ref={messagesEndRef}
                 sx={{
-                  height: isMobile ? `${Math.max(composerHeight, 64) + keyboardHeight + 24}px` : "20px",
+                  height: isMobile ? `${Math.max(composerHeight, 115) + keyboardHeight + 36}px` : "24px",
+                  minHeight: isMobile ? `${Math.max(composerHeight, 115) + keyboardHeight + 36}px` : "24px",
                   width: "100%",
                   flexShrink: 0,
                   transition: "height 0.12s ease-out",
