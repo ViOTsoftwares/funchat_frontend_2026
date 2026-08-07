@@ -258,22 +258,36 @@ export default function CommunityPage() {
     const handleGroupMessage = (msg) => {
       if (msg.groupId === groupId) {
         setMessages((prev) => {
-          // Reconcile optimistic local messages with incoming server broadcast
-          const isDuplicate = prev.some(
-            (m) =>
-              (m.id && m.id === msg.id) ||
-              (m.isOptimistic &&
-                m.from === msg.from &&
-                m.text === msg.text &&
-                Math.abs(new Date(m.createdAt || Date.now()) - new Date(msg.createdAt || Date.now())) < 6000)
-          );
+          const myId = socketRef.current?.id || socketId || localStorage.getItem("funchat_user_id");
+          const isSenderMe =
+            msg.from === myId ||
+            msg.userId === myId ||
+            (msg.senderName && msg.senderName === profileName);
+
+          // Check if message is already in list (optimistic local message or duplicate broadcast)
+          const isDuplicate = prev.some((m) => {
+            if (msg.id && m.id === msg.id) return true;
+            if (msg.tempId && (m.tempId === msg.tempId || m.id === msg.tempId)) return true;
+            if (m.tempId && (m.tempId === msg.id || m.tempId === msg.tempId)) return true;
+            if (isSenderMe && m.isOptimistic) {
+              const diff = Math.abs(
+                new Date(m.createdAt || Date.now()).getTime() - new Date(msg.createdAt || Date.now()).getTime()
+              );
+              if (diff < 20000 && (m.text === msg.text || !msg.text)) return true;
+            }
+            return false;
+          });
 
           if (isDuplicate) {
-            return prev.map((m) =>
-              m.isOptimistic && m.from === msg.from && m.text === msg.text
-                ? { ...msg, isOptimistic: false }
-                : m
-            );
+            return prev.map((m) => {
+              const isMatch =
+                (msg.id && m.id === msg.id) ||
+                (msg.tempId && (m.tempId === msg.tempId || m.id === msg.tempId)) ||
+                (m.tempId && (m.tempId === msg.id || m.tempId === msg.tempId)) ||
+                (isSenderMe && m.isOptimistic && (m.text === msg.text || !msg.text));
+
+              return isMatch ? { ...msg, isOptimistic: false } : m;
+            });
           }
 
           return [...prev, msg];
@@ -1138,9 +1152,13 @@ export default function CommunityPage() {
               ) : (
                 messages.map((msg, i) => {
                   const senderId = msg.from || msg.userId;
+                  const myCurrentId = socketRef.current?.id || socketId || localStorage.getItem("funchat_user_id");
                   const isMe =
+                    senderId === myCurrentId ||
                     senderId === socketId ||
-                    senderId === localStorage.getItem("funchat_user_id");
+                    senderId === socketRef.current?.id ||
+                    senderId === localStorage.getItem("funchat_user_id") ||
+                    (Boolean(msg.senderName) && msg.senderName === profileName);
                   const isSystem = msg.from === "system";
 
                   return (
