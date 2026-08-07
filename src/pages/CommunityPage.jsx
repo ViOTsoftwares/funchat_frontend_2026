@@ -107,25 +107,38 @@ export default function CommunityPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Visual Viewport tracking — auto-scroll when keyboard opens/closes
-  // (Layout is handled by 100dvh CSS, no JS custom properties needed)
+  // ── Visual Viewport tracking ─────────────────────────────────────────────
+  // Sets --vvh on <html> = the REAL visible height after keyboard opens.
+  // Android Chrome and iOS Safari both support this. This is the fix for
+  // the keyboard hiding the input — the container height tracks the keyboard.
   useEffect(() => {
-    const handleVisualViewportChange = () => {
-      // Instant-then-staggered scroll to keep latest message visible above the composer
+    const setVvh = () => {
+      const vv = window.visualViewport;
+      const h = vv ? vv.height : window.innerHeight;
+      document.documentElement.style.setProperty("--vvh", `${h}px`);
+      // Auto-scroll to keep latest message above the composer
       setTimeout(() => scrollToBottom(false), 0);
-      setTimeout(() => scrollToBottom(false), 100);
-      setTimeout(() => scrollToBottom(false), 250);
+      setTimeout(() => scrollToBottom(false), 150);
+      setTimeout(() => scrollToBottom(false), 300);
     };
 
+    // Set immediately on mount
+    setVvh();
+
     if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", handleVisualViewportChange);
-      window.visualViewport.addEventListener("scroll", handleVisualViewportChange);
+      window.visualViewport.addEventListener("resize", setVvh);
+      window.visualViewport.addEventListener("scroll", setVvh);
+    } else {
+      // Fallback: listen on window resize
+      window.addEventListener("resize", setVvh);
     }
 
     return () => {
       if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", handleVisualViewportChange);
-        window.visualViewport.removeEventListener("scroll", handleVisualViewportChange);
+        window.visualViewport.removeEventListener("resize", setVvh);
+        window.visualViewport.removeEventListener("scroll", setVvh);
+      } else {
+        window.removeEventListener("resize", setVvh);
       }
     };
   }, []);

@@ -49,18 +49,17 @@ body.fullscreen-lock {
 }
 
 /* ── MOBILE COMMUNITY CHAT: WhatsApp/ChatGPT-style layout ──────────────────
-   On mobile, the ENTIRE page is a flex column that is exactly 100dvh tall.
-   "dvh" = dynamic viewport height → it SHRINKS when the soft keyboard opens.
-   This means the flex column squashes: message list scrolls up, composer
-   stays pinned at the bottom without any JS or position:fixed hacks.
+   We use --vvh (Visual Viewport Height), a CSS custom property set by JS
+   from window.visualViewport.height. This is the ONLY reliable way to get
+   the true visible height on Android Chrome + iOS Safari when the keyboard
+   is open. 100dvh and 100vh BOTH fail on Android Chrome (they include
+   the area behind the keyboard).
    ─────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .app-fullscreen-chat {
-    /* Use dvh so the whole shell shrinks exactly when the keyboard appears */
-    height: 100dvh !important;
-    height: 100vh !important;  /* fallback for older Android */
+    /* --vvh is updated live by visualViewport.resize listener in CommunityPage.jsx */
+    height: var(--vvh, 100vh) !important;
     padding-top: 86px !important;
-    /* No bottom offset — let dvh do the work */
     bottom: unset !important;
   }
 }
