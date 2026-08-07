@@ -105,6 +105,50 @@ export default function CommunityPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Visual Viewport tracking for smooth mobile keyboard handling (iOS & Android)
+  useEffect(() => {
+    const handleVisualViewportChange = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+
+      const vh = vv.height;
+      const offsetTop = vv.offsetTop;
+      const kbHeight = Math.max(0, window.innerHeight - vh - offsetTop);
+
+      document.documentElement.style.setProperty("--visual-vh", `${vh}px`);
+      document.documentElement.style.setProperty("--keyboard-offset", `${kbHeight}px`);
+      document.documentElement.style.setProperty("--visual-viewport-offset-y", `${offsetTop}px`);
+
+      // Prevent page drift behind active keyboard
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+
+      // Ensure message list smoothly scrolls to bottom when keyboard resizes/opens
+      setTimeout(() => {
+        if (messageListRef.current) {
+          messageListRef.current.scrollTo({
+            top: messageListRef.current.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      }, 60);
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleVisualViewportChange);
+      window.visualViewport.addEventListener("scroll", handleVisualViewportChange);
+      handleVisualViewportChange();
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleVisualViewportChange);
+        window.visualViewport.removeEventListener("scroll", handleVisualViewportChange);
+      }
+    };
+  }, []);
+
   // Track composer height so message list can pad-bottom to avoid content hiding
   useEffect(() => {
     if (!composerRef.current) return;
@@ -887,7 +931,10 @@ export default function CommunityPage() {
             <Box
               className="comp-message-list"
               ref={messageListRef}
-              style={isMobile ? { paddingBottom: composerHeight + 8 } : undefined}
+              style={isMobile ? {
+                paddingBottom: `calc(${composerHeight + 16}px + env(safe-area-inset-bottom, 0px))`,
+                WebkitOverflowScrolling: "touch",
+              } : undefined}
             >
               {/* Load More Spinner */}
               {hasMore && (
@@ -1015,7 +1062,7 @@ export default function CommunityPage() {
               )}
             </Box>
 
-            {/* Composer Section - WhatsApp style: fixed to bottom on mobile */}
+            {/* Composer Section - Fixed above mobile keyboard with Visual Viewport & Safe Area support */}
             <Box
               className="comp-composer"
               ref={composerRef}
@@ -1023,13 +1070,17 @@ export default function CommunityPage() {
                 position: "fixed",
                 left: 0,
                 right: 0,
-                bottom: "var(--keyboard-offset, 0px)",
+                bottom: "calc(var(--keyboard-offset, 0px) + env(safe-area-inset-bottom, 0px))",
                 zIndex: 200,
-                background: "rgba(255,255,255,0.98)",
+                background: "rgba(255, 255, 255, 0.98)",
                 backdropFilter: "blur(16px)",
-                borderTop: "1px solid rgba(226,232,240,0.8)",
-                padding: "8px 12px 10px",
-                boxShadow: "0 -2px 12px rgba(15,23,42,0.07)",
+                borderTop: "1px solid rgba(226, 232, 240, 0.8)",
+                paddingTop: "8px",
+                paddingLeft: "12px",
+                paddingRight: "12px",
+                paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
+                boxShadow: "0 -2px 12px rgba(15, 23, 42, 0.07)",
+                transition: "bottom 0.15s cubic-bezier(0.2, 0, 0, 1)",
               } : undefined}
             >
               {hasClickedInput && (
@@ -1078,8 +1129,15 @@ export default function CommunityPage() {
                         handleSend();
                       }
                     }}
-                    onClick={() => setHasClickedInput(true)}
-                    onFocus={() => setHasClickedInput(true)}
+                    onClick={() => {
+                      setHasClickedInput(true);
+                      setTimeout(scrollToBottom, 100);
+                    }}
+                    onFocus={() => {
+                      setHasClickedInput(true);
+                      setTimeout(scrollToBottom, 150);
+                      setTimeout(scrollToBottom, 350);
+                    }}
                     suppressContentEditableWarning
                   />
 
