@@ -80,7 +80,7 @@ export default function CommunityPage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [hasClickedInput, setHasClickedInput] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [composerHeight, setComposerHeight] = useState(115);
+  const [composerHeight, setComposerHeight] = useState(140);
 
   const inputRef = useRef(null);
   const messageListRef = useRef(null);
@@ -94,23 +94,29 @@ export default function CommunityPage() {
   // ── scrollToBottom ────────────────────────────────────────────────────────
   // Robust scroll function that guarantees message list is scrolled to the absolute bottom
   const scrollToBottom = useCallback((smooth = false) => {
-    if (messageListRef.current) {
-      const el = messageListRef.current;
-      el.scrollTop = el.scrollHeight + 100000;
-    }
+    const doScroll = () => {
+      if (messageListRef.current) {
+        const el = messageListRef.current;
+        el.scrollTop = el.scrollHeight + 100000;
+      }
+    };
+    doScroll();
+    requestAnimationFrame(doScroll);
   }, []);
 
   // Whenever keyboard opens/closes, keywords appear, composer resizes, or messages change,
   // ensure the newest message is perfectly positioned above the input with a generous clearance!
   useEffect(() => {
     scrollToBottom(false);
-    const t1 = setTimeout(() => scrollToBottom(false), 40);
-    const t2 = setTimeout(() => scrollToBottom(false), 120);
-    const t3 = setTimeout(() => scrollToBottom(false), 260);
+    const t1 = setTimeout(() => scrollToBottom(false), 30);
+    const t2 = setTimeout(() => scrollToBottom(false), 100);
+    const t3 = setTimeout(() => scrollToBottom(false), 220);
+    const t4 = setTimeout(() => scrollToBottom(false), 400);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
+      clearTimeout(t4);
     };
   }, [keyboardHeight, composerHeight, hasClickedInput, messages.length, scrollToBottom]);
 
@@ -168,15 +174,23 @@ export default function CommunityPage() {
     };
   }, [scrollToBottom]);
 
-  // Track composer height (for desktop padding-bottom on message list)
+  // Track composer height dynamically (including quick keywords chips bar)
   useEffect(() => {
     if (!composerRef.current) return;
-    const observer = new ResizeObserver(() => {
-      if (composerRef.current) setComposerHeight(composerRef.current.offsetHeight);
-    });
+    const update = () => {
+      if (composerRef.current) {
+        const h = composerRef.current.offsetHeight || composerRef.current.getBoundingClientRect().height;
+        if (h > 0) {
+          setComposerHeight(h);
+          scrollToBottom(false);
+        }
+      }
+    };
+    update();
+    const observer = new ResizeObserver(update);
     observer.observe(composerRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [hasClickedInput, scrollToBottom]);
 
   // Fetch categories from backend
   useEffect(() => {
@@ -1211,11 +1225,10 @@ export default function CommunityPage() {
               <Box
                 ref={messagesEndRef}
                 sx={{
-                  height: isMobile ? `${Math.max(composerHeight, 115) + keyboardHeight + 36}px` : "24px",
-                  minHeight: isMobile ? `${Math.max(composerHeight, 115) + keyboardHeight + 36}px` : "24px",
+                  height: isMobile ? `${Math.max(composerHeight, 140) + keyboardHeight + 52}px` : "32px",
+                  minHeight: isMobile ? `${Math.max(composerHeight, 140) + keyboardHeight + 52}px` : "32px",
                   width: "100%",
                   flexShrink: 0,
-                  transition: "height 0.12s ease-out",
                 }}
               />
             </Box>
@@ -1230,8 +1243,7 @@ export default function CommunityPage() {
                 right: 0,
                 bottom: `${keyboardHeight}px`,
                 zIndex: 1200,
-                paddingBottom: keyboardHeight > 0 ? "8px" : "calc(10px + env(safe-area-inset-bottom, 0px))",
-                transition: "bottom 0.12s ease-out",
+                paddingBottom: keyboardHeight > 0 ? "8px" : "calc(12px + env(safe-area-inset-bottom, 0px))",
               } : undefined}
             >
               {hasClickedInput && (
