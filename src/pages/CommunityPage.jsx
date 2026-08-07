@@ -92,20 +92,31 @@ export default function CommunityPage() {
   const prevScrollHeightRef = useRef(0);
 
   // ── scrollToBottom ────────────────────────────────────────────────────────
-  // Single authoritative scroll function. Uses both container.scrollTo and
-  // messagesEndRef.scrollIntoView for maximum cross-device compatibility.
-  const scrollToBottom = useCallback((smooth = true) => {
+  // Robust scroll function using scrollHeight + 10000 to cleanly scroll the
+  // container all the way down, leaving the dynamic spacer underneath.
+  const scrollToBottom = useCallback((smooth = false) => {
     if (messageListRef.current) {
       const el = messageListRef.current;
-      el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
-    }
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
+      el.scrollTo({
+        top: el.scrollHeight + 10000,
         behavior: smooth ? "smooth" : "auto",
-        block: "end",
       });
     }
   }, []);
+
+  // Whenever keyboard opens/closes, keywords appear, or composer resizes,
+  // automatically scroll so the latest message sits directly above the input!
+  useEffect(() => {
+    scrollToBottom(false);
+    const t1 = setTimeout(() => scrollToBottom(false), 60);
+    const t2 = setTimeout(() => scrollToBottom(false), 180);
+    const t3 = setTimeout(() => scrollToBottom(false), 320);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [keyboardHeight, composerHeight, hasClickedInput, scrollToBottom]);
 
   // Monitor global display name change
   useEffect(() => {
@@ -236,7 +247,28 @@ export default function CommunityPage() {
     // Listen to messages
     const handleGroupMessage = (msg) => {
       if (msg.groupId === groupId) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          // Reconcile optimistic local messages with incoming server broadcast
+          const isDuplicate = prev.some(
+            (m) =>
+              (m.id && m.id === msg.id) ||
+              (m.isOptimistic &&
+                m.from === msg.from &&
+                m.text === msg.text &&
+                Math.abs(new Date(m.createdAt || Date.now()) - new Date(msg.createdAt || Date.now())) < 6000)
+          );
+
+          if (isDuplicate) {
+            return prev.map((m) =>
+              m.isOptimistic && m.from === msg.from && m.text === msg.text
+                ? { ...msg, isOptimistic: false }
+                : m
+            );
+          }
+
+          return [...prev, msg];
+        });
+
         // Only auto-scroll if user is near the bottom (WhatsApp smart-scroll behavior)
         if (isAtBottomRef.current) {
           scrollToBottom(false);
@@ -520,15 +552,24 @@ export default function CommunityPage() {
       .join("");
 
     const firstEmoji = parts.find((part) => part.type === "emoji")?.url;
+    const currentUserId = socketId || localStorage.getItem("funchat_user_id");
     const messagePayload = {
+      id: `temp_${Date.now()}_${Math.random()}`,
       groupId,
       parts,
       text: textContent,
-      senderName: profileName
+      from: currentUserId,
+      userId: currentUserId,
+      senderName: profileName,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true,
     };
     if (firstEmoji && textContent.trim() === "") {
       messagePayload.emojiUrl = firstEmoji;
     }
+
+    // Instant local UI update — 0ms delay!
+    setMessages((prev) => [...prev, messagePayload]);
 
     socketRef.current.emit("group_message", messagePayload);
     emitTyping(false);
@@ -971,9 +1012,6 @@ export default function CommunityPage() {
             <Box
               className="comp-message-list"
               ref={messageListRef}
-              style={isMobile ? {
-                paddingBottom: `${composerHeight + keyboardHeight + 16}px`,
-              } : undefined}
             >
               {/* Load More Spinner */}
               {hasMore && (
@@ -1173,8 +1211,16 @@ export default function CommunityPage() {
                 </Box>
               )}
 
-              {/* 14px Gap Spacer ensuring latest message stays 12-16px above input */}
-              <Box ref={messagesEndRef} sx={{ height: 14, width: "100%", flexShrink: 0 }} />
+              {/* Dynamic Spacer: Guarantees latest message is positioned exactly 20-24px above the composer & keywords at all times */}
+              <Box
+                ref={messagesEndRef}
+                sx={{
+                  height: isMobile ? `${Math.max(composerHeight, 64) + keyboardHeight + 24}px` : "20px",
+                  width: "100%",
+                  flexShrink: 0,
+                  transition: "height 0.12s ease-out",
+                }}
+              />
             </Box>
 
             {/* Composer Section — Fixed above keyboard on mobile */}
