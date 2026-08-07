@@ -680,6 +680,7 @@ export default function CommunityPage() {
                 justifyContent: "center",
                 boxShadow: "0 4px 12px rgba(99,102,241,.25)",
               }}
+              onClick={() => navigate("/")}
             >
               <GroupsIcon />
             </Box>
