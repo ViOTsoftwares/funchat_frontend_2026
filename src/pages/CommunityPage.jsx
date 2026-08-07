@@ -87,7 +87,24 @@ export default function CommunityPage() {
   const typingTimeoutRef = useRef(null);
   const composerRef = useRef(null);
   const prevScrollHeightRef = useRef(0);
+  const isAtBottomRef = useRef(true);  // tracks whether user is near bottom
   const [composerHeight, setComposerHeight] = useState(64);
+
+  // ── scrollToBottom ────────────────────────────────────────────────────────
+  // Single authoritative scroll function. Uses both container.scrollTo and
+  // messagesEndRef.scrollIntoView for maximum cross-device compatibility.
+  const scrollToBottom = useCallback((smooth = true) => {
+    const el = messageListRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+    }
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: smooth ? "smooth" : "auto",
+        block: "end",
+      });
+    }
+  }, []);
 
   // Monitor global display name change
   useEffect(() => {
@@ -100,56 +117,63 @@ export default function CommunityPage() {
 
   // Handle window resize for mobile check
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ── Visual Viewport tracking ─────────────────────────────────────────────
-  // Sets --vvh on <html> = the REAL visible height after keyboard opens.
-  // Android Chrome and iOS Safari both support this. This is the fix for
-  // the keyboard hiding the input — the container height tracks the keyboard.
+  // ── Visual Viewport / keyboard tracking ───────────────────────────────────
+  // --vvh = real visible height, updated live by visualViewport API.
+  // This is the ONLY cross-device approach that works on:
+  //   • Android Chrome (100vh/100dvh do NOT shrink when keyboard opens)
+  //   • iOS Safari (both work but visualViewport is more reliable)
+  //   • Desktop (visualViewport.height === window.innerHeight, no change)
   useEffect(() => {
-    const setVvh = () => {
+    const onViewportChange = () => {
       const vv = window.visualViewport;
       const h = vv ? vv.height : window.innerHeight;
+      const offsetTop = vv ? vv.offsetTop : 0;
+
+      // Update CSS custom property — this shrinks the flex container
       document.documentElement.style.setProperty("--vvh", `${h}px`);
-      // Auto-scroll to keep latest message above the composer
-      setTimeout(() => scrollToBottom(false), 0);
-      setTimeout(() => scrollToBottom(false), 150);
+
+      // Prevent iOS Safari page drift when keyboard opens
+      if (offsetTop > 0) {
+        window.scrollTo(0, 0);
+      }
+
+      // Auto-scroll: keep newest message just above the input
+      // Use 3 staggered frames to cover the keyboard animation duration
+      scrollToBottom(false);
+      setTimeout(() => scrollToBottom(false), 100);
       setTimeout(() => scrollToBottom(false), 300);
     };
 
-    // Set immediately on mount
-    setVvh();
+    // Run immediately to set the initial --vvh
+    onViewportChange();
 
     if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", setVvh);
-      window.visualViewport.addEventListener("scroll", setVvh);
+      window.visualViewport.addEventListener("resize", onViewportChange);
+      window.visualViewport.addEventListener("scroll", onViewportChange);
     } else {
-      // Fallback: listen on window resize
-      window.addEventListener("resize", setVvh);
+      window.addEventListener("resize", onViewportChange);
     }
 
     return () => {
       if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", setVvh);
-        window.visualViewport.removeEventListener("scroll", setVvh);
+        window.visualViewport.removeEventListener("resize", onViewportChange);
+        window.visualViewport.removeEventListener("scroll", onViewportChange);
       } else {
-        window.removeEventListener("resize", setVvh);
+        window.removeEventListener("resize", onViewportChange);
       }
     };
-  }, []);
+  }, [scrollToBottom]);
 
-  // Track composer height so message list can pad-bottom to avoid content hiding
+  // Track composer height (for desktop padding-bottom on message list)
   useEffect(() => {
     if (!composerRef.current) return;
     const observer = new ResizeObserver(() => {
-      if (composerRef.current) {
-        setComposerHeight(composerRef.current.offsetHeight);
-      }
+      if (composerRef.current) setComposerHeight(composerRef.current.offsetHeight);
     });
     observer.observe(composerRef.current);
     return () => observer.disconnect();
@@ -221,10 +245,11 @@ export default function CommunityPage() {
     const handleGroupMessage = (msg) => {
       if (msg.groupId === groupId) {
         setMessages((prev) => [...prev, msg]);
-        // Scroll to bottom for new real-time messages immediately & on next frame
-        scrollToBottom(true);
-        setTimeout(() => scrollToBottom(true), 50);
-        setTimeout(() => scrollToBottom(true), 150);
+        // Only auto-scroll if user is near the bottom (WhatsApp smart-scroll behavior)
+        if (isAtBottomRef.current) {
+          scrollToBottom(false);
+          setTimeout(() => scrollToBottom(false), 80);
+        }
       }
     };
 
@@ -291,37 +316,24 @@ export default function CommunityPage() {
     return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
-  // Scroll to bottom on typing indicator change
+  // Auto-scroll whenever messages change — but only if user is near the bottom
+  // (Smart scroll: preserves position when user intentionally scrolls up)
   useEffect(() => {
-    if (typingUsers && Object.keys(typingUsers).length > 0) {
+    if (messages.length === 0) return;
+    if (isAtBottomRef.current) {
+      // Use 'auto' for instant snap (like WhatsApp), 'smooth' for new messages
+      scrollToBottom(false);
+      const t = setTimeout(() => scrollToBottom(false), 80);
+      return () => clearTimeout(t);
+    }
+  }, [messages.length, scrollToBottom]);
+
+  // Scroll to bottom on typing indicator appearing
+  useEffect(() => {
+    if (typingUsers && Object.keys(typingUsers).length > 0 && isAtBottomRef.current) {
       scrollToBottom(true);
     }
-  }, [typingUsers]);
-
-  const scrollToBottom = (smooth = true) => {
-    if (messageListRef.current) {
-      const el = messageListRef.current;
-      el.scrollTo({
-        top: el.scrollHeight,
-        behavior: smooth ? "smooth" : "auto",
-      });
-    }
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: smooth ? "smooth" : "auto",
-        block: "end",
-      });
-    }
-  };
-
-  // Auto-scroll to bottom whenever messages array changes (new message sent or received)
-  useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom(true);
-      const timer = setTimeout(() => scrollToBottom(true), 60);
-      return () => clearTimeout(timer);
-    }
-  }, [messages.length]);
+  }, [typingUsers, scrollToBottom]);
 
   // Load more (older) messages when scrolled to top
   const handleLoadMore = useCallback(() => {
@@ -352,19 +364,24 @@ export default function CommunityPage() {
     });
   }, [socketRef, status, groupId, loadingMore, hasMore, skipCount]);
 
-  // Attach scroll listener on the message list to detect reaching the top
+  // Unified scroll listener: detects scroll-to-top (load more) + tracks isAtBottom
   useEffect(() => {
     const el = messageListRef.current;
     if (!el) return;
 
-    const handleScroll = () => {
+    const onScroll = () => {
+      // Track bottom proximity for smart auto-scroll
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      isAtBottomRef.current = distanceFromBottom < 80;
+
+      // Load older messages when scrolled to top
       if (el.scrollTop <= 60 && hasMore && !loadingMore) {
         handleLoadMore();
       }
     };
 
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleScroll);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
   }, [hasMore, loadingMore, handleLoadMore]);
 
   const handleCategoryToggle = (catId) => {
@@ -533,14 +550,13 @@ export default function CommunityPage() {
       inputRef.current.innerHTML = "";
     }
 
-    scrollToBottom(true);
-    setTimeout(() => scrollToBottom(true), 60);
-    setTimeout(() => scrollToBottom(true), 150);
+    // Force-snap to bottom when user sends (always, regardless of scroll position)
+    isAtBottomRef.current = true;
+    scrollToBottom(false);
+    setTimeout(() => scrollToBottom(false), 80);
 
     setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
+      if (inputRef.current) inputRef.current.focus();
     }, 50);
   };
 
