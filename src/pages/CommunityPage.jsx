@@ -258,22 +258,31 @@ export default function CommunityPage() {
     const handleGroupMessage = (msg) => {
       if (msg.groupId === groupId) {
         setMessages((prev) => {
-          const myId = socketRef.current?.id || socketId || localStorage.getItem("funchat_user_id");
+          const myUserId = localStorage.getItem("funchat_user_id") || "";
+          const mySockId = socketRef.current?.id || socketId || "";
+          const currentProfileName = profileName || localStorage.getItem("funchat_profile_name") || "";
+
           const isSenderMe =
-            msg.from === myId ||
-            msg.userId === myId ||
-            (msg.senderName && msg.senderName === profileName);
+            (myUserId && (msg.from === myUserId || msg.userId === myUserId)) ||
+            (mySockId && (msg.from === mySockId || msg.userId === mySockId)) ||
+            (msg.senderName && currentProfileName && msg.senderName.toLowerCase() === currentProfileName.toLowerCase());
 
           // Check if message is already in list (optimistic local message or duplicate broadcast)
           const isDuplicate = prev.some((m) => {
             if (msg.id && m.id === msg.id) return true;
             if (msg.tempId && (m.tempId === msg.tempId || m.id === msg.tempId)) return true;
             if (m.tempId && (m.tempId === msg.id || m.tempId === msg.tempId)) return true;
-            if (isSenderMe && m.isOptimistic) {
+            if (m.isOptimistic) {
               const diff = Math.abs(
                 new Date(m.createdAt || Date.now()).getTime() - new Date(msg.createdAt || Date.now()).getTime()
               );
-              if (diff < 20000 && (m.text === msg.text || !msg.text)) return true;
+              if (diff < 30000 && (m.text === msg.text || !msg.text)) return true;
+            }
+            if (m.text === msg.text && isSenderMe) {
+              const diff = Math.abs(
+                new Date(m.createdAt || Date.now()).getTime() - new Date(msg.createdAt || Date.now()).getTime()
+              );
+              if (diff < 15000) return true;
             }
             return false;
           });
@@ -284,7 +293,8 @@ export default function CommunityPage() {
                 (msg.id && m.id === msg.id) ||
                 (msg.tempId && (m.tempId === msg.tempId || m.id === msg.tempId)) ||
                 (m.tempId && (m.tempId === msg.id || m.tempId === msg.tempId)) ||
-                (isSenderMe && m.isOptimistic && (m.text === msg.text || !msg.text));
+                (m.isOptimistic && (m.text === msg.text || !msg.text)) ||
+                (isSenderMe && m.text === msg.text);
 
               return isMatch ? { ...msg, isOptimistic: false } : m;
             });
@@ -575,16 +585,16 @@ export default function CommunityPage() {
       .map((part) => part.text)
       .join("");
 
-    const firstEmoji = parts.find((part) => part.type === "emoji")?.url;
-    const currentUserId = socketId || localStorage.getItem("funchat_user_id");
+    const currentUserId = localStorage.getItem("funchat_user_id") || socketRef.current?.id || socketId || "";
+    const currentSenderName = profileName || localStorage.getItem("funchat_profile_name") || "Stranger";
     const messagePayload = {
-      id: `temp_${Date.now()}_${Math.random()}`,
+      id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       groupId,
       parts,
       text: textContent,
       from: currentUserId,
       userId: currentUserId,
-      senderName: profileName,
+      senderName: currentSenderName,
       createdAt: new Date().toISOString(),
       isOptimistic: true,
     };
@@ -1153,12 +1163,13 @@ export default function CommunityPage() {
                 messages.map((msg, i) => {
                   const senderId = msg.from || msg.userId;
                   const myCurrentId = socketRef.current?.id || socketId || localStorage.getItem("funchat_user_id");
+                  const currentProfileName = profileName || localStorage.getItem("funchat_profile_name") || "";
                   const isMe =
-                    senderId === myCurrentId ||
+                    (myCurrentId && (senderId === myCurrentId || msg.userId === myCurrentId)) ||
                     senderId === socketId ||
                     senderId === socketRef.current?.id ||
                     senderId === localStorage.getItem("funchat_user_id") ||
-                    (Boolean(msg.senderName) && msg.senderName === profileName);
+                    (Boolean(msg.senderName) && Boolean(currentProfileName) && msg.senderName.trim().toLowerCase() === currentProfileName.trim().toLowerCase());
                   const isSystem = msg.from === "system";
 
                   return (
@@ -1264,7 +1275,7 @@ export default function CommunityPage() {
                 paddingBottom: keyboardHeight > 0 ? "8px" : "calc(12px + env(safe-area-inset-bottom, 0px))",
               } : undefined}
             >
-              {hasClickedInput && (
+              {/* {hasClickedInput && (
                 <Box className="comp-keywords-container">
                   {QUICK_KEYWORDS.map((kw, idx) => (
                     <Box
@@ -1276,7 +1287,7 @@ export default function CommunityPage() {
                     </Box>
                   ))}
                 </Box>
-              )}
+              )} */}
               <Stack direction="row" spacing={1.5} alignItems="flex-end">
                 <Box className="comp-input-capsule">
                   <Box sx={{ position: "relative" }} className="comp-emoji-wrapper">
