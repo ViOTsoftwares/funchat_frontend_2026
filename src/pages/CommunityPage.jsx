@@ -39,19 +39,6 @@ import { useSocket } from "../hooks/useSocket.js";
 import { Picker } from "ms-3d-emoji-picker";
 import { ENV } from "../config/env.js";
 
-// Categories and Group Rooms Definition
-
-
-const QUICK_KEYWORDS = [
-  "Hello everyone! 👋",
-  "Hey! What's up?",
-  "Anyone here?",
-  "Awesome! 🔥",
-  "Haha indeed 😂",
-  "Help needed!",
-  "Great point!"
-];
-
 export default function CommunityPage() {
   const { groupId } = useParams();
   const navigate = useNavigate();
@@ -80,7 +67,7 @@ export default function CommunityPage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [hasClickedInput, setHasClickedInput] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [composerHeight, setComposerHeight] = useState(140);
+  const [composerHeight, setComposerHeight] = useState(64);
 
   const inputRef = useRef(null);
   const messageListRef = useRef(null);
@@ -449,35 +436,6 @@ export default function CommunityPage() {
     }));
   };
 
-  // Keyboard autocomplete helper
-  const handleKeywordClick = (keyword) => {
-    const container = inputRef.current;
-    if (!container) return;
-    container.focus();
-
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      container.appendChild(document.createTextNode(keyword));
-      container.appendChild(document.createTextNode(" "));
-    } else {
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      const textNode = document.createTextNode(keyword);
-      range.insertNode(textNode);
-      const space = document.createTextNode(" ");
-      range.setStartAfter(textNode);
-      range.insertNode(space);
-      range.setStartAfter(space);
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-    handleComposerInput();
-    scrollToBottom(true);
-    setTimeout(() => scrollToBottom(true), 60);
-    setTimeout(() => scrollToBottom(true), 150);
-  };
-
   // Typing event emissions
   const emitTyping = (isTyping) => {
     if (!socketRef.current || status !== "connected" || !groupId) return;
@@ -500,8 +458,14 @@ export default function CommunityPage() {
   const getComposerParts = () => {
     const container = inputRef.current;
     if (!container) return [];
-    const parts = [];
 
+    const emojiImgs = container.querySelectorAll("img.inline-emoji, img[data-emoji-url]");
+    if (emojiImgs.length === 0) {
+      const rawText = container.innerText || container.textContent || "";
+      return rawText.trim() ? [{ type: "text", text: rawText.trim() }] : [];
+    }
+
+    const parts = [];
     const walk = (node) => {
       if (node.nodeType === Node.TEXT_NODE) {
         if (node.textContent) {
@@ -509,20 +473,19 @@ export default function CommunityPage() {
         }
         return;
       }
-      if (node.nodeType !== Node.ELEMENT_NODE) return;
-      const el = node;
-      if (el.tagName === "IMG" && el.dataset.emojiUrl) {
-        parts.push({ type: "emoji", url: el.dataset.emojiUrl });
-        return;
-      }
-      if (el.tagName === "BR") {
-        parts.push({ type: "text", text: "\n" });
-        return;
-      }
-      const isBlock = ["DIV", "P"].includes(el.tagName);
-      el.childNodes.forEach((child) => walk(child));
-      if (isBlock) {
-        parts.push({ type: "text", text: "\n" });
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.tagName === "IMG") {
+          const url = node.getAttribute("data-emoji-url") || node.src;
+          if (url) {
+            parts.push({ type: "emoji", url });
+            return;
+          }
+        }
+        if (node.tagName === "BR") {
+          parts.push({ type: "text", text: "\n" });
+          return;
+        }
+        node.childNodes.forEach((child) => walk(child));
       }
     };
 
@@ -546,61 +509,47 @@ export default function CommunityPage() {
   };
 
   const handleSend = () => {
-    if (!socketRef.current || status !== "connected" || !groupId) return;
+    if (!socketRef.current || !groupId) return;
     if (cooldownRemaining > 0) return;
 
+    const container = inputRef.current;
+    if (!container) return;
+
+    const rawText = (container.innerText || container.textContent || "").trim();
     let parts = getComposerParts();
     const hasEmoji = parts.some((part) => part.type === "emoji");
-    let textContent = parts
-      .filter((part) => part.type === "text")
-      .map((part) => part.text)
-      .join("");
 
-    const trimmedText = textContent.trim();
-    if (!hasEmoji && trimmedText === "") return;
-
-    if (parts.length) {
-      parts = parts.map((part) =>
-        part.type === "text" ? { ...part, text: part.text.replace(/\s+/g, " ") } : part
-      );
-      let start = 0;
-      let end = parts.length - 1;
-      while (start <= end && parts[start].type === "text" && parts[start].text.trim() === "") {
-        start += 1;
-      }
-      while (end >= start && parts[end].type === "text" && parts[end].text.trim() === "") {
-        end -= 1;
-      }
-      parts = parts.slice(start, end + 1);
-      if (parts.length && parts[0].type === "text") {
-        parts[0].text = parts[0].text.replace(/^\s+/, "");
-      }
-      if (parts.length && parts[parts.length - 1].type === "text") {
-        parts[parts.length - 1].text = parts[parts.length - 1].text.replace(/\s+$/, "");
+    let textContent = "";
+    if (parts.length > 0) {
+      textContent = parts
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join("");
+    } else {
+      textContent = rawText;
+      if (rawText) {
+        parts = [{ type: "text", text: rawText }];
       }
     }
 
-    textContent = parts
-      .filter((part) => part.type === "text")
-      .map((part) => part.text)
-      .join("");
+    if (!hasEmoji && textContent.trim() === "" && rawText === "") return;
 
     const currentUserId = localStorage.getItem("funchat_user_id") || socketRef.current?.id || socketId || "";
     const currentSenderName = profileName || localStorage.getItem("funchat_profile_name") || "Stranger";
+    const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const messagePayload = {
-      id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: msgId,
+      tempId: msgId,
       groupId,
-      parts,
-      text: textContent,
+      parts: parts.length > 0 ? parts : [{ type: "text", text: textContent || rawText }],
+      text: textContent || rawText,
       from: currentUserId,
       userId: currentUserId,
       senderName: currentSenderName,
       createdAt: new Date().toISOString(),
       isOptimistic: true,
     };
-    if (firstEmoji && textContent.trim() === "") {
-      messagePayload.emojiUrl = firstEmoji;
-    }
 
     // Instant local UI update — 0ms delay!
     setMessages((prev) => [...prev, messagePayload]);
@@ -613,14 +562,12 @@ export default function CommunityPage() {
       setCooldownRemaining(messageDelay * 60);
     }
 
-    if (inputRef.current) {
-      inputRef.current.innerHTML = "";
-    }
+    container.innerHTML = "";
 
-    // Force-snap to bottom when user sends (always, regardless of scroll position)
+    // Force-snap to bottom when user sends
     isAtBottomRef.current = true;
     scrollToBottom(false);
-    setTimeout(() => scrollToBottom(false), 80);
+    setTimeout(() => scrollToBottom(false), 50);
 
     setTimeout(() => {
       if (inputRef.current) inputRef.current.focus();
@@ -1250,12 +1197,12 @@ export default function CommunityPage() {
                 </Box>
               )}
 
-              {/* Dynamic Spacer: Guarantees latest message is positioned with generous breathing room above composer & keywords */}
+              {/* Dynamic Spacer: Guarantees latest message is positioned with generous breathing room above composer */}
               <Box
                 ref={messagesEndRef}
                 sx={{
-                  height: isMobile ? `${Math.max(composerHeight, 140) + keyboardHeight + 52}px` : "32px",
-                  minHeight: isMobile ? `${Math.max(composerHeight, 140) + keyboardHeight + 52}px` : "32px",
+                  height: isMobile ? `${Math.max(composerHeight, 64) + keyboardHeight + 20}px` : "20px",
+                  minHeight: isMobile ? `${Math.max(composerHeight, 64) + keyboardHeight + 20}px` : "20px",
                   width: "100%",
                   flexShrink: 0,
                 }}
@@ -1275,19 +1222,6 @@ export default function CommunityPage() {
                 paddingBottom: keyboardHeight > 0 ? "8px" : "calc(12px + env(safe-area-inset-bottom, 0px))",
               } : undefined}
             >
-              {/* {hasClickedInput && (
-                <Box className="comp-keywords-container">
-                  {QUICK_KEYWORDS.map((kw, idx) => (
-                    <Box
-                      key={idx}
-                      className="comp-keyword-chip"
-                      onClick={() => handleKeywordClick(kw)}
-                    >
-                      {kw}
-                    </Box>
-                  ))}
-                </Box>
-              )} */}
               <Stack direction="row" spacing={1.5} alignItems="flex-end">
                 <Box className="comp-input-capsule">
                   <Box sx={{ position: "relative" }} className="comp-emoji-wrapper">
@@ -1316,9 +1250,11 @@ export default function CommunityPage() {
                     ref={inputRef}
                     onInput={handleComposerInput}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
+                      if (e.key === "Enter") {
+                        if (!isMobile && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSend();
+                        }
                       }
                     }}
                     onClick={() => {
@@ -1355,9 +1291,15 @@ export default function CommunityPage() {
                     <IconButton
                       id="comp-send-btn"
                       className="comp-send-btn"
-                      onClick={handleSend}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSend();
+                      }}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        handleSend();
+                      }}
                       disabled={cooldownRemaining > 0}
-                      onMouseDown={(e) => e.preventDefault()}
                     >
                       <SendRoundedIcon fontSize="small" />
                     </IconButton>
