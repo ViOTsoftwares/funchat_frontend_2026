@@ -67,7 +67,7 @@ export default function CommunityPage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [hasClickedInput, setHasClickedInput] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [composerHeight, setComposerHeight] = useState(64);
+  const [composerHeight, setComposerHeight] = useState(76);
 
   const inputRef = useRef(null);
   const messageListRef = useRef(null);
@@ -79,7 +79,7 @@ export default function CommunityPage() {
   const prevScrollHeightRef = useRef(0);
 
   // ── scrollToBottom ────────────────────────────────────────────────────────
-  // Robust scroll function that guarantees message list is scrolled to the absolute bottom
+  // Robust multi-frame scroll function guaranteeing latest message is completely visible
   const scrollToBottom = useCallback((smooth = false) => {
     const doScroll = () => {
       if (messageListRef.current) {
@@ -89,23 +89,26 @@ export default function CommunityPage() {
     };
     doScroll();
     requestAnimationFrame(doScroll);
+    setTimeout(doScroll, 20);
+    setTimeout(doScroll, 80);
+    setTimeout(doScroll, 180);
   }, []);
 
-  // Whenever keyboard opens/closes, keywords appear, composer resizes, or messages change,
+  // Whenever keyboard opens/closes, composer resizes, or messages change,
   // ensure the newest message is perfectly positioned above the input with a generous clearance!
   useEffect(() => {
     scrollToBottom(false);
     const t1 = setTimeout(() => scrollToBottom(false), 30);
-    const t2 = setTimeout(() => scrollToBottom(false), 100);
-    const t3 = setTimeout(() => scrollToBottom(false), 220);
-    const t4 = setTimeout(() => scrollToBottom(false), 400);
+    const t2 = setTimeout(() => scrollToBottom(false), 120);
+    const t3 = setTimeout(() => scrollToBottom(false), 260);
+    const t4 = setTimeout(() => scrollToBottom(false), 450);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
     };
-  }, [keyboardHeight, composerHeight, hasClickedInput, messages.length, scrollToBottom]);
+  }, [keyboardHeight, composerHeight, messages.length, scrollToBottom]);
 
   // Monitor global display name change
   useEffect(() => {
@@ -1201,8 +1204,8 @@ export default function CommunityPage() {
               <Box
                 ref={messagesEndRef}
                 sx={{
-                  height: isMobile ? `${Math.max(composerHeight, 64) + keyboardHeight + 20}px` : "20px",
-                  minHeight: isMobile ? `${Math.max(composerHeight, 64) + keyboardHeight + 20}px` : "20px",
+                  height: isMobile ? `${Math.max(composerHeight, 76) + keyboardHeight + 48}px` : "32px",
+                  minHeight: isMobile ? `${Math.max(composerHeight, 76) + keyboardHeight + 48}px` : "32px",
                   width: "100%",
                   flexShrink: 0,
                 }}
