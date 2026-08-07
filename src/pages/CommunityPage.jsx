@@ -33,6 +33,7 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import CircleIcon from "@mui/icons-material/Circle";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 import { useSocket } from "../hooks/useSocket.js";
 import { Picker } from "ms-3d-emoji-picker";
@@ -550,83 +551,58 @@ export default function CommunityPage() {
   return (
     <Box className="comp-container">
 
-      {/* ── MOBILE TOP HEADER (shown only on mobile) ── */}
-      <Box className="comp-mobile-header">
-        {groupId && activeGroup ? (
-          /* ── Chat view: back + group info ── */
-          <>
-            {/* Left: back + avatar + info */}
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
-              <IconButton
-                onClick={handleBackToSidebar}
-                size="small"
-                className="comp-mhdr-back-btn"
-              >
-                <ArrowBackIcon sx={{ fontSize: 18 }} />
-              </IconButton>
+      {/* ── MOBILE TOP CHAT HEADER (shown on mobile when inside an active group chat) ── */}
+      {groupId && activeGroup && (
+        <Box className="comp-mobile-header">
+          {/* Left: back + avatar + info */}
+          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+            <IconButton
+              onClick={handleBackToSidebar}
+              size="small"
+              className="comp-mhdr-back-btn"
+            >
+              <ArrowBackIcon sx={{ fontSize: 18 }} />
+            </IconButton>
 
-              {/* Group avatar */}
-              <Box className="comp-mhdr-avatar">
-                <Box
-                  component="img"
-                  src={`${ENV.IMAGE_URL}/logos/${activeGroup.categoryImage}`}
-                  alt={activeGroup.name}
-                  sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </Box>
+            {/* Group avatar */}
+            <Box className="comp-mhdr-avatar">
+              <Box
+                component="img"
+                src={`${ENV.IMAGE_URL}/logos/${activeGroup.categoryImage}`}
+                alt={activeGroup.name}
+                sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </Box>
 
-              {/* Group name + category */}
-              <Box sx={{ minWidth: 0 }}>
-                <Typography className="comp-mhdr-title">
-                  # {activeGroup.name}
-                </Typography>
-                <Stack direction="row" spacing={0.75} alignItems="center">
-                  <Typography className="comp-mhdr-subtitle">
-                    {activeGroup.categoryName}
-                  </Typography>
-                </Stack>
-              </Box>
-            </Stack>
+            {/* Group name + description */}
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography className="comp-mhdr-title">
+                # {activeGroup.name}
+              </Typography>
+              <Typography className="comp-mhdr-subtitle">
+                {activeGroup.description || activeGroup.categoryName}
+              </Typography>
+            </Box>
+          </Stack>
 
-            {/* Right: live pill */}
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-              <Box className={`comp-mhdr-live-pill ${status === "connected" ? "live" : "offline"}`}>
-                <Box className="comp-mhdr-live-dot" />
-                <Typography className="comp-mhdr-live-text">
-                  {status === "connected" ? "Live" : "..."}
-                </Typography>
-              </Box>
-            </Stack>
-          </>
-        ) : (
-          /* ── Sidebar view: brand ── */
-          <>
-            {/* Left: logo + brand */}
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              {/* Logo badge */}
-              <Box className="comp-mhdr-brand-icon">
-                <GroupsIcon sx={{ fontSize: 20 }} />
-              </Box>
-              <Box>
-                <Typography className="comp-mhdr-brand-title">
-                  Communities
-                </Typography>
-                <Typography className="comp-mhdr-brand-sub">
-                  Real-time group chats
-                </Typography>
-              </Box>
-            </Stack>
+          {/* Right: timing pill + live pill */}
+          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flexShrink: 0, ml: 1 }}>
+            <Box className="comp-mhdr-timing-pill">
+              <AccessTimeIcon sx={{ fontSize: 13, color: "#6366f1" }} />
+              <Typography className="comp-mhdr-timing-text">
+                {activeGroup.chat_timing || "24/7"}
+              </Typography>
+            </Box>
 
-            {/* Right: live status */}
             <Box className={`comp-mhdr-live-pill ${status === "connected" ? "live" : "offline"}`}>
               <Box className="comp-mhdr-live-dot" />
               <Typography className="comp-mhdr-live-text">
-                {status === "connected" ? "Live" : "Connecting"}
+                {status === "connected" ? "Live" : "..."}
               </Typography>
             </Box>
-          </>
-        )}
-      </Box>
+          </Stack>
+        </Box>
+      )}
 
       {/* ── SIDEBAR PANEL ── */}
       <Box

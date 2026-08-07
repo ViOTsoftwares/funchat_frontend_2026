@@ -2647,12 +2647,149 @@ body.fullscreen-lock {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
 }
 
+/* Default: Hide mobile header on desktop screens */
+.comp-mobile-header {
+  display: none;
+}
+
 /* ── Community Mobile Layout ── */
 @media (max-width: 768px) {
 
-  /* AppBar handles all navigation — hide the custom community header */
+  /* Mobile Header */
   .comp-mobile-header {
-    display: none !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #ffffff;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    flex-shrink: 0;
+    z-index: 10;
+    min-height: 56px;
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+
+  .comp-mhdr-back-btn {
+    color: #64748b !important;
+    padding: 6px !important;
+    margin-left: -6px !important;
+  }
+
+  .comp-mhdr-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #e0f2fe, #eef2ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+  }
+
+  .comp-mhdr-title {
+    font-weight: 800 !important;
+    font-size: 14.5px !important;
+    color: #0f172a !important;
+    line-height: 1.2 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.2px;
+  }
+
+  .comp-mhdr-subtitle {
+    font-size: 11px !important;
+    color: #64748b !important;
+    line-height: 1.2 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    margin-top: 1px;
+  }
+
+  .comp-mhdr-brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6366f1, #3b82f6);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+  }
+
+  .comp-mhdr-brand-title {
+    font-weight: 800 !important;
+    font-size: 15px !important;
+    color: #0f172a !important;
+    line-height: 1.2 !important;
+  }
+
+  .comp-mhdr-brand-sub {
+    font-size: 11px !important;
+    color: #64748b !important;
+    line-height: 1.2 !important;
+  }
+
+  .comp-mhdr-timing-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #eef2ff;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    color: #6366f1;
+  }
+
+  .comp-mhdr-timing-text {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #6366f1 !important;
+    line-height: 1 !important;
+  }
+
+  .comp-mhdr-live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #059669;
+    transition: all 0.2s ease;
+  }
+
+  .comp-mhdr-live-pill.offline {
+    background: #fef2f2;
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #dc2626;
+  }
+
+  .comp-mhdr-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  }
+
+  .comp-mhdr-live-pill.offline .comp-mhdr-live-dot {
+    background-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  }
+
+  .comp-mhdr-live-text {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: inherit !important;
+    line-height: 1 !important;
   }
 
   .comp-sidebar-hidden-mobile {
@@ -2703,11 +2840,9 @@ body.fullscreen-lock {
     overflow: hidden !important;
   }
 
-  /* Restore the chat header — shows back arrow + group info on mobile */
+  /* Hide inner chat header on mobile since top mobile header handles it */
   .comp-chat-header {
-    display: flex !important;
-    padding: 8px 14px !important;
-    flex-shrink: 0 !important;
+    display: none !important;
   }
 
   /* Message list */
