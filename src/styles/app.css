@@ -34,33 +34,22 @@ body.fullscreen-lock {
   }
 }
 
-/* Desktop: normal fixed-position shell with header padding */
+/* Fixed full-screen shell on all screen sizes */
 .app-fullscreen-chat {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  height: 100% !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
   padding-top: 90px !important;
 }
 
-/* ── MOBILE COMMUNITY CHAT: WhatsApp/ChatGPT-style layout ──────────────────
-   We use --vvh (Visual Viewport Height), a CSS custom property set by JS
-   from window.visualViewport.height. This is the ONLY reliable way to get
-   the true visible height on Android Chrome + iOS Safari when the keyboard
-   is open. 100dvh and 100vh BOTH fail on Android Chrome (they include
-   the area behind the keyboard).
-   ─────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .app-fullscreen-chat {
-    /* --vvh is updated live by visualViewport.resize listener in CommunityPage.jsx */
-    height: var(--vvh, 100vh) !important;
     padding-top: 86px !important;
-    bottom: unset !important;
   }
 }
 
@@ -107,7 +96,7 @@ body.fullscreen-lock {
 @media (max-width: 768px) {
   .app-fullscreen-chat > .MuiContainer-root {
     flex: 1 !important;
-    height: 0 !important;            /* let flex-basis + flex:1 do the sizing */
+    height: 0 !important;
     min-height: 0 !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
@@ -2866,38 +2855,36 @@ body.fullscreen-lock {
     display: none !important;
   }
 
-  /* ── MESSAGE LIST ──────────────────────────────────────────────────────────
-     Takes all remaining space. Scrolls internally. NO padding-bottom hacks.
-     The messagesEndRef spacer (14px Box) inside creates the gap above input. */
+  /* ── MESSAGE LIST ─────────────────────────────────────────────────────────
+     Takes all remaining space. Scrolls internally.
+     padding-bottom is set via JS inline style = composerHeight + keyboardHeight + 16px
+     This ensures the last message is always visible above the fixed composer. */
   .comp-message-list {
     flex: 1 1 0% !important;
     min-height: 0 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior-y: contain !important;
-    padding: 12px 12px 0 !important;
+    padding: 12px 12px 0 12px !important;
     box-sizing: border-box !important;
-    /* No transition needed — the flex container shrinks, not this element */
   }
 
-  /* ── COMPOSER ──────────────────────────────────────────────────────────────
-     NEVER position:fixed. Just a normal flex item that stays at the bottom.
-     When the keyboard opens, dvh shrinks → the flex column squashes upward →
-     the message list scrolls → the composer is automatically just above the kb.
-     Safe area padding for iPhone notches. */
+  /* ── COMPOSER (FIXED ABOVE KEYBOARD) ─────────────────────────────────────
+     position: fixed; left: 0; right: 0; bottom: 0
+     Dynamic bottom and padding-bottom are controlled by React inline styles based on keyboard height. */
   .comp-composer {
-    flex-shrink: 0 !important;
-    position: relative !important;   /* override any JS inline position:fixed */
-    left: unset !important;
-    right: unset !important;
-    bottom: unset !important;
-    z-index: 10 !important;
-    padding: 8px 12px env(safe-area-inset-bottom, 10px) !important;
-    background: rgba(255, 255, 255, 0.98) !important;
-    backdrop-filter: blur(16px) !important;
-    border-top: 1px solid rgba(226, 232, 240, 0.8) !important;
-    box-shadow: 0 -2px 12px rgba(15, 23, 42, 0.07) !important;
-    transition: none !important;   /* no animation needed with dvh approach */
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    padding: 8px 12px 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.10);
+    transition: bottom 0.12s ease-out;
   }
 }
 

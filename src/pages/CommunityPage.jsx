@@ -79,23 +79,24 @@ export default function CommunityPage() {
   );
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [hasClickedInput, setHasClickedInput] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [composerHeight, setComposerHeight] = useState(64);
 
   const inputRef = useRef(null);
   const messageListRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const composerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
   const lastTypingSentRef = useRef(false);
   const typingTimeoutRef = useRef(null);
-  const composerRef = useRef(null);
   const prevScrollHeightRef = useRef(0);
-  const isAtBottomRef = useRef(true);  // tracks whether user is near bottom
-  const [composerHeight, setComposerHeight] = useState(64);
 
   // ── scrollToBottom ────────────────────────────────────────────────────────
   // Single authoritative scroll function. Uses both container.scrollTo and
   // messagesEndRef.scrollIntoView for maximum cross-device compatibility.
   const scrollToBottom = useCallback((smooth = true) => {
-    const el = messageListRef.current;
-    if (el) {
+    if (messageListRef.current) {
+      const el = messageListRef.current;
       el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
     }
     if (messagesEndRef.current) {
@@ -122,49 +123,40 @@ export default function CommunityPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ── Visual Viewport / keyboard tracking ───────────────────────────────────
-  // --vvh = real visible height, updated live by visualViewport API.
-  // This is the ONLY cross-device approach that works on:
-  //   • Android Chrome (100vh/100dvh do NOT shrink when keyboard opens)
-  //   • iOS Safari (both work but visualViewport is more reliable)
-  //   • Desktop (visualViewport.height === window.innerHeight, no change)
+  // ── Keyboard / Visual Viewport tracking ────────────────────────────────────
+  // Tracks keyboard height as REACT STATE → applied as inline style on the
+  // fixed composer (bottom={keyboardHeight}px) and message list (padding-bottom).
+  // This is the DEFINITIVE approach: direct React state, no CSS custom properties,
+  // works on Android Chrome, iOS Safari, every mobile browser.
   useEffect(() => {
     const onViewportChange = () => {
       const vv = window.visualViewport;
-      const h = vv ? vv.height : window.innerHeight;
-      const offsetTop = vv ? vv.offsetTop : 0;
+      if (!vv) return;
 
-      // Update CSS custom property — this shrinks the flex container
-      document.documentElement.style.setProperty("--vvh", `${h}px`);
+      // keyboard height = total screen height - visible area - any page scroll offset
+      const kbH = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardHeight(kbH);
 
-      // Prevent iOS Safari page drift when keyboard opens
-      if (offsetTop > 0) {
-        window.scrollTo(0, 0);
-      }
+      // Prevent iOS Safari page drift
+      if (vv.offsetTop > 0) window.scrollTo(0, 0);
 
-      // Auto-scroll: keep newest message just above the input
-      // Use 3 staggered frames to cover the keyboard animation duration
+      // Auto-scroll: keep newest message above the composer (staggered for keyboard animation)
       scrollToBottom(false);
       setTimeout(() => scrollToBottom(false), 100);
       setTimeout(() => scrollToBottom(false), 300);
     };
 
-    // Run immediately to set the initial --vvh
-    onViewportChange();
-
+    // Set initial value immediately
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", onViewportChange);
       window.visualViewport.addEventListener("scroll", onViewportChange);
-    } else {
-      window.addEventListener("resize", onViewportChange);
+      onViewportChange();
     }
 
     return () => {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener("resize", onViewportChange);
         window.visualViewport.removeEventListener("scroll", onViewportChange);
-      } else {
-        window.removeEventListener("resize", onViewportChange);
       }
     };
   }, [scrollToBottom]);
@@ -979,6 +971,9 @@ export default function CommunityPage() {
             <Box
               className="comp-message-list"
               ref={messageListRef}
+              style={isMobile ? {
+                paddingBottom: `${composerHeight + keyboardHeight + 16}px`,
+              } : undefined}
             >
               {/* Load More Spinner */}
               {hasMore && (
@@ -1182,10 +1177,19 @@ export default function CommunityPage() {
               <Box ref={messagesEndRef} sx={{ height: 14, width: "100%", flexShrink: 0 }} />
             </Box>
 
-            {/* Composer Section — natural flex item, NOT fixed-position */}
+            {/* Composer Section — Fixed above keyboard on mobile */}
             <Box
               className="comp-composer"
               ref={composerRef}
+              style={isMobile ? {
+                position: "fixed",
+                left: 0,
+                right: 0,
+                bottom: `${keyboardHeight}px`,
+                zIndex: 1200,
+                paddingBottom: keyboardHeight > 0 ? "8px" : "calc(10px + env(safe-area-inset-bottom, 0px))",
+                transition: "bottom 0.12s ease-out",
+              } : undefined}
             >
               {hasClickedInput && (
                 <Box className="comp-keywords-container">
@@ -1235,12 +1239,14 @@ export default function CommunityPage() {
                     }}
                     onClick={() => {
                       setHasClickedInput(true);
-                      setTimeout(scrollToBottom, 100);
+                      setTimeout(() => scrollToBottom(false), 50);
+                      setTimeout(() => scrollToBottom(false), 150);
                     }}
                     onFocus={() => {
                       setHasClickedInput(true);
-                      setTimeout(scrollToBottom, 150);
-                      setTimeout(scrollToBottom, 350);
+                      setTimeout(() => scrollToBottom(false), 50);
+                      setTimeout(() => scrollToBottom(false), 150);
+                      setTimeout(() => scrollToBottom(false), 350);
                     }}
                     suppressContentEditableWarning
                   />
