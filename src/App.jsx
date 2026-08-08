@@ -21,6 +21,7 @@ import {
 import { theme } from "./theme.js";
 import Header from "./components/Header.jsx";
 import Footer from "./components/Footer.jsx";
+import SEO from "./components/SEO.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import VideoPage from "./pages/VideoPage.jsx";
@@ -634,6 +635,7 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <SEO />
       <Box className={`app ${location.pathname !== "/" ? "app-fullscreen-chat" : ""}`}>
         <Header status={status} />
 
