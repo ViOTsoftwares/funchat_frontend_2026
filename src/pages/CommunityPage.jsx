@@ -59,6 +59,11 @@ export default function CommunityPage() {
   const [searchText, setSearchText] = useState("");
   const [expandedCategories, setExpandedCategories] = useState({});
 
+  // Synchronize groupId with urlGroupId whenever route parameter changes
+  useEffect(() => {
+    setGroupId(urlGroupId || "");
+  }, [urlGroupId]);
+
   const [messageDelay, setMessageDelay] = useState(0);
   const [lastMessageSentAt, setLastMessageSentAt] = useState(0);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
@@ -725,10 +730,12 @@ export default function CommunityPage() {
   }).filter((cat) => cat.groups.length > 0);
 
   const handleGroupSelect = (gId) => {
+    setGroupId(gId);
     navigate(`/community/${gId}`);
   };
 
   const handleBackToSidebar = () => {
+    setGroupId("");
     navigate("/community");
   };
 
