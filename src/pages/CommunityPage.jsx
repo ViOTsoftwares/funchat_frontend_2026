@@ -246,58 +246,117 @@ export default function CommunityPage() {
 
     // Listen to messages
     const handleGroupMessage = (msg) => {
-      if (msg.groupId === groupId) {
-        setMessages((prev) => {
-          const myUserId = localStorage.getItem("funchat_user_id") || "";
-          const mySockId = socketRef.current?.id || socketId || "";
-          const currentProfileName = profileName || localStorage.getItem("funchat_profile_name") || "";
+      if (!msg) return;
+      if (msg.groupId && msg.groupId !== groupId) return;
 
-          const isSenderMe =
-            (myUserId && (msg.from === myUserId || msg.userId === myUserId)) ||
-            (mySockId && (msg.from === mySockId || msg.userId === mySockId)) ||
-            (msg.senderName && currentProfileName && msg.senderName.toLowerCase() === currentProfileName.toLowerCase());
+      setMessages((prev) => {
+        const myUserId = localStorage.getItem("funchat_user_id") || "";
+        const mySockId = socketRef.current?.id || socketId || "";
+        const currentProfileName = (profileName || localStorage.getItem("funchat_profile_name") || "").trim().toLowerCase();
 
-          // Check if message is already in list (optimistic local message or duplicate broadcast)
-          const isDuplicate = prev.some((m) => {
-            if (msg.id && m.id === msg.id) return true;
-            if (msg.tempId && (m.tempId === msg.tempId || m.id === msg.tempId)) return true;
-            if (m.tempId && (m.tempId === msg.id || m.tempId === msg.tempId)) return true;
-            if (m.isOptimistic) {
-              const diff = Math.abs(
-                new Date(m.createdAt || Date.now()).getTime() - new Date(msg.createdAt || Date.now()).getTime()
-              );
-              if (diff < 30000 && (m.text === msg.text || !msg.text)) return true;
-            }
-            if (m.text === msg.text && isSenderMe) {
-              const diff = Math.abs(
-                new Date(m.createdAt || Date.now()).getTime() - new Date(msg.createdAt || Date.now()).getTime()
-              );
-              if (diff < 15000) return true;
-            }
-            return false;
-          });
+        const isSenderMe =
+          (myUserId && (msg.from === myUserId || msg.userId === myUserId)) ||
+          (mySockId && (msg.from === mySockId || msg.userId === mySockId)) ||
+          (msg.senderName && currentProfileName && msg.senderName.trim().toLowerCase() === currentProfileName);
 
-          if (isDuplicate) {
-            return prev.map((m) => {
-              const isMatch =
-                (msg.id && m.id === msg.id) ||
-                (msg.tempId && (m.tempId === msg.tempId || m.id === msg.tempId)) ||
-                (m.tempId && (m.tempId === msg.id || m.tempId === msg.tempId)) ||
-                (m.isOptimistic && (m.text === msg.text || !msg.text)) ||
-                (isSenderMe && m.text === msg.text);
+        // Case 1: System messages (prevent duplicate join/leave broadcasts)
+        if (msg.from === "system") {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.from === "system" && lastMsg.text === msg.text) {
+            return prev;
+          }
+          return [...prev, msg];
+        }
 
-              return isMatch ? { ...msg, isOptimistic: false } : m;
-            });
+        // Case 2: Matching an optimistic message sent locally
+        let replacedOptimistic = false;
+        const withOptimisticReplaced = prev.map((m) => {
+          if (replacedOptimistic) return m;
+
+          // Direct ID / tempId match
+          const directIdMatch =
+            (msg.id && (m.id === msg.id || m.tempId === msg.id)) ||
+            (msg.tempId && (m.tempId === msg.tempId || m.id === msg.tempId));
+
+          if (directIdMatch) {
+            replacedOptimistic = true;
+            return {
+              ...msg,
+              id: msg.id || m.id || m.tempId,
+              tempId: m.tempId || m.id,
+              isOptimistic: false,
+            };
           }
 
-          return [...prev, msg];
+          // If this is an optimistic pending message from me
+          if (m.isOptimistic) {
+            const sameSender =
+              isSenderMe ||
+              m.from === msg.from ||
+              (m.senderName && msg.senderName && m.senderName.trim().toLowerCase() === msg.senderName.trim().toLowerCase());
+
+            const textMatches = (m.text || "").trim() === (msg.text || "").trim();
+            const emojiMatches = Boolean(m.emojiUrl && msg.emojiUrl && m.emojiUrl === msg.emojiUrl);
+            const contentMatches = textMatches || emojiMatches;
+
+            // Check if this optimistic message was created recently (within last 2 minutes on client clock)
+            const timeSinceCreation = Date.now() - (m.localTimestamp || (m.createdAt ? new Date(m.createdAt).getTime() : Date.now()));
+            const isRecent = isNaN(timeSinceCreation) || timeSinceCreation < 120000;
+
+            if (contentMatches && (sameSender || isRecent)) {
+              replacedOptimistic = true;
+              return {
+                ...msg,
+                id: msg.id || m.id || m.tempId,
+                tempId: m.tempId || m.id,
+                isOptimistic: false,
+                from: m.from || msg.from,
+                userId: m.userId || msg.userId || myUserId,
+                senderName: m.senderName || msg.senderName,
+              };
+            }
+          }
+
+          return m;
         });
 
-        // Only auto-scroll if user is near the bottom (WhatsApp smart-scroll behavior)
-        if (isAtBottomRef.current) {
-          scrollToBottom(false);
-          setTimeout(() => scrollToBottom(false), 80);
+        if (replacedOptimistic) {
+          return withOptimisticReplaced;
         }
+
+        // Case 3: Message is already in the list (duplicate server broadcast or already fetched)
+        const isDuplicate = prev.some((m) => {
+          if (msg.id && m.id === msg.id) return true;
+          if (msg.tempId && (m.tempId === msg.tempId || m.id === msg.tempId)) return true;
+          if (m.tempId && (m.tempId === msg.id || m.tempId === msg.tempId)) return true;
+          
+          if (
+            m.text === msg.text &&
+            (m.from === msg.from || m.senderName === msg.senderName) &&
+            m.createdAt === msg.createdAt
+          ) {
+            return true;
+          }
+          return false;
+        });
+
+        if (isDuplicate) {
+          return prev;
+        }
+
+        // Case 4: Brand new message from another user or confirmed message
+        const newMsg = {
+          ...msg,
+          id: msg.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          isOptimistic: false,
+        };
+        return [...prev, newMsg];
+      });
+
+      // Only auto-scroll if user is near the bottom (WhatsApp smart-scroll behavior)
+      if (isAtBottomRef.current) {
+        scrollToBottom(false);
+        setTimeout(() => scrollToBottom(false), 80);
       }
     };
 
@@ -552,6 +611,7 @@ export default function CommunityPage() {
       senderName: currentSenderName,
       createdAt: new Date().toISOString(),
       isOptimistic: true,
+      localTimestamp: Date.now(),
     };
 
     // Instant local UI update — 0ms delay!
@@ -1113,18 +1173,19 @@ export default function CommunityPage() {
                 messages.map((msg, i) => {
                   const senderId = msg.from || msg.userId;
                   const myCurrentId = socketRef.current?.id || socketId || localStorage.getItem("funchat_user_id");
-                  const currentProfileName = profileName || localStorage.getItem("funchat_profile_name") || "";
+                  const currentProfileName = (profileName || localStorage.getItem("funchat_profile_name") || "").trim().toLowerCase();
                   const isMe =
+                    Boolean(msg.isOptimistic) ||
                     (myCurrentId && (senderId === myCurrentId || msg.userId === myCurrentId)) ||
                     senderId === socketId ||
                     senderId === socketRef.current?.id ||
                     senderId === localStorage.getItem("funchat_user_id") ||
-                    (Boolean(msg.senderName) && Boolean(currentProfileName) && msg.senderName.trim().toLowerCase() === currentProfileName.trim().toLowerCase());
+                    (Boolean(msg.senderName) && Boolean(currentProfileName) && msg.senderName.trim().toLowerCase() === currentProfileName);
                   const isSystem = msg.from === "system";
 
                   return (
                     <Box
-                      key={i}
+                      key={msg.id || msg.tempId || `msg_${i}`}
                       sx={{
                         display: "flex",
                         justifyContent: isSystem
