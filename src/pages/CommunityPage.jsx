@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -47,6 +47,8 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useSocket } from "../hooks/useSocket.js";
 import { Picker } from "ms-3d-emoji-picker";
 import { ENV } from "../config/env.js";
+import AdBanner from "../components/AdBanner.jsx";
+import AdPopup from "../components/AdPopup.jsx";
 
 export default function CommunityPage() {
   const { groupId: urlGroupId } = useParams();
@@ -247,6 +249,38 @@ export default function CommunityPage() {
       setExpandedCategories((prev) => ({ ...prev, ...allExp }));
     }
   }, [searchText, categories]);
+
+  // Compute popular categories & rooms dynamically based on admin config
+  const popularItems = useMemo(() => {
+    const items = [];
+    categories.forEach((cat) => {
+      cat.groups?.forEach((g) => {
+        if (g.isPopular || cat.isPopular) {
+          items.push({
+            ...g,
+            categoryName: cat.name,
+            categoryImage: cat.image,
+          });
+        }
+      });
+    });
+
+    // Fallback to the first few groups if none are explicitly flagged yet
+    if (items.length === 0) {
+      categories.forEach((cat) => {
+        cat.groups?.forEach((g) => {
+          if (items.length < 5) {
+            items.push({
+              ...g,
+              categoryName: cat.name,
+              categoryImage: cat.image,
+            });
+          }
+        });
+      });
+    }
+    return items;
+  }, [categories]);
 
   // Find currently active group object
   let activeGroup = null;
@@ -979,6 +1013,11 @@ export default function CommunityPage() {
               </Accordion>
             ))
           )}
+
+          {/* Sponsored Ad Banner in Sidebar */}
+          <Box sx={{ p: 2, pt: 1 }}>
+            <AdBanner placement="community_sidebar" />
+          </Box>
         </Box>
       </Box>
 
@@ -1443,76 +1482,96 @@ export default function CommunityPage() {
                 Welcome to the group chat portal! Select a specialized room on the left side menu to join real-time conversations with other community members. Practice languages, discuss technology, debate Android vs iPhone, or talk gaming!
               </Typography>
 
-              <Box sx={{ width: "100%", textAlign: "left" }}>
-                <Typography variant="caption" sx={{ color: "#4f46e5", fontWeight: 800, letterSpacing: "1px", mb: 2, display: "block" }}>
-                  POPULAR CATEGORIES
-                </Typography>
-                <Stack spacing={1.5}>
-                  <Box
-                    onClick={() => handleGroupSelect("tech-ai")}
-                    sx={{
-                      p: 1.75,
-                      borderRadius: "12px",
-                      border: "1.5px solid rgba(226,232,240,0.8)",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1.5,
-                      background: "#fff",
-                      transition: "all 0.18s ease",
-                      "&:hover": {
-                        borderColor: "#4f46e5",
-                        transform: "translateX(4px)",
-                      },
-                    }}
-                  >
-                    <Typography sx={{ fontSize: 20 }}>💻</Typography>
-                    <Box>
-                      <Typography sx={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }}>
-                        # AI & Machine Learning
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: "#64748b" }}>
-                        Chat about LLMs, neural networks, and future tech.
-                      </Typography>
-                    </Box>
-                    <KeyboardDoubleArrowRightIcon sx={{ color: "#94a3b8", ml: "auto", fontSize: 18 }} />
-                  </Box>
+              {popularItems.length > 0 && (
+                <Box sx={{ width: "100%", textAlign: "left" }}>
+                  <Typography variant="caption" sx={{ color: "#4f46e5", fontWeight: 800, letterSpacing: "1px", mb: 2, display: "block" }}>
+                    POPULAR ROOMS & CATEGORIES
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    {popularItems.map((item) => (
+                      <Box
+                        key={item.id}
+                        onClick={() => handleGroupSelect(item.id)}
+                        sx={{
+                          p: 1.75,
+                          borderRadius: "12px",
+                          border: "1.5px solid rgba(226,232,240,0.8)",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1.5,
+                          background: "#fff",
+                          transition: "all 0.18s ease",
+                          "&:hover": {
+                            borderColor: "#4f46e5",
+                            transform: "translateX(4px)",
+                            boxShadow: "0 4px 12px rgba(79,70,229,0.08)",
+                          },
+                        }}
+                      >
+                        {item.categoryImage ? (
+                          <Box
+                            component="img"
+                            src={`${ENV.IMAGE_URL}/logos/${item.categoryImage}`}
+                            alt={item.categoryName}
+                            sx={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: "8px",
+                              objectFit: "cover",
+                              flexShrink: 0,
+                              border: "1px solid #e2e8f0",
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <Typography sx={{ fontSize: 22 }}>💬</Typography>
+                        )}
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }} noWrap>
+                              # {item.name}
+                            </Typography>
+                            {item.categoryName && (
+                              <Chip
+                                label={item.categoryName}
+                                size="small"
+                                sx={{
+                                  height: 18,
+                                  fontSize: "10px",
+                                  fontWeight: 700,
+                                  backgroundColor: "#eef2ff",
+                                  color: "#4f46e5",
+                                }}
+                              />
+                            )}
+                          </Box>
+                          {item.description && (
+                            <Typography variant="caption" sx={{ color: "#64748b", display: "block" }} noWrap>
+                              {item.description}
+                            </Typography>
+                          )}
+                        </Box>
+                        <KeyboardDoubleArrowRightIcon sx={{ color: "#94a3b8", ml: "auto", fontSize: 18, flexShrink: 0 }} />
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
 
-                  <Box
-                    onClick={() => handleGroupSelect("debates-ai-jobs")}
-                    sx={{
-                      p: 1.75,
-                      borderRadius: "12px",
-                      border: "1.5px solid rgba(226,232,240,0.8)",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1.5,
-                      background: "#fff",
-                      transition: "all 0.18s ease",
-                      "&:hover": {
-                        borderColor: "#4f46e5",
-                        transform: "translateX(4px)",
-                      },
-                    }}
-                  >
-                    <Typography sx={{ fontSize: 20 }}>⚖️</Typography>
-                    <Box>
-                      <Typography sx={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }}>
-                        # AI Will Replace Jobs?
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: "#64748b" }}>
-                        Automation impact, basic income, and future careers.
-                      </Typography>
-                    </Box>
-                    <KeyboardDoubleArrowRightIcon sx={{ color: "#94a3b8", ml: "auto", fontSize: 18 }} />
-                  </Box>
-                </Stack>
+              {/* Featured Sponsored Ad on Welcome Screen */}
+              <Box sx={{ mt: 3, width: "100%" }}>
+                <AdBanner placement="landing_featured" />
               </Box>
             </Paper>
           </Box>
         )}
       </Box>
+
+      {/* ── POPUP DIALOG AD ── */}
+      <AdPopup placement="popup_interstitial" delayMs={4500} />
     </Box>
   );
 }

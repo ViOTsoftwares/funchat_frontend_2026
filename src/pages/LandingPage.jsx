@@ -9,6 +9,8 @@ import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StarOutlinedIcon from "@mui/icons-material/StarOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import GroupsIcon from "@mui/icons-material/Groups";
+import AdBanner from "../components/AdBanner.jsx";
+import AdPopup from "../components/AdPopup.jsx";
 
 const STATS = [
   { value: "12K+", label: "Active Users" },
@@ -316,6 +318,14 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
           </Button>
         </Stack>
       </Box>
+
+      {/* ── SPONSOR / AD SECTION ── */}
+      <Box sx={{ maxWidth: 640, mx: "auto", my: 5, px: 2 }}>
+        <AdBanner placement="landing_featured" />
+      </Box>
+
+      {/* ── POPUP DIALOG AD ── */}
+      <AdPopup placement="popup_interstitial" delayMs={4000} />
     </Box>
   );
 }

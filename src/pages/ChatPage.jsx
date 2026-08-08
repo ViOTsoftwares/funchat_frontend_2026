@@ -22,6 +22,8 @@ import AttachFileIcon from "@mui/icons-material/AttachFile";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import { Picker } from "ms-3d-emoji-picker";
+import AdBanner from "../components/AdBanner.jsx";
+import AdPopup from "../components/AdPopup.jsx";
 
 export default function ChatPage({
   isMatched,
@@ -277,6 +279,11 @@ export default function ChatPage({
 
           <Divider sx={{ opacity: 0.06 }} />
 
+          {/* Sponsored Ad Banner in Chat Viewport */}
+          <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
+            <AdBanner placement="chat_top_banner" />
+          </Box>
+
           {/* Messages */}
           <Stack
             spacing={1}
@@ -455,6 +462,9 @@ export default function ChatPage({
         </Typography>
         <Typography className="cp-footer-text">{backendUrl}</Typography>
       </Box>
+
+      {/* ── POPUP DIALOG AD ── */}
+      <AdPopup placement="popup_interstitial" delayMs={4500} />
     </Box>
   );
 }

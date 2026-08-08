@@ -20,6 +20,8 @@ import MicIcon from "@mui/icons-material/Mic";
 import MicOffIcon from "@mui/icons-material/MicOff";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import VideocamOffIcon from "@mui/icons-material/VideocamOff";
+import AdBanner from "../components/AdBanner.jsx";
+import AdPopup from "../components/AdPopup.jsx";
 
 export default function VideoPage({
   isMatched,
@@ -281,6 +283,11 @@ export default function VideoPage({
         </Box>
       </Box>
 
+      {/* ── SPONSOR CARD FOR VIDEO CALL ── */}
+      <Box sx={{ maxWidth: 420, mx: "auto", my: 2, px: 2 }}>
+        <AdBanner placement="video_call_banner" />
+      </Box>
+
       {/* ── SESSION FOOTER ── */}
       <Box className="cp-footer">
         <Typography className="cp-footer-text">
@@ -288,6 +295,9 @@ export default function VideoPage({
         </Typography>
         <Typography className="cp-footer-text">{backendUrl}</Typography>
       </Box>
+
+      {/* ── POPUP DIALOG AD ── */}
+      <AdPopup placement="popup_interstitial" delayMs={5000} />
     </Box>
   );
 }
