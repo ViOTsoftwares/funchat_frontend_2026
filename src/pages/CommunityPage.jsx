@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -34,19 +34,29 @@ import AttachFileIcon from "@mui/icons-material/AttachFile";
 import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import CircleIcon from "@mui/icons-material/Circle";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import CloseIcon from "@mui/icons-material/Close";
+import DoneAllIcon from "@mui/icons-material/DoneAll";
+import TagIcon from "@mui/icons-material/Tag";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ShieldIcon from "@mui/icons-material/Shield";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 
 import { useSocket } from "../hooks/useSocket.js";
 import { Picker } from "ms-3d-emoji-picker";
 import { ENV } from "../config/env.js";
 
 export default function CommunityPage() {
-  const { groupId } = useParams();
+  const { groupId: urlGroupId } = useParams();
   const navigate = useNavigate();
   const { socketRef, status, socketId } = useSocket();
 
-  const [searchText, setSearchText] = useState("");
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [groupId, setGroupId] = useState(urlGroupId || "");
+  const [searchText, setSearchText] = useState("");
   const [expandedCategories, setExpandedCategories] = useState({});
 
   const [messageDelay, setMessageDelay] = useState(0);
@@ -77,6 +87,8 @@ export default function CommunityPage() {
   const lastTypingSentRef = useRef(false);
   const typingTimeoutRef = useRef(null);
   const prevScrollHeightRef = useRef(0);
+  const prevScrollTopRef = useRef(0);
+  const isLoadingOlderRef = useRef(false);
 
   // ── scrollToBottom ────────────────────────────────────────────────────────
   // Robust multi-frame scroll function guaranteeing latest message is completely visible
@@ -91,24 +103,34 @@ export default function CommunityPage() {
     requestAnimationFrame(doScroll);
     setTimeout(doScroll, 20);
     setTimeout(doScroll, 80);
-    setTimeout(doScroll, 180);
   }, []);
 
-  // Whenever keyboard opens/closes, composer resizes, or messages change,
-  // ensure the newest message is perfectly positioned above the input with a generous clearance!
+  // Synchronously anchor scroll position when older messages are prepended to the top
+  useLayoutEffect(() => {
+    if (isLoadingOlderRef.current && messageListRef.current) {
+      const el = messageListRef.current;
+      const newScrollHeight = el.scrollHeight;
+      const heightDelta = newScrollHeight - prevScrollHeightRef.current;
+      if (heightDelta > 0) {
+        el.scrollTop = prevScrollTopRef.current + heightDelta;
+      }
+      isLoadingOlderRef.current = false;
+    }
+  }, [messages]);
+
+  // Whenever keyboard opens/closes or composer resizes,
+  // ensure the newest message is positioned above input ONLY IF user is at the bottom!
   useEffect(() => {
-    scrollToBottom(false);
-    const t1 = setTimeout(() => scrollToBottom(false), 30);
-    const t2 = setTimeout(() => scrollToBottom(false), 120);
-    const t3 = setTimeout(() => scrollToBottom(false), 260);
-    const t4 = setTimeout(() => scrollToBottom(false), 450);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-    };
-  }, [keyboardHeight, composerHeight, messages.length, scrollToBottom]);
+    if (isAtBottomRef.current) {
+      scrollToBottom(false);
+      const t1 = setTimeout(() => scrollToBottom(false), 30);
+      const t2 = setTimeout(() => scrollToBottom(false), 120);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [keyboardHeight, composerHeight, scrollToBottom]);
 
   // Monitor global display name change
   useEffect(() => {
@@ -423,19 +445,19 @@ export default function CommunityPage() {
     return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
-  // Auto-scroll whenever messages change — but only if user is near the bottom
-  // (Smart scroll: preserves position when user intentionally scrolls up)
+  // Auto-scroll whenever new messages arrive — ONLY if user is already at the bottom
+  // and NOT when older messages are being loaded via pagination
   useEffect(() => {
     if (messages.length === 0) return;
+    if (isLoadingOlderRef.current) return;
     if (isAtBottomRef.current) {
-      // Use 'auto' for instant snap (like WhatsApp), 'smooth' for new messages
       scrollToBottom(false);
       const t = setTimeout(() => scrollToBottom(false), 80);
       return () => clearTimeout(t);
     }
   }, [messages.length, scrollToBottom]);
 
-  // Scroll to bottom on typing indicator appearing
+  // Scroll to bottom on typing indicator appearing only if user is at the bottom
   useEffect(() => {
     if (typingUsers && Object.keys(typingUsers).length > 0 && isAtBottomRef.current) {
       scrollToBottom(true);
@@ -444,28 +466,29 @@ export default function CommunityPage() {
 
   // Load more (older) messages when scrolled to top
   const handleLoadMore = useCallback(() => {
-    if (!socketRef.current || status !== "connected" || !groupId || loadingMore || !hasMore) return;
+    if (!socketRef.current || status !== "connected" || !groupId || loadingMore || !hasMore || isLoadingOlderRef.current) return;
 
     setLoadingMore(true);
-    // Snapshot current scroll height before prepending messages
+    isLoadingOlderRef.current = true;
+
+    // Snapshot current scroll height and scrollTop before prepending older messages
     if (messageListRef.current) {
       prevScrollHeightRef.current = messageListRef.current.scrollHeight;
+      prevScrollTopRef.current = messageListRef.current.scrollTop;
     }
 
     const nextSkip = skipCount + 10;
     socketRef.current.emit("load_more_messages", { groupId, skip: nextSkip }, (res) => {
-      if (res && res.ok) {
-        setMessages((prev) => [...(res.messages || []), ...prev]);
+      if (res && res.ok && Array.isArray(res.messages)) {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id || m.tempId).filter(Boolean));
+          const newOlder = res.messages.filter((m) => !existingIds.has(m.id || m.tempId));
+          return [...newOlder, ...prev];
+        });
         setHasMore(res.hasMore || false);
         setSkipCount(nextSkip);
-
-        // After DOM update: restore scroll so the user stays at the same position
-        setTimeout(() => {
-          if (messageListRef.current) {
-            const newScrollHeight = messageListRef.current.scrollHeight;
-            messageListRef.current.scrollTop = newScrollHeight - prevScrollHeightRef.current;
-          }
-        }, 0);
+      } else {
+        isLoadingOlderRef.current = false;
       }
       setLoadingMore(false);
     });
@@ -477,12 +500,12 @@ export default function CommunityPage() {
     if (!el) return;
 
     const onScroll = () => {
-      // Track bottom proximity for smart auto-scroll
+      // Track bottom proximity for smart auto-scroll (user is within 80px of bottom)
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       isAtBottomRef.current = distanceFromBottom < 80;
 
       // Load older messages when scrolled to top
-      if (el.scrollTop <= 60 && hasMore && !loadingMore) {
+      if (el.scrollTop <= 60 && hasMore && !loadingMore && !isLoadingOlderRef.current) {
         handleLoadMore();
       }
     };
