@@ -46,11 +46,20 @@ const FEATURES = [
   },
 ];
 
-export default function LandingPage({ status, onStartChat, onStartVideo }) {
+export default function LandingPage({
+  status,
+  onStartChat,
+  onStartVideo,
+  featureControl = {},
+}) {
   const navigate = useNavigate();
   const [profileName, setProfileName] = useState(
     localStorage.getItem("funchat_profile_name") ?? "Stranger"
   );
+
+  const chatStatus = featureControl.chat ?? "live";
+  const videoStatus = featureControl.video ?? "live";
+  const communityStatus = featureControl.community ?? "live";
 
   useEffect(() => {
     const handleNameChange = () => {
@@ -64,6 +73,52 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
     setProfileName(val);
     localStorage.setItem("funchat_profile_name", val);
     window.dispatchEvent(new Event("profileNameChanged"));
+  };
+
+  const getStatusBadge = (featStatus) => {
+    if (featStatus === "coming_soon") {
+      return (
+        <Box
+          component="span"
+          sx={{
+            ml: 1,
+            fontSize: "10px",
+            fontWeight: 800,
+            px: 1,
+            py: 0.25,
+            borderRadius: "6px",
+            background: "linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(236, 72, 153, 0.5))",
+            color: "#f5d0fe",
+            border: "1px solid rgba(236, 72, 153, 0.5)",
+            letterSpacing: "0.5px",
+          }}
+        >
+          SOON 🚀
+        </Box>
+      );
+    }
+    if (featStatus === "maintenance") {
+      return (
+        <Box
+          component="span"
+          sx={{
+            ml: 1,
+            fontSize: "10px",
+            fontWeight: 800,
+            px: 1,
+            py: 0.25,
+            borderRadius: "6px",
+            background: "rgba(245, 158, 11, 0.4)",
+            color: "#fde047",
+            border: "1px solid rgba(245, 158, 11, 0.6)",
+            letterSpacing: "0.5px",
+          }}
+        >
+          MAINT 🛠️
+        </Box>
+      );
+    }
+    return null;
   };
 
   return (
@@ -188,9 +243,19 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
             className="lp-btn-primary"
             startIcon={<ChatBubbleOutlineIcon />}
             onClick={onStartChat}
+            sx={{
+              ...(chatStatus === "coming_soon" && {
+                background: "linear-gradient(135deg, #8b5cf6, #ec4899) !important",
+              }),
+              ...(chatStatus === "maintenance" && {
+                background: "linear-gradient(135deg, #f59e0b, #d97706) !important",
+              }),
+            }}
           >
-            Start Text Chat
+            <span>Start Text Chat</span>
+            {getStatusBadge(chatStatus)}
           </Button>
+
           <Button
             id="lp-start-video-btn"
             size="large"
@@ -198,9 +263,21 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
             className="lp-btn-secondary"
             startIcon={<VideocamOutlinedIcon />}
             onClick={onStartVideo}
+            sx={{
+              ...(videoStatus === "coming_soon" && {
+                borderColor: "rgba(139, 92, 246, 0.6) !important",
+                color: "#c084fc !important",
+              }),
+              ...(videoStatus === "maintenance" && {
+                borderColor: "rgba(245, 158, 11, 0.6) !important",
+                color: "#fbbf24 !important",
+              }),
+            }}
           >
-            Start Video Chat
+            <span>Start Video Chat</span>
+            {getStatusBadge(videoStatus)}
           </Button>
+
           <Button
             id="lp-explore-communities-btn"
             size="large"
@@ -209,17 +286,28 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
             startIcon={<GroupsIcon />}
             onClick={() => navigate("/community")}
             sx={{
-              borderColor: "rgba(99, 102, 241, 0.4) !important",
-              color: "#4f46e5 !important",
+              borderColor:
+                communityStatus === "coming_soon"
+                  ? "rgba(139, 92, 246, 0.5) !important"
+                  : communityStatus === "maintenance"
+                  ? "rgba(245, 158, 11, 0.5) !important"
+                  : "rgba(99, 102, 241, 0.4) !important",
+              color:
+                communityStatus === "coming_soon"
+                  ? "#8b5cf6 !important"
+                  : communityStatus === "maintenance"
+                  ? "#d97706 !important"
+                  : "#4f46e5 !important",
               background: "rgba(255, 255, 255, 0.6) !important",
               "&:hover": {
                 background: "rgba(99, 102, 241, 0.07) !important",
                 borderColor: "#4f46e5 !important",
                 transform: "translateY(-2px) !important",
-              }
+              },
             }}
           >
-            Explore Communities
+            <span>Explore Communities</span>
+            {getStatusBadge(communityStatus)}
           </Button>
         </Stack>
 
@@ -284,9 +372,19 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
             className="lp-btn-primary"
             startIcon={<ChatBubbleOutlineIcon />}
             onClick={onStartChat}
+            sx={{
+              ...(chatStatus === "coming_soon" && {
+                background: "linear-gradient(135deg, #8b5cf6, #ec4899) !important",
+              }),
+              ...(chatStatus === "maintenance" && {
+                background: "linear-gradient(135deg, #f59e0b, #d97706) !important",
+              }),
+            }}
           >
-            Start Text Chat
+            <span>Start Text Chat</span>
+            {getStatusBadge(chatStatus)}
           </Button>
+
           <Button
             id="lp-bottom-video-btn"
             size="large"
@@ -294,9 +392,21 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
             className="lp-btn-secondary"
             startIcon={<VideocamOutlinedIcon />}
             onClick={onStartVideo}
+            sx={{
+              ...(videoStatus === "coming_soon" && {
+                borderColor: "rgba(139, 92, 246, 0.6) !important",
+                color: "#c084fc !important",
+              }),
+              ...(videoStatus === "maintenance" && {
+                borderColor: "rgba(245, 158, 11, 0.6) !important",
+                color: "#fbbf24 !important",
+              }),
+            }}
           >
-            Start Video Chat
+            <span>Start Video Chat</span>
+            {getStatusBadge(videoStatus)}
           </Button>
+
           <Button
             id="lp-bottom-explore-communities-btn"
             size="large"
@@ -305,16 +415,27 @@ export default function LandingPage({ status, onStartChat, onStartVideo }) {
             startIcon={<GroupsIcon />}
             onClick={() => navigate("/community")}
             sx={{
-              borderColor: "rgba(99, 102, 241, 0.35) !important",
-              color: "#4f46e5 !important",
+              borderColor:
+                communityStatus === "coming_soon"
+                  ? "rgba(139, 92, 246, 0.5) !important"
+                  : communityStatus === "maintenance"
+                  ? "rgba(245, 158, 11, 0.5) !important"
+                  : "rgba(99, 102, 241, 0.35) !important",
+              color:
+                communityStatus === "coming_soon"
+                  ? "#8b5cf6 !important"
+                  : communityStatus === "maintenance"
+                  ? "#d97706 !important"
+                  : "#4f46e5 !important",
               background: "rgba(255, 255, 255, 0.7) !important",
               "&:hover": {
                 background: "rgba(255, 255, 255, 0.95) !important",
                 borderColor: "#4f46e5 !important",
-              }
+              },
             }}
           >
-            Explore Communities
+            <span>Explore Communities</span>
+            {getStatusBadge(communityStatus)}
           </Button>
         </Stack>
       </Box>

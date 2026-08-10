@@ -26,10 +26,13 @@ import LandingPage from "./pages/LandingPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import VideoPage from "./pages/VideoPage.jsx";
 import CommunityPage from "./pages/CommunityPage.jsx";
+import CMSPage from "./pages/CMSPage.jsx";
+import FeatureStatusScreen from "./components/FeatureStatusScreen.jsx";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useSocket } from "./hooks/useSocket.js";
 import { useWebRTC } from "./hooks/useWebRTC.js";
+import { useFeatureControl } from "./hooks/useFeatureControl.js";
 import {
   addMessage,
   clearConversationId,
@@ -59,6 +62,7 @@ export default function App() {
   const partnerName = useSelector((state) => state.chat.partnerName);
 
   const { socketRef, status, socketId } = useSocket();
+  const { featureControl } = useFeatureControl(socketRef);
   const {
     pcRef,
     ensureLocalStream,
@@ -116,24 +120,34 @@ export default function App() {
     }
   }, []);
 
+  const isChatOrVideoOrCommunity =
+    location.pathname === "/chat" ||
+    location.pathname === "/video" ||
+    location.pathname.startsWith("/community");
+
+  const isCurrentFeatureLive = (() => {
+    if (location.pathname === "/chat") return (featureControl.chat ?? "live") === "live";
+    if (location.pathname === "/video") return (featureControl.video ?? "live") === "live";
+    if (location.pathname.startsWith("/community")) return (featureControl.community ?? "live") === "live";
+    return false;
+  })();
+
+  const isFullscreenChat = isChatOrVideoOrCommunity && isCurrentFeatureLive;
+
   useEffect(() => {
     const handleScroll = () => {
-      if (location.pathname === "/chat" || location.pathname === "/video" || location.pathname.startsWith("/community")) {
+      if (isFullscreenChat) {
         if (window.scrollY !== 0 || window.scrollX !== 0) {
           window.scrollTo(0, 0);
         }
       }
     };
 
-    // When the user taps an input the browser may scroll the document to bring
-    // it into view — this resets that scroll immediately so the fixed container
-    // stays perfectly aligned.
     const handleFocusIn = (e) => {
-      if (location.pathname !== "/chat" && location.pathname !== "/video" && !location.pathname.startsWith("/community")) return;
+      if (!isFullscreenChat) return;
       const tag = e.target?.tagName;
       const isEditable = e.target?.getAttribute("contenteditable") === "true";
       if (tag === "INPUT" || tag === "TEXTAREA" || isEditable) {
-        // Use requestAnimationFrame so the browser finishes its own scroll first
         requestAnimationFrame(() => {
           window.scrollTo(0, 0);
           document.body.scrollTop = 0;
@@ -142,7 +156,7 @@ export default function App() {
       }
     };
 
-    if (location.pathname === "/chat" || location.pathname === "/video" || location.pathname.startsWith("/community")) {
+    if (isFullscreenChat) {
       document.documentElement.classList.add("fullscreen-lock");
       document.body.classList.add("fullscreen-lock");
       window.addEventListener("scroll", handleScroll, { passive: true });
@@ -157,7 +171,7 @@ export default function App() {
       window.removeEventListener("scroll", handleScroll);
       document.removeEventListener("focusin", handleFocusIn);
     };
-  }, [location.pathname]);
+  }, [isFullscreenChat]);
 
   useEffect(() => {
     const socket = socketRef.current;
@@ -381,6 +395,12 @@ export default function App() {
   function handleJoin(nextMode = mode) {
     if (!socketRef.current) return;
     const resolvedMode = normalizeMode(nextMode);
+    
+    // If the feature is not live (coming_soon or maintenance), do not attempt matchmaking
+    if (featureControl[resolvedMode] && featureControl[resolvedMode] !== "live") {
+      return;
+    }
+
     if (resolvedMode !== mode) {
       dispatch(setMode(resolvedMode));
     }
@@ -408,7 +428,9 @@ export default function App() {
   function handleLandingStart(selectedMode) {
     dispatch(setMode(selectedMode));
     navigate(`/${selectedMode}`);
-    handleJoin(selectedMode);
+    if (featureControl[selectedMode] === "live") {
+      handleJoin(selectedMode);
+    }
   }
 
   function getComposerParts() {
@@ -636,8 +658,8 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <SEO />
-      <Box className={`app ${location.pathname !== "/" ? "app-fullscreen-chat" : ""}`}>
-        <Header status={status} />
+      <Box className={`app ${isFullscreenChat ? "app-fullscreen-chat" : ""}`}>
+        <Header status={status} featureControl={featureControl} />
 
         <Container maxWidth="lg" sx={{ pb: 4 }}>
           <Routes>
@@ -647,6 +669,7 @@ export default function App() {
                 <LandingPage
                   status={status}
                   isSearching={isSearching}
+                  featureControl={featureControl}
                   onStartChat={() => handleLandingStart("chat")}
                   onStartVideo={() => handleLandingStart("video")}
                 />
@@ -655,66 +678,107 @@ export default function App() {
             <Route
               path="/chat"
               element={
-                <ChatPage
-                  isMatched={isMatched}
-                  isSearching={isSearching}
-                  messages={messages}
-                  isPartnerTyping={isPartnerTyping}
-                  onJoin={handleJoin}
-                  onNext={handleNext}
-                  onClose={handleCloseChat}
-                  onReport={handleReport}
-                  emojiOpen={emojiOpen}
-                  onToggleEmoji={() => setEmojiOpen((v) => !v)}
-                  onEmojiSelect={handleEmojiSelect}
-                  inputRef={inputRef}
-                  onComposerInput={handleComposerInput}
-                  onSend={handleSend}
-                  backendUrl={ENV.API_URL}
-                  socketId={socketId}
-                  partnerName={partnerName}
-                />
+                featureControl.chat && featureControl.chat !== "live" ? (
+                  <FeatureStatusScreen
+                    feature="chat"
+                    status={featureControl.chat}
+                    featureControl={featureControl}
+                  />
+                ) : (
+                  <ChatPage
+                    isMatched={isMatched}
+                    isSearching={isSearching}
+                    messages={messages}
+                    isPartnerTyping={isPartnerTyping}
+                    onJoin={handleJoin}
+                    onNext={handleNext}
+                    onClose={handleCloseChat}
+                    onReport={handleReport}
+                    emojiOpen={emojiOpen}
+                    onToggleEmoji={() => setEmojiOpen((v) => !v)}
+                    onEmojiSelect={handleEmojiSelect}
+                    inputRef={inputRef}
+                    onComposerInput={handleComposerInput}
+                    onSend={handleSend}
+                    backendUrl={ENV.API_URL}
+                    socketId={socketId}
+                    partnerName={partnerName}
+                  />
+                )
               }
             />
             <Route
               path="/video"
               element={
-                <VideoPage
-                  isMatched={isMatched}
-                  isSearching={isSearching}
-                  localVideoRef={localVideoRef}
-                  remoteVideoRef={remoteVideoRef}
-                  onJoin={handleJoin}
-                  onNext={handleNext}
-                  onClose={handleCloseChat}
-                  onReport={handleReport}
-                  onStopVideo={() =>
-                    stopLocalVideo(localVideoRef, remoteVideoRef)
-                  }
-                  isMuted={isMuted}
-                  isVideoOff={isVideoOff}
-                  onToggleMute={toggleMute}
-                  onToggleVideo={toggleVideo}
-                  localStream={localStream}
-                  remoteStream={remoteStream}
-                  backendUrl={ENV.API_URL}
-                  socketId={socketId}
-                />
+                featureControl.video && featureControl.video !== "live" ? (
+                  <FeatureStatusScreen
+                    feature="video"
+                    status={featureControl.video}
+                    featureControl={featureControl}
+                  />
+                ) : (
+                  <VideoPage
+                    isMatched={isMatched}
+                    isSearching={isSearching}
+                    localVideoRef={localVideoRef}
+                    remoteVideoRef={remoteVideoRef}
+                    onJoin={handleJoin}
+                    onNext={handleNext}
+                    onClose={handleCloseChat}
+                    onReport={handleReport}
+                    onStopVideo={() =>
+                      stopLocalVideo(localVideoRef, remoteVideoRef)
+                    }
+                    isMuted={isMuted}
+                    isVideoOff={isVideoOff}
+                    onToggleMute={toggleMute}
+                    onToggleVideo={toggleVideo}
+                    localStream={localStream}
+                    remoteStream={remoteStream}
+                    backendUrl={ENV.API_URL}
+                    socketId={socketId}
+                  />
+                )
               }
             />
             <Route
               path="/community"
-              element={<CommunityPage />}
+              element={
+                featureControl.community && featureControl.community !== "live" ? (
+                  <FeatureStatusScreen
+                    feature="community"
+                    status={featureControl.community}
+                    featureControl={featureControl}
+                  />
+                ) : (
+                  <CommunityPage />
+                )
+              }
             />
             <Route
               path="/community/:groupId"
-              element={<CommunityPage />}
+              element={
+                featureControl.community && featureControl.community !== "live" ? (
+                  <FeatureStatusScreen
+                    feature="community"
+                    status={featureControl.community}
+                    featureControl={featureControl}
+                  />
+                ) : (
+                  <CommunityPage />
+                )
+              }
             />
+            {/* Dynamic CMS routes */}
+            <Route path="/page/:identifier" element={<CMSPage />} />
+            <Route path="/privacy" element={<Navigate to="/page/privacy-policy" replace />} />
+            <Route path="/terms" element={<Navigate to="/page/terms-of-service" replace />} />
+            <Route path="/about" element={<Navigate to="/page/about-us" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Container>
 
-        {location.pathname !== "/chat" && location.pathname !== "/video" && !location.pathname.startsWith("/community") && <Footer />}
+        {!isFullscreenChat && <Footer />}
 
         {isSearching && !isMatched && (
           <Box className="match-overlay">

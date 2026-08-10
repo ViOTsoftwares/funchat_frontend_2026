@@ -33,25 +33,29 @@ const NAV_LINKS = [
     label: "Home",
     path: "/",
     Icon: HomeOutlinedIcon,
+    featureKey: null,
   },
   {
     label: "Chat",
     path: "/chat",
     Icon: ChatBubbleOutlineIcon,
+    featureKey: "chat",
   },
   {
     label: "Video",
     path: "/video",
     Icon: VideocamOutlinedIcon,
+    featureKey: "video",
   },
   {
     label: "Community",
     path: "/community",
     Icon: GroupsIcon,
+    featureKey: "community",
   },
 ];
 
-export default function Header({ status = "Online" }) {
+export default function Header({ status = "Online", featureControl = {} }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -90,37 +94,38 @@ export default function Header({ status = "Online" }) {
           backdropFilter: "blur(24px)",
           background: "rgba(15, 23, 42, 0.8)",
           border: "1px solid rgba(255, 255, 255, 0.08)",
-          borderRadius: { xs: "16px", md: "24px" },
+          borderRadius: { xs: "14px", sm: "18px", md: "24px" },
           zIndex: 1100,
-          top: { xs: "12px", md: "16px" },
-          left: { xs: "12px", md: "20px" },
-          right: { xs: "12px", md: "20px" },
-          width: { xs: "calc(100% - 24px)", md: "calc(100% - 40px)" },
+          top: { xs: "8px", sm: "10px", md: "16px" },
+          left: { xs: "8px", sm: "10px", md: "20px" },
+          right: { xs: "8px", sm: "10px", md: "20px" },
+          width: { xs: "calc(100% - 16px)", sm: "calc(100% - 20px)", md: "calc(100% - 40px)" },
           mx: "auto",
           boxShadow: "0 8px 32px rgba(15, 23, 42, 0.15), 0 4px 12px rgba(99, 102, 241, 0.05)",
         }}
       >
-        <Container maxWidth="xl">
+        <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
           <Toolbar
             disableGutters
             sx={{
-              minHeight: 74,
+              minHeight: { xs: 52, sm: 60, md: 74 },
+              height: { xs: 52, sm: 60, md: 74 },
               justifyContent: "space-between",
             }}
           >
             {/* LOGO */}
             <Stack
               direction="row"
-              spacing={1.5}
+              spacing={{ xs: 1, sm: 1.5 }}
               alignItems="center"
-              sx={{ cursor: "pointer" }}
+              sx={{ cursor: "pointer", flexShrink: 0 }}
               onClick={() => navigate("/")}
             >
               <Box
                 sx={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: "14px",
+                  width: { xs: 32, sm: 36, md: 42 },
+                  height: { xs: 32, sm: 36, md: 42 },
+                  borderRadius: { xs: "10px", sm: "12px", md: "14px" },
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -131,14 +136,14 @@ export default function Header({ status = "Online" }) {
                     "0 10px 25px rgba(99,102,241,.35)",
                 }}
               >
-                <BoltIcon />
+                <BoltIcon sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }} />
               </Box>
 
               <Box>
                 <Typography
                   sx={{
                     fontWeight: 800,
-                    fontSize: "1.1rem",
+                    fontSize: { xs: "0.95rem", sm: "1.05rem", md: "1.15rem" },
                     lineHeight: 1,
                     color: "#fff",
                   }}
@@ -150,6 +155,7 @@ export default function Header({ status = "Online" }) {
                   variant="caption"
                   sx={{
                     color: "rgba(255,255,255,.65)",
+                    fontSize: "11px",
                     display: {
                       xs: "none",
                       sm: "block",
@@ -172,8 +178,11 @@ export default function Header({ status = "Online" }) {
                 },
               }}
             >
-              {NAV_LINKS.map(({ label, path, Icon }) => {
+              {NAV_LINKS.map(({ label, path, Icon, featureKey }) => {
                 const active = location.pathname === path;
+                const fStatus = featureKey ? (featureControl[featureKey] ?? "live") : "live";
+                const isComingSoon = fStatus === "coming_soon";
+                const isMaintenance = fStatus === "maintenance";
 
                 return (
                   <Button
@@ -192,14 +201,52 @@ export default function Header({ status = "Online" }) {
                       background: active
                         ? "rgba(99,102,241,.15)"
                         : "transparent",
-
+                      position: "relative",
                       "&:hover": {
                         background:
                           "rgba(255,255,255,.08)",
                       },
                     }}
                   >
-                    {label}
+                    <span>{label}</span>
+                    {isComingSoon && (
+                      <Box
+                        component="span"
+                        sx={{
+                          ml: 1,
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          px: 0.8,
+                          py: 0.2,
+                          borderRadius: "6px",
+                          background: "linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(236, 72, 153, 0.4))",
+                          color: "#f5d0fe",
+                          border: "1px solid rgba(236, 72, 153, 0.4)",
+                          letterSpacing: "0.5px",
+                        }}
+                      >
+                        SOON
+                      </Box>
+                    )}
+                    {isMaintenance && (
+                      <Box
+                        component="span"
+                        sx={{
+                          ml: 1,
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          px: 0.8,
+                          py: 0.2,
+                          borderRadius: "6px",
+                          background: "rgba(245, 158, 11, 0.3)",
+                          color: "#fde047",
+                          border: "1px solid rgba(245, 158, 11, 0.4)",
+                          letterSpacing: "0.5px",
+                        }}
+                      >
+                        MAINT
+                      </Box>
+                    )}
                   </Button>
                 );
               })}
@@ -208,8 +255,9 @@ export default function Header({ status = "Online" }) {
             {/* STATUS + MOBILE MENU */}
             <Stack
               direction="row"
-              spacing={2}
+              spacing={{ xs: 0.75, sm: 1.25, md: 2 }}
               alignItems="center"
+              sx={{ flexShrink: 0 }}
             >
               {/* Editable Name Field in Header */}
               <Box
@@ -217,9 +265,9 @@ export default function Header({ status = "Online" }) {
                   display: "flex",
                   alignItems: "center",
                   background: "rgba(255, 255, 255, 0.06)",
-                  borderRadius: "12px",
-                  px: 1.5,
-                  py: 0.75,
+                  borderRadius: { xs: "10px", sm: "12px" },
+                  px: { xs: 0.75, sm: 1.25, md: 1.5 },
+                  py: { xs: 0.35, sm: 0.5, md: 0.75 },
                   border: "1px solid rgba(255, 255, 255, 0.08)",
                   transition: "all 0.2s ease",
                   "&:hover, &:focus-within": {
@@ -233,8 +281,9 @@ export default function Header({ status = "Online" }) {
                   variant="caption"
                   sx={{
                     color: "rgba(255,255,255,0.55)",
-                    mr: 1,
+                    mr: 0.75,
                     fontWeight: 600,
+                    fontSize: "11px",
                     display: { xs: "none", sm: "block" }
                   }}
                 >
@@ -258,9 +307,9 @@ export default function Header({ status = "Online" }) {
                       outline: "none",
                       color: "#fff",
                       fontWeight: 700,
-                      fontSize: "16px",
-                      width: { xs: "75px", sm: "95px" },
-                      paddingRight: "20px",
+                      fontSize: { xs: "12.5px", sm: "14px", md: "15px" },
+                      width: { xs: "52px", sm: "70px", md: "90px" },
+                      paddingRight: "16px",
                       textAlign: "left"
                     }}
                   />
@@ -269,7 +318,7 @@ export default function Header({ status = "Online" }) {
                       position: "absolute",
                       right: 0,
                       color: "rgba(255, 255, 255, 0.55)",
-                      fontSize: 14,
+                      fontSize: { xs: 11, sm: 13, md: 14 },
                       pointerEvents: "none"
                     }}
                   />
@@ -281,19 +330,20 @@ export default function Header({ status = "Online" }) {
                   direction="row"
                   spacing={1}
                   alignItems="center"
+                  sx={{ cursor: "default" }}
                 >
                   <Box
                     sx={{
-                      width: 10,
-                      height: 10,
+                      width: { xs: 8, sm: 10 },
+                      height: { xs: 8, sm: 10 },
                       borderRadius: "50%",
                       background: isOnline
                         ? "#22c55e"
                         : "#ef4444",
 
                       boxShadow: isOnline
-                        ? "0 0 12px #22c55e"
-                        : "0 0 12px #ef4444",
+                        ? "0 0 10px #22c55e"
+                        : "0 0 10px #ef4444",
                     }}
                   />
 
@@ -301,6 +351,7 @@ export default function Header({ status = "Online" }) {
                     variant="caption"
                     sx={{
                       color: "#fff",
+                      fontSize: "12px",
                       display: {
                         xs: "none",
                         sm: "block",
@@ -317,15 +368,17 @@ export default function Header({ status = "Online" }) {
                 onClick={() =>
                   setMobileOpen(true)
                 }
+                size="small"
                 sx={{
                   color: "#fff",
+                  p: { xs: 0.5, sm: 0.75 },
                   display: {
                     xs: "flex",
                     md: "none",
                   },
                 }}
               >
-                <MenuIcon />
+                <MenuIcon sx={{ fontSize: { xs: 22, sm: 24 } }} />
               </IconButton>
             </Stack>
           </Toolbar>
@@ -454,9 +507,12 @@ export default function Header({ status = "Online" }) {
 
           <List>
             {NAV_LINKS.map(
-              ({ label, path, Icon }) => {
+              ({ label, path, Icon, featureKey }) => {
                 const active =
                   location.pathname === path;
+                const fStatus = featureKey ? (featureControl[featureKey] ?? "live") : "live";
+                const isComingSoon = fStatus === "coming_soon";
+                const isMaintenance = fStatus === "maintenance";
 
                 return (
                   <ListItemButton
@@ -492,6 +548,42 @@ export default function Header({ status = "Online" }) {
                     <ListItemText
                       primary={label}
                     />
+
+                    {isComingSoon && (
+                      <Box
+                        sx={{
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          px: 1,
+                          py: 0.3,
+                          borderRadius: "6px",
+                          background: "linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(236, 72, 153, 0.4))",
+                          color: "#f5d0fe",
+                          border: "1px solid rgba(236, 72, 153, 0.4)",
+                          letterSpacing: "0.5px",
+                        }}
+                      >
+                        SOON
+                      </Box>
+                    )}
+
+                    {isMaintenance && (
+                      <Box
+                        sx={{
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          px: 1,
+                          py: 0.3,
+                          borderRadius: "6px",
+                          background: "rgba(245, 158, 11, 0.3)",
+                          color: "#fde047",
+                          border: "1px solid rgba(245, 158, 11, 0.4)",
+                          letterSpacing: "0.5px",
+                        }}
+                      >
+                        MAINT
+                      </Box>
+                    )}
                   </ListItemButton>
                 );
               }
