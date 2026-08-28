@@ -29,6 +29,8 @@ import CommunityPage from "./pages/CommunityPage.jsx";
 import CMSPage from "./pages/CMSPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import ComingSoonPage from "./pages/ComingSoonPage.jsx";
+import MaintenancePage from "./pages/MaintenancePage.jsx";
 import FeatureStatusScreen from "./components/FeatureStatusScreen.jsx";
 import LoginModal from "./components/Auth/LoginModal.jsx";
 import ProtectedRoute from "./components/Auth/ProtectedRoute.jsx";
@@ -829,6 +831,10 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Standalone Coming Soon & Maintenance routes */}
+            <Route path="/coming-soon" element={<ComingSoonPage />} />
+            <Route path="/maintenance" element={<MaintenancePage />} />
+
             {/* Dynamic CMS & Profile routes */}
             <Route path="/page/:identifier" element={<CMSPage />} />
             <Route path="/login" element={<LoginPage />} />
