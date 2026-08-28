@@ -71,13 +71,13 @@ export default function GoogleSignInButton({
 
   const handleGoogleError = (error) => {
     console.warn("Google OAuth popup failed or cancelled:", error);
-    // If client ID is dummy / mock in dev mode, prompt helpful message
-    if (!ENV.GOOGLE_CLIENT_ID || ENV.GOOGLE_CLIENT_ID.includes("dummy") || ENV.GOOGLE_CLIENT_ID.includes("funchat.apps")) {
-      if (onError) {
-        onError("Google Client ID not configured yet in environment. Use Email OTP to sign in.");
-      }
+    if (!ENV.GOOGLE_CLIENT_ID || ENV.GOOGLE_CLIENT_ID.includes("dummy")) {
+      // Initiate Server-side Dynamic OAuth Redirect
+      const apiUrl = ENV.API_URL || "http://localhost:4000";
+      const returnTo = encodeURIComponent(window.location.origin + "/login");
+      window.location.href = `${apiUrl}/api/public/auth/google/redirect?returnTo=${returnTo}`;
     } else if (onError) {
-      onError("Google Sign-In was cancelled or failed.");
+      onError("Google Sign-In was cancelled or encountered an issue.");
     }
   };
 
@@ -88,18 +88,27 @@ export default function GoogleSignInButton({
     flow: "implicit",
   });
 
+  const handleButtonClick = () => {
+    if (!ENV.GOOGLE_CLIENT_ID || ENV.GOOGLE_CLIENT_ID.includes("dummy")) {
+      // Directly trigger Dynamic Server OAuth Redirect if no client-side ID set
+      const apiUrl = ENV.API_URL || "http://localhost:4000";
+      const returnTo = encodeURIComponent(window.location.origin + "/login");
+      window.location.href = `${apiUrl}/api/public/auth/google/redirect?returnTo=${returnTo}`;
+      return;
+    }
+    try {
+      googleLoginTrigger();
+    } catch (e) {
+      handleGoogleError(e);
+    }
+  };
+
   return (
     <Button
       fullWidth
       variant="outlined"
       disabled={loading}
-      onClick={() => {
-        try {
-          googleLoginTrigger();
-        } catch (e) {
-          handleGoogleError(e);
-        }
-      }}
+      onClick={handleButtonClick}
       sx={{
         py: variant === "compact" ? 1 : 1.4,
         px: 2,

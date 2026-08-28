@@ -74,6 +74,28 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, navigate, step]);
 
+  // Handle Google OAuth Dynamic Redirect Return
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get("token");
+    const rawUser = params.get("user");
+    const oauthError = params.get("error");
+
+    if (token && rawUser) {
+      try {
+        const parsedUser = JSON.parse(rawUser);
+        login(token, parsedUser);
+        toastMessage(`Welcome back, ${parsedUser.username || "Friend"}!`, "success");
+        navigate("/", { replace: true });
+      } catch (err) {
+        console.error("Failed to parse Google OAuth payload:", err);
+      }
+    } else if (oauthError) {
+      setError(`Google OAuth Error: ${oauthError}`);
+      toastMessage(`Google Sign-In failed: ${oauthError}`, "error");
+    }
+  }, [location.search, login, navigate]);
+
   // Clear errors when typing
   useEffect(() => {
     if (error) setError(null);
