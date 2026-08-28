@@ -604,15 +604,25 @@ export default function App() {
   }
 
   function handleNext() {
+    if (!socketRef.current) return;
+
+    if (!socketRef.current.connected) {
+      socketRef.current.connect();
+    }
+
     socketRef.current.emit("next");
     emitTyping(false);
     dispatch(resetMessages());
+    dispatch(setPartnerId(""));
+    dispatch(setPartnerName(""));
     cleanupPeer(remoteVideoRef);
     dispatch(setIsSearching(true));
     dispatch(clearConversationId());
+    
     // Explicit user action — clear all persisted session data
     localStorage.removeItem("funchat_conversation");
     localStorage.removeItem("funchat_partner_id");
+    localStorage.removeItem("funchat_partner_name");
     localStorage.removeItem("funchat_mode");
   }
 
