@@ -439,9 +439,21 @@ export default function App() {
       );
     }
     const myName = mySavedName || "Stranger";
-    socketRef.current.emit("join", { mode: resolvedMode, name: myName }, (ack) => {
-      console.log("[join ack]", ack);
-    });
+    
+    const emitJoin = () => {
+      if (socketRef.current) {
+        socketRef.current.emit("join", { mode: resolvedMode, name: myName }, (ack) => {
+          console.log("[join ack]", ack);
+        });
+      }
+    };
+
+    if (socketRef.current.connected) {
+      emitJoin();
+    } else {
+      socketRef.current.connect();
+      socketRef.current.once("connect", emitJoin);
+    }
   }
 
   function handleLandingStart(selectedMode) {
