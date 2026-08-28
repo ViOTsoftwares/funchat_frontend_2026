@@ -4,6 +4,11 @@ import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
 import CloseIcon from "@mui/icons-material/Close";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { ENV } from "../config/env.js";
+import {
+  GetAdvertisementApi,
+  RecordAdImpressionApi,
+  RecordAdClickApi,
+} from "../Api.js";
 
 export default function AdBanner({ placement = "community_sidebar", sx = {} }) {
   const [ad, setAd] = useState(null);
@@ -15,17 +20,14 @@ export default function AdBanner({ placement = "community_sidebar", sx = {} }) {
     let isMounted = true;
     const fetchAd = async () => {
       try {
-        const res = await fetch(`${ENV.API_URL}/api/public/ads?placement=${placement}`);
-        const json = await res.json();
-        if (isMounted && json.ok && Array.isArray(json.data) && json.data.length > 0) {
+        const json = await GetAdvertisementApi({ placement });
+        if (isMounted && json?.ok && Array.isArray(json.data) && json.data.length > 0) {
           const selectedAd = json.data[0];
           setAd(selectedAd);
 
           // Log impression
           if (selectedAd._id) {
-            fetch(`${ENV.API_URL}/api/public/ads/${selectedAd._id}/impression`, {
-              method: "POST",
-            }).catch(() => {});
+            RecordAdImpressionApi(selectedAd._id);
           }
         }
       } catch (err) {
@@ -104,9 +106,7 @@ export default function AdBanner({ placement = "community_sidebar", sx = {} }) {
   const handleAdClick = (e) => {
     e.stopPropagation();
     if (ad._id) {
-      fetch(`${ENV.API_URL}/api/public/ads/${ad._id}/click`, {
-        method: "POST",
-      }).catch(() => {});
+      RecordAdClickApi(ad._id);
     }
     if (ad.targetUrl) {
       window.open(ad.targetUrl, "_blank", "noopener,noreferrer");

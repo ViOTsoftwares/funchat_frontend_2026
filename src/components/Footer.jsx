@@ -26,7 +26,13 @@ import TwitterIcon from "@mui/icons-material/Twitter";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import TelegramIcon from "@mui/icons-material/Telegram";
 import RedditIcon from "@mui/icons-material/Reddit";
+import FacebookIcon from "@mui/icons-material/Facebook";
+import InstagramIcon from "@mui/icons-material/Instagram";
+import PhoneIcon from "@mui/icons-material/Phone";
+import EmailIcon from "@mui/icons-material/Email";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 import { ENV } from "../config/env.js";
+import { GetCMSApi, GetSettingApi } from "../Api.js";
 
 const DEFAULT_CMS_LINKS = [
   { identifier: "privacy-policy", title: "Privacy Policy" },
@@ -40,18 +46,26 @@ const DEFAULT_CMS_LINKS = [
 export default function Footer() {
   const navigate = useNavigate();
   const [cmsPages, setCmsPages] = useState(DEFAULT_CMS_LINKS);
+  const [settings, setSettings] = useState(null);
   const [emailInput, setEmailInput] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
-    fetch(`${ENV.API_URL}/api/public/cms`)
-      .then((res) => res.json())
+    GetCMSApi()
       .then((data) => {
         if (data?.success && Array.isArray(data.result) && data.result.length > 0) {
           setCmsPages(data.result);
         }
       })
       .catch((err) => console.warn("Could not load dynamic CMS pages in footer:", err));
+
+    GetSettingApi()
+      .then((data) => {
+        if (data?.success && data.result) {
+          setSettings(data.result);
+        }
+      })
+      .catch((err) => console.warn("Could not load public settings in footer:", err));
   }, []);
 
   const handleSubscribe = (e) => {
@@ -67,6 +81,41 @@ export default function Footer() {
   const legalIdentifiers = ["privacy-policy", "terms-of-service", "cookie-policy", "safety-center", "community-guidelines"];
   const legalPages = cmsPages.filter((p) => legalIdentifiers.includes(p.identifier));
   const companyPages = cmsPages.filter((p) => !legalIdentifiers.includes(p.identifier));
+
+  // Dynamic social links from Settings with fallback
+  const configuredSocials = [
+    settings?.xlink && {
+      icon: <TwitterIcon fontSize="small" />,
+      label: "X / Twitter",
+      href: settings.xlink,
+    },
+    settings?.facebooklink && {
+      icon: <FacebookIcon fontSize="small" />,
+      label: "Facebook",
+      href: settings.facebooklink,
+    },
+    settings?.instagramlink && {
+      icon: <InstagramIcon fontSize="small" />,
+      label: "Instagram",
+      href: settings.instagramlink,
+    },
+    settings?.linkedinlink && {
+      icon: <LinkedInIcon fontSize="small" />,
+      label: "LinkedIn",
+      href: settings.linkedinlink,
+    },
+  ].filter(Boolean);
+
+  const socialLinks =
+    configuredSocials.length > 0
+      ? configuredSocials
+      : [
+          { icon: <TwitterIcon fontSize="small" />, label: "X / Twitter", href: "https://twitter.com" },
+          { icon: <GitHubIcon fontSize="small" />, label: "GitHub", href: "https://github.com" },
+          { icon: <LinkedInIcon fontSize="small" />, label: "LinkedIn", href: "https://linkedin.com" },
+          { icon: <TelegramIcon fontSize="small" />, label: "Telegram", href: "https://telegram.org" },
+          { icon: <RedditIcon fontSize="small" />, label: "Reddit", href: "https://reddit.com" },
+        ];
 
   return (
     <Box
@@ -133,16 +182,26 @@ export default function Footer() {
                     background: "linear-gradient(135deg, #6366f1, #3b82f6)",
                     color: "#fff",
                     boxShadow: "0 8px 20px rgba(99, 102, 241, 0.4)",
+                    overflow: "hidden",
                   }}
                 >
-                  <BoltIcon sx={{ fontSize: 24 }} />
+                  {settings?.logo ? (
+                    <Box
+                      component="img"
+                      src={`${ENV.IMAGE_URL}/logos/${settings.logo}`}
+                      alt="Logo"
+                      sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <BoltIcon sx={{ fontSize: 24 }} />
+                  )}
                 </Box>
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1, color: "#fff", letterSpacing: "-0.5px" }}>
-                    FunChat Connect
+                    {settings?.title || "FunChat Connect"}
                   </Typography>
                   <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "11px" }}>
-                    Private · Secure · Real-Time
+                    {settings?.project ? `${settings.project} · Private & Secure` : "Private · Secure · Real-Time"}
                   </Typography>
                 </Box>
               </Stack>
@@ -187,15 +246,39 @@ export default function Footer() {
                 </Typography>
               </Box>
 
+              {/* Contact Details from Settings */}
+              {(settings?.email || settings?.phone || settings?.address) && (
+                <Stack spacing={1} sx={{ pt: 1 }}>
+                  {settings.email && (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <EmailIcon sx={{ fontSize: 16, color: "#818cf8" }} />
+                      <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "12.5px" }}>
+                        {settings.email}
+                      </Typography>
+                    </Stack>
+                  )}
+                  {settings.phone && (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <PhoneIcon sx={{ fontSize: 16, color: "#818cf8" }} />
+                      <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "12.5px" }}>
+                        {settings.phone}
+                      </Typography>
+                    </Stack>
+                  )}
+                  {settings.address && (
+                    <Stack direction="row" spacing={1} alignItems="flex-start">
+                      <LocationOnIcon sx={{ fontSize: 16, color: "#818cf8", mt: 0.2 }} />
+                      <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "12px", lineHeight: 1.4 }}>
+                        {settings.address}
+                      </Typography>
+                    </Stack>
+                  )}
+                </Stack>
+              )}
+
               {/* Social Icons */}
-              <Stack direction="row" spacing={1} sx={{ pt: 0.5 }}>
-                {[
-                  { icon: <TwitterIcon fontSize="small" />, label: "X / Twitter", href: "https://twitter.com" },
-                  { icon: <GitHubIcon fontSize="small" />, label: "GitHub", href: "https://github.com" },
-                  { icon: <LinkedInIcon fontSize="small" />, label: "LinkedIn", href: "https://linkedin.com" },
-                  { icon: <TelegramIcon fontSize="small" />, label: "Telegram", href: "https://telegram.org" },
-                  { icon: <RedditIcon fontSize="small" />, label: "Reddit", href: "https://reddit.com" },
-                ].map((social, idx) => (
+              <Stack direction="row" spacing={1} sx={{ pt: 0.5, flexWrap: "wrap", gap: 1 }}>
+                {socialLinks.map((social, idx) => (
                   <Tooltip key={idx} title={social.label} arrow>
                     <IconButton
                       component="a"
@@ -501,7 +584,7 @@ export default function Footer() {
           {/* Copyright & Region */}
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.5)", fontSize: "12px" }}>
-              © {new Date().getFullYear()} FunChat Connect Inc.
+              © {new Date().getFullYear()} {settings?.title || "FunChat Connect Inc."}
             </Typography>
             <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.3)" }}>•</Typography>
             <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: "rgba(255, 255, 255, 0.5)" }}>

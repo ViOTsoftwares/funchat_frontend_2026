@@ -17,6 +17,9 @@ import {
   Tooltip,
   Typography,
   Divider,
+  Menu,
+  MenuItem,
+  Avatar,
 } from "@mui/material";
 
 import MenuIcon from "@mui/icons-material/Menu";
@@ -27,6 +30,14 @@ import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import GroupsIcon from "@mui/icons-material/Groups";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import LogoutIcon from "@mui/icons-material/Logout";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+
+import { useAuth } from "../context/AuthContext.jsx";
+import { GetSettingApi } from "../Api.js";
+import { ENV } from "../config/env.js";
 
 const NAV_LINKS = [
   {
@@ -58,23 +69,45 @@ const NAV_LINKS = [
 export default function Header({ status = "Online", featureControl = {} }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isAuthenticated, logout, openLoginModal } = useAuth();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [profileName, setProfileName] = useState(
-    localStorage.getItem("funchat_profile_name") ?? "Stranger"
+    user?.username || localStorage.getItem("funchat_profile_name") || "Stranger"
   );
 
   useEffect(() => {
+    GetSettingApi()
+      .then((res) => {
+        if (res?.success && res?.result) {
+          setSettings(res.result);
+        }
+      })
+      .catch((err) => console.warn("Could not load header settings:", err));
+  }, []);
+
+  useEffect(() => {
+    if (user?.username) {
+      setProfileName(user.username);
+    } else {
+      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
+    }
+  }, [user]);
+
+  useEffect(() => {
     const handleNameChange = () => {
-      setProfileName(localStorage.getItem("funchat_profile_name") ?? "Stranger");
+      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
     };
     window.addEventListener("profileNameChanged", handleNameChange);
     return () => window.removeEventListener("profileNameChanged", handleNameChange);
   }, []);
 
   const handleProfileNameChange = (val) => {
-    setProfileName(val);
-    localStorage.setItem("funchat_profile_name", val);
+    const newVal = val || "Stranger";
+    setProfileName(newVal);
+    localStorage.setItem("funchat_profile_name", newVal);
     window.dispatchEvent(new Event("profileNameChanged"));
   };
 
@@ -82,6 +115,21 @@ export default function Header({ status = "Online", featureControl = {} }) {
 
   const handleNavigate = (path) => {
     navigate(path);
+    setMobileOpen(false);
+  };
+
+  const handleOpenUserMenu = (e) => {
+    setUserMenuAnchor(e.currentTarget);
+  };
+
+  const handleCloseUserMenu = () => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleLogout = () => {
+    handleCloseUserMenu();
+    logout();
+    setProfileName("Stranger");
     setMobileOpen(false);
   };
 
@@ -134,9 +182,19 @@ export default function Header({ status = "Online", featureControl = {} }) {
                   color: "#fff",
                   boxShadow:
                     "0 10px 25px rgba(99,102,241,.35)",
+                  overflow: "hidden",
                 }}
               >
-                <BoltIcon sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }} />
+                {settings?.logo ? (
+                  <Box
+                    component="img"
+                    src={`${ENV.IMAGE_URL}/logos/${settings.logo}`}
+                    alt="Logo"
+                    sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <BoltIcon sx={{ fontSize: { xs: 18, sm: 20, md: 24 } }} />
+                )}
               </Box>
 
               <Box>
@@ -148,7 +206,7 @@ export default function Header({ status = "Online", featureControl = {} }) {
                     color: "#fff",
                   }}
                 >
-                  FunChat
+                  {settings?.title || "FunChat"}
                 </Typography>
 
                 <Typography
@@ -162,7 +220,7 @@ export default function Header({ status = "Online", featureControl = {} }) {
                     },
                   }}
                 >
-                  Private · Secure · Live
+                  {settings?.project ? `${settings.project}` : "Private · Secure · Live"}
                 </Typography>
               </Box>
             </Stack>
@@ -252,25 +310,31 @@ export default function Header({ status = "Online", featureControl = {} }) {
               })}
             </Stack>
 
-            {/* STATUS + MOBILE MENU */}
+            {/* RIGHT SIDE ACTIONS: Profile / Auth + Status + Mobile Menu */}
             <Stack
               direction="row"
-              spacing={{ xs: 0.75, sm: 1.25, md: 2 }}
+              spacing={{ xs: 0.75, sm: 1.25, md: 1.5 }}
               alignItems="center"
               sx={{ flexShrink: 0 }}
             >
-              {/* Editable Name Field in Header */}
+              {/* Header Handle Display: Read-Only for guests, Editable/Linkable for logged-in users */}
               <Box
+                onClick={() => {
+                  if (isAuthenticated) {
+                    navigate("/profile");
+                  }
+                }}
                 sx={{
-                  display: "flex",
+                  display: { xs: "none", sm: "flex" },
                   alignItems: "center",
                   background: "rgba(255, 255, 255, 0.06)",
                   borderRadius: { xs: "10px", sm: "12px" },
                   px: { xs: 0.75, sm: 1.25, md: 1.5 },
                   py: { xs: 0.35, sm: 0.5, md: 0.75 },
                   border: "1px solid rgba(255, 255, 255, 0.08)",
+                  cursor: isAuthenticated ? "pointer" : "default",
                   transition: "all 0.2s ease",
-                  "&:hover, &:focus-within": {
+                  "&:hover": {
                     background: "rgba(255, 255, 255, 0.1)",
                     borderColor: "rgba(99, 102, 241, 0.4)",
                     boxShadow: "0 0 12px rgba(99, 102, 241, 0.15)"
@@ -284,46 +348,208 @@ export default function Header({ status = "Online", featureControl = {} }) {
                     mr: 0.75,
                     fontWeight: 600,
                     fontSize: "11px",
-                    display: { xs: "none", sm: "block" }
                   }}
                 >
-                  Name:
+                  Handle:
                 </Typography>
-                <Box
+
+                {isAuthenticated ? (
+                  <Box
+                    sx={{
+                      position: "relative",
+                      display: "flex",
+                      alignItems: "center"
+                    }}
+                  >
+                    <Box
+                      component="input"
+                      type="text"
+                      value={profileName}
+                      onChange={(e) => handleProfileNameChange(e.target.value)}
+                      sx={{
+                        background: "transparent",
+                        border: "none",
+                        outline: "none",
+                        color: "#fff",
+                        fontWeight: 700,
+                        fontSize: { xs: "12.5px", sm: "14px", md: "15px" },
+                        width: { xs: "52px", sm: "70px", md: "90px" },
+                        paddingRight: "16px",
+                        textAlign: "left"
+                      }}
+                    />
+                    <EditIcon
+                      sx={{
+                        position: "absolute",
+                        right: 0,
+                        color: "rgba(255, 255, 255, 0.55)",
+                        fontSize: { xs: 11, sm: 13, md: 14 },
+                        pointerEvents: "none"
+                      }}
+                    />
+                  </Box>
+                ) : (
+                  <Typography
+                    sx={{
+                      color: "#a5b4fc",
+                      fontWeight: 700,
+                      fontSize: { xs: "12.5px", sm: "14px" },
+                    }}
+                  >
+                    @{profileName}
+                  </Typography>
+                )}
+              </Box>
+
+              {/* AUTH BUTTON / USER PILL */}
+              {isAuthenticated ? (
+                <>
+                  <Button
+                    onClick={handleOpenUserMenu}
+                    endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      background: "rgba(99, 102, 241, 0.12)",
+                      border: "1px solid rgba(99, 102, 241, 0.3)",
+                      borderRadius: { xs: "10px", sm: "12px" },
+                      px: { xs: 1, sm: 1.5 },
+                      py: { xs: 0.4, sm: 0.6 },
+                      color: "#fff",
+                      textTransform: "none",
+                      "&:hover": {
+                        background: "rgba(99, 102, 241, 0.22)",
+                        borderColor: "rgba(99, 102, 241, 0.5)",
+                      },
+                    }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: { xs: 22, sm: 26 },
+                        height: { xs: 22, sm: 26 },
+                        background: "linear-gradient(135deg, #6366f1, #ec4899)",
+                        fontSize: "12px",
+                        fontWeight: 800,
+                      }}
+                    >
+                      {user?.username ? user.username.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
+                    </Avatar>
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: { xs: "12px", sm: "13.5px" },
+                        maxWidth: { xs: "70px", sm: "100px", md: "120px" },
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        color: "#fff",
+                      }}
+                    >
+                      {user?.username || profileName}
+                    </Typography>
+                  </Button>
+
+                  {/* USER MENU DROPDOWN */}
+                  <Menu
+                    anchorEl={userMenuAnchor}
+                    open={Boolean(userMenuAnchor)}
+                    onClose={handleCloseUserMenu}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    transformOrigin={{ vertical: "top", horizontal: "right" }}
+                    PaperProps={{
+                      sx: {
+                        mt: 1.5,
+                        background: "rgba(17, 24, 39, 0.98)",
+                        backdropFilter: "blur(20px)",
+                        border: "1px solid rgba(99, 102, 241, 0.25)",
+                        borderRadius: "16px",
+                        boxShadow: "0 15px 40px rgba(0,0,0,0.6)",
+                        color: "#fff",
+                        minWidth: "220px",
+                        p: 1,
+                      },
+                    }}
+                  >
+                    <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid rgba(255,255,255,0.08)", mb: 0.5 }}>
+                      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
+                        <CheckCircleIcon sx={{ fontSize: 14, color: "#86efac" }} />
+                        <Typography variant="caption" sx={{ color: "#86efac", fontWeight: 700, fontSize: "11px" }}>
+                          Verified Member
+                        </Typography>
+                      </Stack>
+                      <Typography sx={{ fontWeight: 800, fontSize: "14px", color: "#fff" }}>
+                        {user?.username || profileName}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.55)", fontSize: "11.5px", display: "block" }}>
+                        {user?.email}
+                      </Typography>
+                    </Box>
+
+                    <MenuItem
+                      onClick={() => {
+                        handleCloseUserMenu();
+                        navigate("/profile");
+                      }}
+                      sx={{
+                        borderRadius: "10px",
+                        color: "#fff",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        gap: 1.5,
+                        mb: 0.5,
+                        "&:hover": {
+                          background: "rgba(99, 102, 241, 0.15)",
+                        },
+                      }}
+                    >
+                      <PersonOutlineIcon sx={{ fontSize: 18, color: "#818cf8" }} />
+                      My Profile Settings
+                    </MenuItem>
+
+                    <MenuItem
+                      onClick={handleLogout}
+                      sx={{
+                        borderRadius: "10px",
+                        color: "#f87171",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        gap: 1.5,
+                        "&:hover": {
+                          background: "rgba(239, 68, 68, 0.12)",
+                        },
+                      }}
+                    >
+                      <LogoutIcon sx={{ fontSize: 18 }} />
+                      Sign Out
+                    </MenuItem>
+                  </Menu>
+                </>
+              ) : (
+                <Button
+                  startIcon={<PersonOutlineIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+                  onClick={openLoginModal}
                   sx={{
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "center"
+                    background: "linear-gradient(135deg, #6366f1 0%, #3b82f6 100%)",
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: { xs: "12px", sm: "13px" },
+                    textTransform: "none",
+                    borderRadius: { xs: "10px", sm: "12px" },
+                    px: { xs: 1.5, sm: 2 },
+                    py: { xs: 0.45, sm: 0.65 },
+                    boxShadow: "0 4px 15px rgba(99, 102, 241, 0.35)",
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      background: "linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)",
+                      transform: "translateY(-1px)",
+                      boxShadow: "0 6px 20px rgba(99, 102, 241, 0.45)",
+                    },
                   }}
                 >
-                  <Box
-                    component="input"
-                    type="text"
-                    value={profileName}
-                    onChange={(e) => handleProfileNameChange(e.target.value)}
-                    sx={{
-                      background: "transparent",
-                      border: "none",
-                      outline: "none",
-                      color: "#fff",
-                      fontWeight: 700,
-                      fontSize: { xs: "12.5px", sm: "14px", md: "15px" },
-                      width: { xs: "52px", sm: "70px", md: "90px" },
-                      paddingRight: "16px",
-                      textAlign: "left"
-                    }}
-                  />
-                  <EditIcon
-                    sx={{
-                      position: "absolute",
-                      right: 0,
-                      color: "rgba(255, 255, 255, 0.55)",
-                      fontSize: { xs: 11, sm: 13, md: 14 },
-                      pointerEvents: "none"
-                    }}
-                  />
-                </Box>
-              </Box>
+                  Sign In
+                </Button>
+              )}
 
               <Tooltip title={`Server Status: ${status}`}>
                 <Stack
@@ -432,17 +658,109 @@ export default function Header({ status = "Online", featureControl = {} }) {
             }}
           />
 
-          {/* Mobile Profile Name Input */}
+          {/* Mobile Auth Card / Button */}
+          {isAuthenticated ? (
+            <Box
+              sx={{
+                mb: 2.5,
+                p: 2,
+                borderRadius: "16px",
+                background: "rgba(99, 102, 241, 0.1)",
+                border: "1px solid rgba(99, 102, 241, 0.25)",
+              }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
+                <Avatar
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    background: "linear-gradient(135deg, #6366f1, #ec4899)",
+                    fontSize: "14px",
+                    fontWeight: 800,
+                  }}
+                >
+                  {user?.username ? user.username.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
+                </Avatar>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: "14px", color: "#fff" }} noWrap>
+                    {user?.username || profileName}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.55)", fontSize: "11px" }} noWrap display="block">
+                    {user?.email}
+                  </Typography>
+                </Box>
+              </Stack>
+              <Button
+                fullWidth
+                size="small"
+                variant="outlined"
+                startIcon={<LogoutIcon sx={{ fontSize: 16 }} />}
+                onClick={handleLogout}
+                sx={{
+                  color: "#f87171",
+                  borderColor: "rgba(239, 68, 68, 0.4)",
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  "&:hover": {
+                    background: "rgba(239, 68, 68, 0.1)",
+                    borderColor: "#ef4444",
+                  },
+                }}
+              >
+                Sign Out
+              </Button>
+            </Box>
+          ) : (
+            <Button
+              fullWidth
+              startIcon={<PersonOutlineIcon />}
+              onClick={() => {
+                setMobileOpen(false);
+                openLoginModal();
+              }}
+              sx={{
+                mb: 2.5,
+                py: 1.2,
+                borderRadius: "14px",
+                background: "linear-gradient(135deg, #6366f1 0%, #3b82f6 100%)",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: "13.5px",
+                textTransform: "none",
+                boxShadow: "0 6px 20px rgba(99, 102, 241, 0.35)",
+              }}
+            >
+              Sign In with Email
+            </Button>
+          )}
+
+          {/* Mobile Profile Handle Display Box */}
           <Box
+            onClick={() => {
+              setMobileOpen(false);
+              if (isAuthenticated) {
+                navigate("/profile");
+              } else {
+                window.dispatchEvent(new Event("openProfileWelcomeModal"));
+              }
+            }}
             sx={{
               mb: 2.5,
-              p: 2,
+              p: 1.8,
               borderRadius: "16px",
               background: "rgba(255, 255, 255, 0.04)",
               border: "1px solid rgba(255, 255, 255, 0.08)",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                background: "rgba(255, 255, 255, 0.08)",
+                borderColor: "rgba(99, 102, 241, 0.4)",
+              },
             }}
           >
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
               <Box
                 sx={{
                   width: 20,
@@ -458,51 +776,16 @@ export default function Header({ status = "Online", featureControl = {} }) {
                 <Typography sx={{ fontSize: "8px", fontWeight: 800 }}>U</Typography>
               </Box>
               <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 700, letterSpacing: "0.5px" }}>
-                MY DISPLAY NAME
+                RESERVED HANDLE
               </Typography>
             </Stack>
-            <Box
-              sx={{
-                position: "relative",
-                display: "flex",
-                alignItems: "center"
-              }}
-            >
-              <Box
-                component="input"
-                type="text"
-                value={profileName}
-                onChange={(e) => handleProfileNameChange(e.target.value)}
-                placeholder="Stranger"
-                sx={{
-                  width: "100%",
-                  padding: "10px 36px 10px 14px",
-                  borderRadius: "12px",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  outline: "none",
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  color: "#fff",
-                  background: "rgba(15, 23, 42, 0.4)",
-                  transition: "all 0.18s ease",
-                  "&:focus": {
-                    borderColor: "#818cf8",
-                    background: "rgba(15, 23, 42, 0.75)",
-                    boxShadow: "0 0 0 3px rgba(129, 140, 248, 0.15)"
-                  }
-                }}
-              />
-              <EditIcon
-                sx={{
-                  position: "absolute",
-                  right: 12,
-                  color: "#818cf8",
-                  fontSize: 16,
-                  pointerEvents: "none",
-                  opacity: 0.8
-                }}
-              />
-            </Box>
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography sx={{ fontWeight: 800, color: "#818cf8", fontSize: "15px" }}>
+                @{profileName}
+              </Typography>
+              <EditIcon sx={{ color: "rgba(255,255,255,0.5)", fontSize: 16 }} />
+            </Stack>
           </Box>
 
           <List>

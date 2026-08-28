@@ -19,7 +19,7 @@ export function useSocket() {
 
   useEffect(() => {
     const socket = io(ENV.API_URL, { 
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
       auth: { userId: localUserId }
     });
     socketRef.current = socket;

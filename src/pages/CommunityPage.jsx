@@ -43,17 +43,76 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ShieldIcon from "@mui/icons-material/Shield";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import ReplyRoundedIcon from "@mui/icons-material/ReplyRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import ImageIcon from "@mui/icons-material/Image";
+import ZoomInRoundedIcon from "@mui/icons-material/ZoomInRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 
 import { useSocket } from "../hooks/useSocket.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import { Picker } from "ms-3d-emoji-picker";
 import { ENV } from "../config/env.js";
+import { GetCommunityApi, UploadCommunityImageApi, GetCommunityMediaSettingsApi } from "../Api.js";
+import { toastMessage } from "../lib/toast.message.js";
 import AdBanner from "../components/AdBanner.jsx";
 import AdPopup from "../components/AdPopup.jsx";
+
+function isMessageEditable(createdAt) {
+  if (!createdAt) return true;
+  const msgTime = new Date(createdAt).getTime();
+  if (isNaN(msgTime)) return true;
+  const TEN_MINUTES_MS = 10 * 60 * 1000;
+  return Date.now() - msgTime <= TEN_MINUTES_MS;
+}
+
+function formatMessageTime(dateString) {
+  if (!dateString) return "";
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+  } catch {
+    return "";
+  }
+}
+
+function formatDateHeader(dateString) {
+  if (!dateString) return "";
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "";
+    const today = new Date();
+    const isToday =
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+    if (isToday) return "Today";
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday =
+      d.getDate() === yesterday.getDate() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getFullYear() === yesterday.getFullYear();
+    if (isYesterday) return "Yesterday";
+
+    return d.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+      year: d.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+    });
+  } catch {
+    return "";
+  }
+}
 
 export default function CommunityPage() {
   const { groupId: urlGroupId } = useParams();
   const navigate = useNavigate();
   const { socketRef, status, socketId } = useSocket();
+  const { isAuthenticated, user, openLoginModal, loading: authLoading } = useAuth();
 
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -78,8 +137,21 @@ export default function CommunityPage() {
   const [typingUsers, setTypingUsers] = useState({});
   const [emojiOpen, setEmojiOpen] = useState(false);
 
+  // Reply & Edit states
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState(null);
+  const [activeActionMsgId, setActiveActionMsgId] = useState(null);
+
+  // Image upload, Auth prompt & Lightbox states
+  const [selectedImage, setSelectedImage] = useState(null); // { file, previewUrl, name, sizeStr }
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [activeLightboxImage, setActiveLightboxImage] = useState(null);
+  const [communityMediaSettings, setCommunityMediaSettings] = useState({ enabled: true, maxFileSizeMB: 5 });
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
+
   const [profileName, setProfileName] = useState(
-    localStorage.getItem("funchat_profile_name") || "Stranger"
+    user?.username || localStorage.getItem("funchat_profile_name") || "Stranger"
   );
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [hasClickedInput, setHasClickedInput] = useState(false);
@@ -87,6 +159,7 @@ export default function CommunityPage() {
   const [composerHeight, setComposerHeight] = useState(76);
 
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const messageListRef = useRef(null);
   const messagesEndRef = useRef(null);
   const composerRef = useRef(null);
@@ -96,6 +169,16 @@ export default function CommunityPage() {
   const prevScrollHeightRef = useRef(0);
   const prevScrollTopRef = useRef(0);
   const isLoadingOlderRef = useRef(false);
+
+  const getFullImageUrl = useCallback((path) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:") || path.startsWith("data:")) {
+      return path;
+    }
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const base = (ENV.API_URL || "http://localhost:4000").replace(/\/+$/, "");
+    return `${base}${cleanPath}`;
+  }, []);
 
   // ── scrollToBottom ────────────────────────────────────────────────────────
   // Robust multi-frame scroll function guaranteeing latest message is completely visible
@@ -138,6 +221,15 @@ export default function CommunityPage() {
       };
     }
   }, [keyboardHeight, composerHeight, scrollToBottom]);
+
+  // Monitor auth user changes
+  useEffect(() => {
+    if (user?.username) {
+      setProfileName(user.username);
+    } else {
+      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
+    }
+  }, [user]);
 
   // Monitor global display name change
   useEffect(() => {
@@ -211,12 +303,11 @@ export default function CommunityPage() {
     return () => observer.disconnect();
   }, [hasClickedInput, scrollToBottom]);
 
-  // Fetch categories from backend
+  // Fetch categories & media settings from backend
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${ENV.API_URL}/api/public/community`);
-        const json = await res.json();
+        const json = await GetCommunityApi();
         if (json.ok && json.data) {
           setCategories(json.data);
           if (json.data.length > 0) {
@@ -229,7 +320,20 @@ export default function CommunityPage() {
         setLoadingCategories(false);
       }
     };
+
+    const fetchMediaSettings = async () => {
+      try {
+        const res = await GetCommunityMediaSettingsApi();
+        if (res?.success && res?.result) {
+          setCommunityMediaSettings(res.result);
+        }
+      } catch (err) {
+        console.error("Failed to fetch media settings", err);
+      }
+    };
+
     fetchCategories();
+    fetchMediaSettings();
   }, []);
 
   // Handle accordion expansions automatically if we search
@@ -295,7 +399,7 @@ export default function CommunityPage() {
   // Socket connection and room registration
   useEffect(() => {
     const currentSocket = socketRef.current;
-    if (!currentSocket || status !== "connected" || !groupId) return;
+    if (!isAuthenticated || !currentSocket || status !== "connected" || !groupId) return;
 
     // Set group loading state and reset messages
     setLoadingGroupMessages(true);
@@ -316,9 +420,10 @@ export default function CommunityPage() {
         const currentProfileName = (profileName || localStorage.getItem("funchat_profile_name") || "").trim().toLowerCase();
 
         const isSenderMe =
+          Boolean(msg.tempId && prev.some((m) => m.tempId === msg.tempId)) ||
           (myUserId && (msg.from === myUserId || msg.userId === myUserId)) ||
           (mySockId && (msg.from === mySockId || msg.userId === mySockId)) ||
-          (msg.senderName && currentProfileName && msg.senderName.trim().toLowerCase() === currentProfileName);
+          (currentProfileName && currentProfileName !== "stranger" && msg.senderName && msg.senderName.trim().toLowerCase() === currentProfileName);
 
         // Case 1: System messages (prevent duplicate join/leave broadcasts)
         if (msg.from === "system") {
@@ -441,15 +546,50 @@ export default function CommunityPage() {
       setLastMessageSentAt(Date.now() - (messageDelay * 60 * 1000 - data.remainingMs));
     };
 
+    const handleGroupMessageEdited = (data) => {
+      if (!data || !data.messageId) return;
+      const targetId = String(data.messageId);
+      setMessages((prev) =>
+        prev.map((m) => {
+          const currentId = String(m.id || m.tempId || "");
+          if (currentId && currentId === targetId) {
+            return {
+              ...m,
+              text: data.text,
+              parts: data.parts || m.parts,
+              emojiUrl: data.emojiUrl !== undefined ? data.emojiUrl : m.emojiUrl,
+              isEdited: true,
+              editedAt: data.editedAt || new Date().toISOString(),
+            };
+          }
+          return m;
+        })
+      );
+    };
+
+    const handleMediaSettingsUpdated = (data) => {
+      if (data) {
+        setCommunityMediaSettings(data);
+      }
+    };
+
     currentSocket.on("group_message", handleGroupMessage);
+    currentSocket.on("group_message_edited", handleGroupMessageEdited);
     currentSocket.on("group_typing", handleGroupTyping);
     currentSocket.on("slow_mode_error", handleSlowModeError);
+    currentSocket.on("community_media_settings_updated", handleMediaSettingsUpdated);
 
     // Join room
     currentSocket.emit("join_group", { groupId, name: profileName }, (ack) => {
       setLoadingGroupMessages(false);
       if (ack && ack.ok) {
-        setMessages(ack.history || []);
+        const rawHistory = ack.history || [];
+        const normalizedHistory = rawHistory.map((m, idx) => ({
+          ...m,
+          id: m.id || m._id || `hist_${m.createdAt ? new Date(m.createdAt).getTime() : idx}_${idx}`,
+          isEdited: Boolean(m.isEdited),
+        }));
+        setMessages(normalizedHistory);
         setHasMore(ack.hasMore || false);
         setSkipCount(0);
         setMessageDelay(ack.messageDelay || 0);
@@ -461,11 +601,24 @@ export default function CommunityPage() {
 
     return () => {
       currentSocket.off("group_message", handleGroupMessage);
+      currentSocket.off("group_message_edited", handleGroupMessageEdited);
       currentSocket.off("group_typing", handleGroupTyping);
       currentSocket.off("slow_mode_error", handleSlowModeError);
+      currentSocket.off("community_media_settings_updated", handleMediaSettingsUpdated);
       currentSocket.emit("leave_group", { groupId });
     };
   }, [socketRef, status, groupId, profileName]);
+
+  // Escape key handler to close lightbox
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && activeLightboxImage) {
+        setActiveLightboxImage(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeLightboxImage]);
 
   // Countdown timer for slow mode
   useEffect(() => {
@@ -632,10 +785,114 @@ export default function CommunityPage() {
     return merged;
   };
 
-  const handleSend = () => {
-    if (!socketRef.current || !groupId) return;
-    if (cooldownRemaining > 0) return;
+  const handleJumpToMessage = (targetMsgId) => {
+    if (!targetMsgId) return;
 
+    let targetEl = document.getElementById(`msg-${targetMsgId}`);
+    if (!targetEl) {
+      const foundMsg = messages.find((m) => m.id === targetMsgId || m.tempId === targetMsgId);
+      if (foundMsg) {
+        targetEl = document.getElementById(`msg-${foundMsg.id}`) || document.getElementById(`msg-${foundMsg.tempId}`);
+      }
+    }
+
+    const containerEl = messageListRef.current;
+    if (targetEl && containerEl) {
+      const containerRect = containerEl.getBoundingClientRect();
+      const targetRect = targetEl.getBoundingClientRect();
+      const scrollTop =
+        containerEl.scrollTop + (targetRect.top - containerRect.top) - containerRect.height / 2 + targetRect.height / 2;
+
+      containerEl.scrollTo({ top: Math.max(0, scrollTop), behavior: "smooth" });
+
+      setHighlightedMsgId(targetMsgId);
+      setTimeout(() => {
+        setHighlightedMsgId(null);
+      }, 2000);
+    } else if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedMsgId(targetMsgId);
+      setTimeout(() => {
+        setHighlightedMsgId(null);
+      }, 2000);
+    }
+  };
+
+  const handleStartReply = (msg) => {
+    setEditingMessage(null);
+    let snippet = msg.text || "";
+    if (!snippet && msg.emojiUrl) snippet = "🎨 Emoji";
+    if (!snippet && Array.isArray(msg.parts)) {
+      snippet =
+        msg.parts.map((p) => p.text || "").join("") ||
+        (msg.parts.some((p) => p.type === "emoji") ? "🎨 Emoji" : "Message");
+    }
+    setReplyingTo({
+      id: msg.id || msg.tempId,
+      senderName: msg.senderName || "Stranger",
+      text: snippet || "Message",
+      emojiUrl: msg.emojiUrl || "",
+    });
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const handleStartEdit = (msg) => {
+    setReplyingTo(null);
+    setEditingMessage({
+      id: msg.id || msg.tempId,
+      text: msg.text || "",
+      parts: msg.parts || [],
+      emojiUrl: msg.emojiUrl || "",
+    });
+
+    const container = inputRef.current;
+    if (container) {
+      container.innerHTML = "";
+      if (Array.isArray(msg.parts) && msg.parts.length > 0) {
+        msg.parts.forEach((part) => {
+          if (part.type === "emoji" && part.url) {
+            const img = document.createElement("img");
+            img.src = part.url;
+            img.alt = "emoji";
+            img.className = "inline-emoji";
+            img.setAttribute("data-emoji-url", part.url);
+            container.appendChild(img);
+          } else if (part.type === "text" && part.text) {
+            container.appendChild(document.createTextNode(part.text));
+          }
+        });
+      } else {
+        container.textContent = msg.text || "";
+      }
+      container.focus();
+
+      // Place cursor at end
+      try {
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(container);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch {}
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessage(null);
+    if (inputRef.current) {
+      inputRef.current.innerHTML = "";
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingMessage || !socketRef.current || !groupId) return;
     const container = inputRef.current;
     if (!container) return;
 
@@ -658,19 +915,203 @@ export default function CommunityPage() {
 
     if (!hasEmoji && textContent.trim() === "" && rawText === "") return;
 
+    const messageId = String(editingMessage?.id || "");
+    if (!messageId) return;
+
+    const newParts = parts.length > 0 ? parts : [{ type: "text", text: textContent || rawText }];
+    const newText = textContent || rawText;
+
+    // Optimistic local update ONLY for the targeted message
+    setMessages((prev) =>
+      prev.map((m) => {
+        const currentId = String(m.id || m.tempId || "");
+        if (currentId && currentId === messageId) {
+          return {
+            ...m,
+            text: newText,
+            parts: newParts,
+            isEdited: true,
+            editedAt: new Date().toISOString(),
+          };
+        }
+        return m;
+      })
+    );
+
+    let derivedEmoji = "";
+    if (Array.isArray(newParts)) {
+      const firstEmoji = newParts.find((part) => part?.type === "emoji");
+      if (firstEmoji && newText.trim() === "") {
+        derivedEmoji = firstEmoji.url;
+      }
+    }
+
+    socketRef.current.emit("edit_group_message", {
+      groupId,
+      messageId,
+      text: newText,
+      parts: newParts,
+      emojiUrl: derivedEmoji,
+    });
+
+    setEditingMessage(null);
+    container.innerHTML = "";
+  };
+
+  const handleAttachClick = () => {
+    if (!isAuthenticated) {
+      setAuthPromptOpen(true);
+      return;
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleImageSelect = (e) => {
+    if (!isAuthenticated) {
+      setAuthPromptOpen(true);
+      e.target.value = "";
+      return;
+    }
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ""; // reset file input
+
+    // Validate type
+    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg"];
+    if (!validTypes.includes(file.type)) {
+      toastMessage("Only image files (PNG, JPG, WEBP, GIF) are allowed.", "warning");
+      return;
+    }
+
+    // Validate size (max 5MB)
+    const maxLimitMB = Math.min(communityMediaSettings?.maxFileSizeMB || 5, 5);
+    const maxBytes = maxLimitMB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      toastMessage(`Selected image exceeds the maximum limit of ${maxLimitMB}MB. Please choose a smaller photo.`, "error");
+      return;
+    }
+
+    if (selectedImage?.previewUrl) {
+      URL.revokeObjectURL(selectedImage.previewUrl);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    const sizeMB = file.size / (1024 * 1024);
+    const sizeStr = sizeMB >= 1 ? `${sizeMB.toFixed(1)} MB` : `${Math.round(file.size / 1024)} KB`;
+
+    setSelectedImage({
+      file,
+      previewUrl,
+      name: file.name,
+      sizeStr,
+    });
+
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleRemoveSelectedImage = () => {
+    if (selectedImage?.previewUrl) {
+      URL.revokeObjectURL(selectedImage.previewUrl);
+    }
+    setSelectedImage(null);
+  };
+
+  const handleSend = async () => {
+    if (editingMessage) {
+      handleSaveEdit();
+      return;
+    }
+
+    if (!socketRef.current || !groupId) return;
+    if (cooldownRemaining > 0) return;
+
+    const container = inputRef.current;
+    const rawText = container ? (container.innerText || container.textContent || "").trim() : "";
+    let parts = getComposerParts();
+    const hasEmoji = parts.some((part) => part.type === "emoji");
+
+    let textContent = "";
+    if (parts.length > 0) {
+      textContent = parts
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join("");
+    } else {
+      textContent = rawText;
+      if (rawText) {
+        parts = [{ type: "text", text: rawText }];
+      }
+    }
+
+    // Must have text, emoji, or an image to send
+    if (!hasEmoji && textContent.trim() === "" && rawText === "" && !selectedImage) return;
+
+    let finalImageUrl = "";
+    if (selectedImage?.file) {
+      if (!isAuthenticated) {
+        setAuthPromptOpen(true);
+        return;
+      }
+
+      setUploadingImage(true);
+      try {
+        const formData = new FormData();
+        formData.append("image", selectedImage.file);
+        formData.append("groupId", groupId);
+        const uploadRes = await UploadCommunityImageApi(formData);
+        if (!uploadRes?.ok || !uploadRes?.imageUrl) {
+          if (uploadRes?.status === 401) {
+            setAuthPromptOpen(true);
+            toastMessage("Please sign in to upload photos.", "info");
+          } else {
+            toastMessage(uploadRes?.message || "Failed to upload image. Please try again.", "error");
+          }
+          setUploadingImage(false);
+          return;
+        }
+        finalImageUrl = uploadRes.imageUrl;
+      } catch (err) {
+        console.error("Upload error:", err);
+        toastMessage("Failed to upload image. Please check your connection.", "error");
+        setUploadingImage(false);
+        return;
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
     const currentUserId = localStorage.getItem("funchat_user_id") || socketRef.current?.id || socketId || "";
     const currentSenderName = profileName || localStorage.getItem("funchat_profile_name") || "Stranger";
     const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const currentReply = replyingTo
+      ? {
+          id: replyingTo.id,
+          senderName: replyingTo.senderName,
+          text: replyingTo.text,
+          emojiUrl: replyingTo.emojiUrl || "",
+          imageUrl: replyingTo.imageUrl || "",
+        }
+      : null;
 
     const messagePayload = {
       id: msgId,
       tempId: msgId,
       groupId,
-      parts: parts.length > 0 ? parts : [{ type: "text", text: textContent || rawText }],
+      parts: parts.length > 0 ? parts : (textContent || rawText ? [{ type: "text", text: textContent || rawText }] : []),
       text: textContent || rawText,
+      emojiUrl: "",
+      imageUrl: finalImageUrl,
       from: currentUserId,
       userId: currentUserId,
       senderName: currentSenderName,
+      replyTo: currentReply,
+      isEdited: false,
       createdAt: new Date().toISOString(),
       isOptimistic: true,
       localTimestamp: Date.now(),
@@ -678,6 +1119,11 @@ export default function CommunityPage() {
 
     // Instant local UI update — 0ms delay!
     setMessages((prev) => [...prev, messagePayload]);
+    setReplyingTo(null);
+
+    if (selectedImage) {
+      handleRemoveSelectedImage();
+    }
 
     socketRef.current.emit("group_message", messagePayload);
     emitTyping(false);
@@ -687,7 +1133,9 @@ export default function CommunityPage() {
       setCooldownRemaining(messageDelay * 60);
     }
 
-    container.innerHTML = "";
+    if (container) {
+      container.innerHTML = "";
+    }
 
     // Force-snap to bottom when user sends
     isAtBottomRef.current = true;
@@ -739,7 +1187,7 @@ export default function CommunityPage() {
 
   // Compile rendering variables for typing users text
   const typingUsersList = Object.entries(typingUsers).filter(
-    ([uid]) => uid !== socketId && uid !== localStorage.getItem("funchat_user_id")
+    ([uid]) => uid !== socketId && uid !== socketRef.current?.id && uid !== localStorage.getItem("funchat_user_id")
   );
 
   const getTypingText = () => {
@@ -772,6 +1220,133 @@ export default function CommunityPage() {
     setGroupId("");
     navigate("/community");
   };
+
+  if (authLoading) {
+    return (
+      <Box sx={{ minHeight: "calc(100vh - 80px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <CircularProgress size={40} sx={{ color: "#818cf8" }} />
+      </Box>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Box
+        sx={{
+          minHeight: "calc(100vh - 80px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          px: 2,
+          py: 6,
+          background: "radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.15) 0%, rgba(15, 23, 42, 0) 70%)",
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            maxWidth: 520,
+            width: "100%",
+            p: { xs: 3.5, sm: 5 },
+            borderRadius: "24px",
+            background: "rgba(15, 23, 42, 0.75)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(99, 102, 241, 0.2)",
+            textAlign: "center",
+          }}
+        >
+          <Box
+            sx={{
+              width: 72,
+              height: 72,
+              borderRadius: "20px",
+              background: "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mx: "auto",
+              mb: 3,
+              boxShadow: "0 10px 25px rgba(99, 102, 241, 0.4)",
+            }}
+          >
+            <LockOutlinedIcon sx={{ fontSize: 38, color: "#ffffff" }} />
+          </Box>
+
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 800,
+              color: "#ffffff",
+              mb: 1.5,
+              letterSpacing: "-0.5px",
+              fontSize: { xs: "22px", sm: "26px" },
+            }}
+          >
+            Community Chat Restricted
+          </Typography>
+
+          <Typography
+            variant="body1"
+            sx={{
+              color: "rgba(255, 255, 255, 0.7)",
+              mb: 4,
+              fontSize: { xs: "14px", sm: "15px" },
+              lineHeight: 1.6,
+            }}
+          >
+            Community chat channels are reserved exclusively for registered & authenticated FunChat members. Please sign in or create an account to join group conversations, share media, and chat in live rooms.
+          </Typography>
+
+          <Stack spacing={2}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={openLoginModal}
+              startIcon={<ShieldIcon />}
+              sx={{
+                py: 1.5,
+                borderRadius: "14px",
+                fontWeight: 700,
+                fontSize: "15px",
+                textTransform: "none",
+                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+                boxShadow: "0 8px 20px rgba(99, 102, 241, 0.35)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)",
+                  boxShadow: "0 12px 25px rgba(99, 102, 241, 0.5)",
+                },
+              }}
+            >
+              Sign In / Create Account
+            </Button>
+
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => navigate("/")}
+              sx={{
+                py: 1.4,
+                borderRadius: "14px",
+                fontWeight: 600,
+                fontSize: "15px",
+                textTransform: "none",
+                borderColor: "rgba(255, 255, 255, 0.15)",
+                color: "rgba(255, 255, 255, 0.8)",
+                "&:hover": {
+                  borderColor: "rgba(255, 255, 255, 0.3)",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  color: "#ffffff",
+                },
+              }}
+            >
+              Return to Home
+            </Button>
+          </Stack>
+        </Paper>
+      </Box>
+    );
+  }
 
   return (
     <Box className="comp-container">
@@ -1241,72 +1816,218 @@ export default function CommunityPage() {
               ) : (
                 messages.map((msg, i) => {
                   const senderId = msg.from || msg.userId;
-                  const myCurrentId = socketRef.current?.id || socketId || localStorage.getItem("funchat_user_id");
+                  const myCurrentId = localStorage.getItem("funchat_user_id") || socketRef.current?.id || socketId;
                   const currentProfileName = (profileName || localStorage.getItem("funchat_profile_name") || "").trim().toLowerCase();
                   const isMe =
                     Boolean(msg.isOptimistic) ||
                     (myCurrentId && (senderId === myCurrentId || msg.userId === myCurrentId)) ||
-                    senderId === socketId ||
-                    senderId === socketRef.current?.id ||
-                    senderId === localStorage.getItem("funchat_user_id") ||
-                    (Boolean(msg.senderName) && Boolean(currentProfileName) && msg.senderName.trim().toLowerCase() === currentProfileName);
+                    (socketId && (senderId === socketId || msg.userId === socketId)) ||
+                    (socketRef.current?.id && (senderId === socketRef.current.id || msg.userId === socketRef.current.id)) ||
+                    (Boolean(msg.senderName) && Boolean(currentProfileName) && currentProfileName !== "stranger" && msg.senderName.trim().toLowerCase() === currentProfileName);
                   const isSystem = msg.from === "system";
+                  const msgKey = msg.id || msg.tempId || `msg_${i}`;
+
+                  // Date divider calculation
+                  const prevMsg = i > 0 ? messages[i - 1] : null;
+                  const currentDate = msg.createdAt ? new Date(msg.createdAt).toDateString() : null;
+                  const prevDate = prevMsg?.createdAt ? new Date(prevMsg.createdAt).toDateString() : null;
+                  const showDateDivider = currentDate && currentDate !== prevDate;
+                  const dateHeaderStr = showDateDivider ? formatDateHeader(msg.createdAt) : null;
+
+                  const isHighlighted = highlightedMsgId && (msg.id === highlightedMsgId || msg.tempId === highlightedMsgId);
+                  const isActionActive = activeActionMsgId === msgKey;
+
+                  const canEdit = isMe && isMessageEditable(msg.createdAt || msg.localTimestamp);
 
                   return (
-                    <Box
-                      key={msg.id || msg.tempId || `msg_${i}`}
-                      sx={{
-                        display: "flex",
-                        justifyContent: isSystem
-                          ? "center"
-                          : isMe
-                            ? "flex-end"
-                            : "flex-start",
-                        mb: 1.5,
-                        width: "100%",
-                      }}
-                    >
-                      {isSystem ? (
-                        <Box className="comp-system-msg">
-                          {msg.text}
+                    <Box key={msgKey} sx={{ width: "100%" }}>
+                      {/* Date Divider */}
+                      {showDateDivider && dateHeaderStr && (
+                        <Box className="comp-date-divider-wrap">
+                          <Typography className="comp-date-divider">
+                            {dateHeaderStr}
+                          </Typography>
                         </Box>
-                      ) : (
-                        <Stack spacing={0.3} sx={{ maxWidth: "75%" }}>
-                          {!isMe && (
-                            <Typography className="comp-bubble-sender">
-                              {msg.senderName || "Stranger"}
-                            </Typography>
-                          )}
+                      )}
+
+                      {/* Message Row */}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: isSystem
+                            ? "center"
+                            : isMe
+                              ? "flex-end"
+                              : "flex-start",
+                          mb: 1.5,
+                          width: "100%",
+                        }}
+                      >
+                        {isSystem ? (
+                          <Box className="comp-system-msg">
+                            {msg.text}
+                          </Box>
+                        ) : (
                           <Box
-                            className={
-                              isMe ? "comp-bubble comp-bubble-me" : "comp-bubble comp-bubble-them"
-                            }
+                            className={`comp-msg-wrapper ${isActionActive ? "active-action" : ""}`}
+                            sx={{
+                              maxWidth: { xs: "90%", sm: "80%" },
+                              alignItems: isMe ? "flex-end" : "flex-start",
+                            }}
+                            onMouseEnter={() => !isMobile && setActiveActionMsgId(msgKey)}
+                            onMouseLeave={() => !isMobile && setActiveActionMsgId(null)}
                           >
-                            <Box className="comp-bubble-content">
-                              {(
-                                msg.parts ||
-                                (msg.emojiUrl
-                                  ? [{ type: "emoji", url: msg.emojiUrl }]
-                                  : [{ type: "text", text: msg.text || "" }])
-                              ).map((part, idx) =>
-                                part.type === "emoji" ? (
+                            {!isMe && (
+                              <Typography className="comp-bubble-sender">
+                                {msg.senderName || "Stranger"}
+                              </Typography>
+                            )}
+
+                            <Box className={`comp-msg-row ${isMe ? "comp-msg-row-me" : "comp-msg-row-them"}`}>
+                              {/* If isMe: Action buttons appear to the left of bubble */}
+                              {isMe && (
+                                <Box className="comp-msg-actions">
+                                  <Tooltip title="Reply" arrow>
+                                    <IconButton
+                                      size="small"
+                                      className="comp-action-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartReply(msg);
+                                      }}
+                                    >
+                                      <ReplyRoundedIcon sx={{ fontSize: 14 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                  {canEdit && (
+                                    <Tooltip title="Edit (within 10m)" arrow>
+                                      <IconButton
+                                        size="small"
+                                        className="comp-action-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleStartEdit(msg);
+                                        }}
+                                      >
+                                        <EditRoundedIcon sx={{ fontSize: 13 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                              )}
+
+                              <Box
+                                id={`msg-${msg.id || msg.tempId}`}
+                                className={`${isMe ? "comp-bubble comp-bubble-me" : "comp-bubble comp-bubble-them"} ${
+                                  isHighlighted ? "comp-highlight-msg" : ""
+                                }`}
+                              >
+                                {/* Reply Quote inside bubble */}
+                                {msg.replyTo && (msg.replyTo.text || msg.replyTo.senderName || msg.replyTo.imageUrl) && (
                                   <Box
-                                    key={idx}
-                                    component="img"
-                                    src={part.url}
-                                    alt="emoji"
-                                    className="inline-emoji"
-                                  />
-                                ) : (
-                                  <Box key={idx} component="span" className="message-content">
-                                    {part.text}
+                                    className="comp-reply-quote"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleJumpToMessage(msg.replyTo.id);
+                                    }}
+                                  >
+                                    <Typography className="comp-reply-quote-sender">
+                                      {msg.replyTo.senderName || "User"}
+                                    </Typography>
+                                    <Typography className="comp-reply-quote-text">
+                                      {msg.replyTo.imageUrl && !msg.replyTo.text
+                                        ? "📷 Photo"
+                                        : msg.replyTo.imageUrl
+                                          ? `📷 Photo: ${msg.replyTo.text}`
+                                          : msg.replyTo.text || (msg.replyTo.emojiUrl ? "🎨 Emoji" : "Message")}
+                                    </Typography>
                                   </Box>
-                                )
+                                )}
+
+                                {/* Image attachment inside bubble */}
+                                {msg.imageUrl && (
+                                  <Box
+                                    className="comp-bubble-image-wrap"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveLightboxImage(getFullImageUrl(msg.imageUrl));
+                                    }}
+                                  >
+                                    <img
+                                      src={getFullImageUrl(msg.imageUrl)}
+                                      alt="Attached photo"
+                                      className="comp-bubble-image"
+                                      loading="lazy"
+                                    />
+                                    <Box className="comp-bubble-image-overlay">
+                                      <ZoomInRoundedIcon sx={{ fontSize: 20, color: "#ffffff" }} />
+                                    </Box>
+                                  </Box>
+                                )}
+
+                                {/* Message Content */}
+                                {(msg.text || msg.emojiUrl || (msg.parts && msg.parts.length > 0)) && (
+                                  <Box className="comp-bubble-content">
+                                    {(
+                                      msg.parts ||
+                                      (msg.emojiUrl
+                                        ? [{ type: "emoji", url: msg.emojiUrl }]
+                                        : [{ type: "text", text: msg.text || "" }])
+                                    ).map((part, idx) =>
+                                      part.type === "emoji" ? (
+                                        <Box
+                                          key={idx}
+                                          component="img"
+                                          src={part.url}
+                                          alt="emoji"
+                                          className="inline-emoji"
+                                        />
+                                      ) : (
+                                        <Box key={idx} component="span" className="message-content">
+                                          {part.text}
+                                        </Box>
+                                      )
+                                    )}
+                                  </Box>
+                                )}
+
+                                {/* Footer: Time + Edited tag + Read tick */}
+                                <Box className="comp-bubble-footer">
+                                  {msg.isEdited && (
+                                    <Typography className="comp-edited-tag">
+                                      edited
+                                    </Typography>
+                                  )}
+                                  <Typography className="comp-msg-time">
+                                    {formatMessageTime(msg.createdAt || msg.localTimestamp || Date.now())}
+                                  </Typography>
+                                  {isMe && (
+                                    <DoneAllIcon className="comp-msg-tick" />
+                                  )}
+                                </Box>
+                              </Box>
+
+                              {/* If !isMe: Action buttons appear to the right of bubble */}
+                              {!isMe && (
+                                <Box className="comp-msg-actions">
+                                  <Tooltip title="Reply" arrow>
+                                    <IconButton
+                                      size="small"
+                                      className="comp-action-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartReply(msg);
+                                      }}
+                                    >
+                                      <ReplyRoundedIcon sx={{ fontSize: 14 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
                               )}
                             </Box>
                           </Box>
-                        </Stack>
-                      )}
+                        )}
+                      </Box>
                     </Box>
                   );
                 })
@@ -1355,7 +2076,87 @@ export default function CommunityPage() {
                 paddingBottom: keyboardHeight > 0 ? "8px" : "calc(12px + env(safe-area-inset-bottom, 0px))",
               } : undefined}
             >
-              <Stack direction="row" spacing={1.5} alignItems="flex-end">
+              {/* Reply Preview Bar */}
+              {replyingTo && (
+                <Box className="comp-banner-bar comp-banner-reply">
+                  <Box className="comp-banner-content">
+                    <Box className="comp-banner-header">
+                      <ReplyRoundedIcon sx={{ fontSize: 16 }} />
+                      <Typography sx={{ fontSize: "11.5px", fontWeight: 700 }}>
+                        Replying to {replyingTo.senderName}
+                      </Typography>
+                    </Box>
+                    <Typography className="comp-banner-text">
+                      {replyingTo.imageUrl && !replyingTo.text
+                        ? "📷 Photo"
+                        : replyingTo.imageUrl
+                          ? `📷 Photo: ${replyingTo.text}`
+                          : replyingTo.text || (replyingTo.emojiUrl ? "🎨 Emoji" : "Message")}
+                    </Typography>
+                  </Box>
+                  <Tooltip title="Cancel Reply" arrow>
+                    <IconButton size="small" className="comp-banner-close" onClick={handleCancelReply}>
+                      <CloseIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
+
+              {/* Edit Preview Bar */}
+              {editingMessage && (
+                <Box className="comp-banner-bar comp-banner-edit">
+                  <Box className="comp-banner-content">
+                    <Box className="comp-banner-header">
+                      <EditRoundedIcon sx={{ fontSize: 16 }} />
+                      <Typography sx={{ fontSize: "11.5px", fontWeight: 700 }}>
+                        Editing Message
+                      </Typography>
+                    </Box>
+                    <Typography className="comp-banner-text">
+                      {editingMessage.text}
+                    </Typography>
+                  </Box>
+                  <Tooltip title="Cancel Edit (Esc)" arrow>
+                    <IconButton size="small" className="comp-banner-close" onClick={handleCancelEdit}>
+                      <CloseIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
+
+              {/* Selected Image Attachment Preview Bar */}
+              {selectedImage && (
+                <Box className="comp-image-preview-bar">
+                  <Box className="comp-image-preview-thumb-wrap">
+                    <img src={selectedImage.previewUrl} alt="Selected" className="comp-image-preview-thumb" />
+                    {uploadingImage && (
+                      <Box className="comp-image-upload-overlay">
+                        <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                      </Box>
+                    )}
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0, ml: 1.5 }}>
+                    <Typography className="comp-image-preview-name" noWrap>
+                      {selectedImage.name}
+                    </Typography>
+                    <Typography className="comp-image-preview-size">
+                      {selectedImage.sizeStr} • Max 5MB
+                    </Typography>
+                  </Box>
+                  <Tooltip title="Remove Image" arrow>
+                    <IconButton
+                      size="small"
+                      className="comp-image-preview-remove"
+                      onClick={handleRemoveSelectedImage}
+                      disabled={uploadingImage}
+                    >
+                      <CloseIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
+
+              <Stack direction="row" spacing={1.5} alignItems="center">
                 <Box className="comp-input-capsule">
                   <Box sx={{ position: "relative" }} className="comp-emoji-wrapper">
                     <Tooltip title="Emoji" arrow>
@@ -1379,7 +2180,17 @@ export default function CommunityPage() {
                     contentEditable={cooldownRemaining === 0}
                     role="textbox"
                     aria-label="Group message input"
-                    data-placeholder={cooldownRemaining > 0 ? `Slow mode active. Wait ${cooldownRemaining}s...` : `Message # ${activeGroup.name}...`}
+                    data-placeholder={
+                      cooldownRemaining > 0
+                        ? `Slow mode active. Wait ${cooldownRemaining}s...`
+                        : editingMessage
+                          ? "Edit your message... (Esc to cancel, Enter to save)"
+                          : replyingTo
+                            ? `Reply to ${replyingTo.senderName}...`
+                            : selectedImage
+                              ? "Add a caption (optional)..."
+                              : `Message # ${activeGroup.name}...`
+                    }
                     ref={inputRef}
                     onInput={handleComposerInput}
                     onKeyDown={(e) => {
@@ -1387,6 +2198,17 @@ export default function CommunityPage() {
                         if (!isMobile && !e.shiftKey) {
                           e.preventDefault();
                           handleSend();
+                        }
+                      } else if (e.key === "Escape") {
+                        if (editingMessage) {
+                          e.preventDefault();
+                          handleCancelEdit();
+                        } else if (replyingTo) {
+                          e.preventDefault();
+                          handleCancelReply();
+                        } else if (selectedImage) {
+                          e.preventDefault();
+                          handleRemoveSelectedImage();
                         }
                       }
                     }}
@@ -1404,23 +2226,41 @@ export default function CommunityPage() {
                     suppressContentEditableWarning
                   />
 
-                  <IconButton
-                    size="small"
-                    className="comp-attach-btn"
-                    sx={{ color: "#94a3b8", p: "4px", ml: "2px", mb: "4px" }}
-                    onClick={() => {
-                      if (inputRef.current) inputRef.current.focus();
-                      scrollToBottom(true);
-                      setTimeout(() => scrollToBottom(true), 60);
-                      setTimeout(() => scrollToBottom(true), 150);
-                    }}
+                  {/* Hidden File Input */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                    style={{ display: "none" }}
+                    onChange={handleImageSelect}
+                  />
+
+                  <Tooltip
+                    title={
+                      activeGroup?.allowImages === false || communityMediaSettings?.enabled === false
+                        ? "Image uploads are disabled in this group"
+                        : !isAuthenticated
+                          ? "Sign in to attach photos"
+                          : "Attach photo (Max 5MB)"
+                    }
+                    arrow
                   >
-                    <AttachFileIcon sx={{ fontSize: 20 }} />
-                  </IconButton>
+                    <span>
+                      <IconButton
+                        size="small"
+                        className="comp-attach-btn"
+                        disabled={activeGroup?.allowImages === false || communityMediaSettings?.enabled === false || uploadingImage}
+                        sx={{ color: "#94a3b8", p: "4px" }}
+                        onClick={handleAttachClick}
+                      >
+                        <AttachFileIcon sx={{ fontSize: 20 }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                 </Box>
 
-                <Tooltip title="Send (Enter)" arrow>
-                  <span>
+                <Tooltip title={editingMessage ? "Save changes (Enter)" : uploadingImage ? "Uploading..." : "Send (Enter)"} arrow>
+                  <span style={{ display: "inline-flex", alignItems: "center" }}>
                     <IconButton
                       id="comp-send-btn"
                       className="comp-send-btn"
@@ -1432,9 +2272,22 @@ export default function CommunityPage() {
                         e.preventDefault();
                         handleSend();
                       }}
-                      disabled={cooldownRemaining > 0}
+                      disabled={cooldownRemaining > 0 || uploadingImage}
+                      sx={editingMessage ? {
+                        background: "linear-gradient(135deg, #d97706, #f59e0b) !important",
+                        boxShadow: "0 3px 10px rgba(217, 119, 6, 0.25) !important",
+                        "&:hover": {
+                          boxShadow: "0 4px 14px rgba(217, 119, 6, 0.35) !important",
+                        }
+                      } : undefined}
                     >
-                      <SendRoundedIcon fontSize="small" />
+                      {uploadingImage ? (
+                        <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                      ) : editingMessage ? (
+                        <CheckRoundedIcon fontSize="small" />
+                      ) : (
+                        <SendRoundedIcon sx={{ fontSize: 20, ml: "2px" }} />
+                      )}
                     </IconButton>
                   </span>
                 </Tooltip>
@@ -1572,6 +2425,144 @@ export default function CommunityPage() {
 
       {/* ── POPUP DIALOG AD ── */}
       <AdPopup placement="popup_interstitial" delayMs={4500} />
+
+      {/* ── Fullscreen Image Lightbox Modal ── */}
+      {activeLightboxImage && (
+        <Box
+          className="comp-lightbox-backdrop"
+          onClick={() => setActiveLightboxImage(null)}
+        >
+          <Box className="comp-lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <Box className="comp-lightbox-top-bar">
+              <Typography sx={{ color: "#ffffff", fontSize: "14px", fontWeight: 700, letterSpacing: "-0.2px" }}>
+                🖼️ Community Image Viewer
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <IconButton
+                  className="comp-lightbox-btn"
+                  onClick={() => window.open(activeLightboxImage, "_blank")}
+                  title="Open original in new tab"
+                >
+                  <DownloadRoundedIcon sx={{ fontSize: 20, color: "#ffffff" }} />
+                </IconButton>
+                <IconButton
+                  className="comp-lightbox-btn"
+                  onClick={() => setActiveLightboxImage(null)}
+                  title="Close (Esc)"
+                >
+                  <CloseIcon sx={{ fontSize: 22, color: "#ffffff" }} />
+                </IconButton>
+              </Box>
+            </Box>
+            <Box className="comp-lightbox-img-wrap">
+              <img
+                src={activeLightboxImage}
+                alt="Enlarged view"
+                className="comp-lightbox-img"
+              />
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      {/* ── Professional Sign-In Required Modal ── */}
+      {authPromptOpen && (
+        <Box
+          className="comp-auth-modal-backdrop"
+          onClick={() => setAuthPromptOpen(false)}
+        >
+          <Box className="comp-auth-modal-card" onClick={(e) => e.stopPropagation()}>
+            <IconButton
+              className="comp-auth-modal-close"
+              size="small"
+              onClick={() => setAuthPromptOpen(false)}
+            >
+              <CloseIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+
+            <Box className="comp-auth-modal-header">
+              <Box className="comp-auth-modal-icon-badge">
+                <ImageIcon sx={{ fontSize: 30, color: "#4f46e5" }} />
+                <Box className="comp-auth-modal-lock-pill">
+                  <LockOutlinedIcon sx={{ fontSize: 12, color: "#ffffff" }} />
+                </Box>
+              </Box>
+              <Chip
+                label="MEMBER FEATURE"
+                size="small"
+                sx={{
+                  backgroundColor: "#e0e7ff",
+                  color: "#4338ca",
+                  fontWeight: 800,
+                  fontSize: "10.5px",
+                  letterSpacing: "0.5px",
+                  height: 22,
+                  mb: 1.5,
+                }}
+              />
+              <Typography className="comp-auth-modal-title">
+                Sign In to Share Photos
+              </Typography>
+              <Typography className="comp-auth-modal-subtitle">
+                To keep community discussions safe, photo uploads are reserved for verified FunChat members.
+              </Typography>
+            </Box>
+
+            <Box className="comp-auth-modal-features">
+              <Box className="comp-auth-feature-item">
+                <Box className="comp-auth-feature-dot">🖼️</Box>
+                <Box>
+                  <Typography className="comp-auth-feature-title">High Quality Photos up to 5MB</Typography>
+                  <Typography className="comp-auth-feature-desc">Share pictures, screenshots, and visual discussions</Typography>
+                </Box>
+              </Box>
+              <Box className="comp-auth-feature-item">
+                <Box className="comp-auth-feature-dot">⚡</Box>
+                <Box>
+                  <Typography className="comp-auth-feature-title">Fast Instant Sync & Lightbox</Typography>
+                  <Typography className="comp-auth-feature-desc">Interactive previews, photo replies, and fullscreen viewer</Typography>
+                </Box>
+              </Box>
+              <Box className="comp-auth-feature-item">
+                <Box className="comp-auth-feature-dot">🛡️</Box>
+                <Box>
+                  <Typography className="comp-auth-feature-title">100% Free & Fast Login</Typography>
+                  <Typography className="comp-auth-feature-desc">Quick Google One-Tap or Mobile OTP verification in seconds</Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            <Box className="comp-auth-modal-actions">
+              <Button
+                variant="contained"
+                className="comp-auth-btn-primary"
+                fullWidth
+                onClick={() => {
+                  setAuthPromptOpen(false);
+                  if (typeof openLoginModal === "function") {
+                    openLoginModal();
+                  } else {
+                    navigate("/login");
+                  }
+                }}
+              >
+                ✨ Sign In / Join Free
+              </Button>
+              <Button
+                variant="outlined"
+                className="comp-auth-btn-secondary"
+                fullWidth
+                onClick={() => {
+                  setAuthPromptOpen(false);
+                  navigate("/login");
+                }}
+              >
+                Go to Sign In Page →
+              </Button>
+            </Box>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }

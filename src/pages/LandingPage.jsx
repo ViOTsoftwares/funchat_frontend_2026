@@ -9,8 +9,11 @@ import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StarOutlinedIcon from "@mui/icons-material/StarOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import GroupsIcon from "@mui/icons-material/Groups";
+import { useAuth } from "../context/AuthContext.jsx";
 import AdBanner from "../components/AdBanner.jsx";
 import AdPopup from "../components/AdPopup.jsx";
+import ProfileWelcomeModal from "../components/Auth/ProfileWelcomeModal.jsx";
+import { toastMessage } from "../lib/toast.message.js";
 
 const STATS = [
   { value: "12K+", label: "Active Users" },
@@ -28,8 +31,8 @@ const FEATURES = [
   },
   {
     icon: <ShieldOutlinedIcon sx={{ fontSize: 22 }} />,
-    title: "End-to-End Secure",
-    desc: "Military-grade encryption on every message and video stream. No logs, ever.",
+    title: "End-to-End Encrypted",
+    desc: "All text and video streams use WebRTC P2P with DTLS-SRTP encryption.",
     accent: "#06b6d4",
   },
   {
@@ -53,26 +56,79 @@ export default function LandingPage({
   featureControl = {},
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [profileName, setProfileName] = useState(
-    localStorage.getItem("funchat_profile_name") ?? "Stranger"
+    user?.username || localStorage.getItem("funchat_profile_name") || "Stranger"
   );
+
+  const [isProfileWelcomeOpen, setIsProfileWelcomeOpen] = useState(false);
 
   const chatStatus = featureControl.chat ?? "live";
   const videoStatus = featureControl.video ?? "live";
   const communityStatus = featureControl.community ?? "live";
 
   useEffect(() => {
+    const seen = localStorage.getItem("funchat_profile_popup_seen");
+    const saved = localStorage.getItem("funchat_saved_username");
+    if (!seen && !saved && !user) {
+      setIsProfileWelcomeOpen(true);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.username) {
+      setProfileName(user.username);
+    } else {
+      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
+    }
+  }, [user]);
+
+  useEffect(() => {
     const handleNameChange = () => {
-      setProfileName(localStorage.getItem("funchat_profile_name") ?? "Stranger");
+      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
+    };
+    const handleOpenModal = () => {
+      setIsProfileWelcomeOpen(true);
     };
     window.addEventListener("profileNameChanged", handleNameChange);
-    return () => window.removeEventListener("profileNameChanged", handleNameChange);
+    window.addEventListener("openProfileWelcomeModal", handleOpenModal);
+    return () => {
+      window.removeEventListener("profileNameChanged", handleNameChange);
+      window.removeEventListener("openProfileWelcomeModal", handleOpenModal);
+    };
   }, []);
 
   const handleProfileNameChange = (val) => {
     setProfileName(val);
     localStorage.setItem("funchat_profile_name", val);
+    localStorage.setItem("funchat_saved_username", val);
     window.dispatchEvent(new Event("profileNameChanged"));
+  };
+
+  const handleStartChatWithCheck = () => {
+    const savedName =
+      user?.username ||
+      localStorage.getItem("funchat_saved_username") ||
+      localStorage.getItem("funchat_profile_name");
+    if (!savedName || savedName === "Stranger") {
+      setIsProfileWelcomeOpen(true);
+      toastMessage("Please choose a handle first to start chatting!", "warning");
+      return;
+    }
+    if (onStartChat) onStartChat();
+  };
+
+  const handleStartVideoWithCheck = () => {
+    const savedName =
+      user?.username ||
+      localStorage.getItem("funchat_saved_username") ||
+      localStorage.getItem("funchat_profile_name");
+    if (!savedName || savedName === "Stranger") {
+      setIsProfileWelcomeOpen(true);
+      toastMessage("Please choose a handle first to start video chat!", "warning");
+      return;
+    }
+    if (onStartVideo) onStartVideo();
   };
 
   const getStatusBadge = (featStatus) => {
@@ -149,91 +205,6 @@ export default function LandingPage({
           anonymous, and beautifully designed for meaningful moments.
         </Typography>
 
-        {/* Profile Name Card */}
-        <Box
-          sx={{
-            maxWidth: 340,
-            mx: "auto",
-            mb: 4,
-            p: 2.5,
-            borderRadius: "20px",
-            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(241, 245, 249, 0.7))",
-            border: "1px solid rgba(99, 102, 241, 0.15)",
-            backdropFilter: "blur(16px)",
-            boxShadow: "0 12px 35px rgba(99, 102, 241, 0.06), 0 4px 12px rgba(15, 23, 42, 0.03)",
-            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-            "&:hover": {
-              transform: "translateY(-2px)",
-              border: "1px solid rgba(99, 102, 241, 0.28)",
-              boxShadow: "0 16px 40px rgba(99, 102, 241, 0.12), 0 8px 18px rgba(15, 23, 42, 0.04)"
-            }
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5, justifyContent: "center" }}>
-            <Box
-              sx={{
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #6366f1, #3b82f6)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                boxShadow: "0 2px 6px rgba(99, 102, 241, 0.3)"
-              }}
-            >
-              <Typography sx={{ fontSize: "10px", fontWeight: 800 }}>U</Typography>
-            </Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#4f46e5", textTransform: "uppercase", fontSize: "11px", letterSpacing: "1px" }}>
-              My Display Name
-            </Typography>
-          </Stack>
-          <Box
-            sx={{
-              position: "relative",
-              display: "flex",
-              alignItems: "center"
-            }}
-          >
-            <Box
-              component="input"
-              type="text"
-              value={profileName}
-              onChange={(e) => handleProfileNameChange(e.target.value)}
-              placeholder="Stranger"
-              sx={{
-                width: "100%",
-                padding: "12px 42px 12px 16px",
-                borderRadius: "14px",
-                border: "1.5px solid rgba(99, 102, 241, 0.2)",
-                outline: "none",
-                fontSize: "14px",
-                textAlign: "center",
-                fontWeight: 700,
-                color: "#0f172a",
-                background: "#ffffff",
-                transition: "all 0.2s ease",
-                "&:focus": {
-                  borderColor: "#4f46e5",
-                  boxShadow: "0 0 0 4px rgba(99, 102, 241, 0.15)",
-                  background: "#ffffff"
-                }
-              }}
-            />
-            <EditIcon
-              sx={{
-                position: "absolute",
-                right: 14,
-                color: "#6366f1",
-                fontSize: 18,
-                pointerEvents: "none",
-                opacity: 0.8
-              }}
-            />
-          </Box>
-        </Box>
-
         {/* CTA buttons */}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} className="lp-cta-group">
           <Button
@@ -242,7 +213,7 @@ export default function LandingPage({
             variant="contained"
             className="lp-btn-primary"
             startIcon={<ChatBubbleOutlineIcon />}
-            onClick={onStartChat}
+            onClick={handleStartChatWithCheck}
             sx={{
               ...(chatStatus === "coming_soon" && {
                 background: "linear-gradient(135deg, #8b5cf6, #ec4899) !important",
@@ -262,7 +233,7 @@ export default function LandingPage({
             variant="outlined"
             className="lp-btn-secondary"
             startIcon={<VideocamOutlinedIcon />}
-            onClick={onStartVideo}
+            onClick={handleStartVideoWithCheck}
             sx={{
               ...(videoStatus === "coming_soon" && {
                 borderColor: "rgba(139, 92, 246, 0.6) !important",
@@ -371,7 +342,7 @@ export default function LandingPage({
             variant="contained"
             className="lp-btn-primary"
             startIcon={<ChatBubbleOutlineIcon />}
-            onClick={onStartChat}
+            onClick={handleStartChatWithCheck}
             sx={{
               ...(chatStatus === "coming_soon" && {
                 background: "linear-gradient(135deg, #8b5cf6, #ec4899) !important",
@@ -391,7 +362,7 @@ export default function LandingPage({
             variant="outlined"
             className="lp-btn-secondary"
             startIcon={<VideocamOutlinedIcon />}
-            onClick={onStartVideo}
+            onClick={handleStartVideoWithCheck}
             sx={{
               ...(videoStatus === "coming_soon" && {
                 borderColor: "rgba(139, 92, 246, 0.6) !important",
@@ -447,6 +418,13 @@ export default function LandingPage({
 
       {/* ── POPUP DIALOG AD ── */}
       <AdPopup placement="popup_interstitial" delayMs={4000} />
+
+      {/* ── FIRST TIME PROFILE WELCOME POPUP ── */}
+      <ProfileWelcomeModal
+        open={isProfileWelcomeOpen}
+        onClose={() => setIsProfileWelcomeOpen(false)}
+        onSaveSuccess={(savedName) => setProfileName(savedName)}
+      />
     </Box>
   );
 }

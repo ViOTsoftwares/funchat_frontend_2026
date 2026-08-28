@@ -1,17 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { GetSettingApi } from "../Api.js";
 
 const ROUTE_SEO_DATA = {
   "/": {
-    title: "FunChat 2026 — Free Anonymous Video & Text Chat Platform",
+    title: "Free Anonymous Video & Text Chat Platform",
     description:
-      "Connect instantly with strangers worldwide on FunChat 2026. Private, fast, secure one-to-one text chat, WebRTC HD video calls, and topic communities with no registration required.",
+      "Connect instantly with strangers worldwide. Private, fast, secure one-to-one text chat, WebRTC HD video calls, and topic communities with no registration required.",
     keywords:
       "anonymous chat, stranger video chat, private text chat, random video call, webrtc video chat, online communities, omegle alternative, funchat 2026",
     canonical: "https://funchat.live/",
   },
   "/chat": {
-    title: "Live 1-on-1 Text Chat — Anonymous & Encrypted | FunChat 2026",
+    title: "Live 1-on-1 Text Chat — Anonymous & Encrypted",
     description:
       "Start a live 1-on-1 text conversation with random people online. Fast instant matching, emoji reactions, end-to-end security with zero chat logs.",
     keywords:
@@ -19,7 +20,7 @@ const ROUTE_SEO_DATA = {
     canonical: "https://funchat.live/chat",
   },
   "/video": {
-    title: "HD Random Video Chat — Real-Time WebRTC Calls | FunChat 2026",
+    title: "HD Random Video Chat — Real-Time WebRTC Calls",
     description:
       "Experience crystal-clear HD video calls with strangers. Instant pairing, camera/microphone controls, and smart AI moderation for safe connections.",
     keywords:
@@ -27,7 +28,7 @@ const ROUTE_SEO_DATA = {
     canonical: "https://funchat.live/video",
   },
   "/community": {
-    title: "Topic Communities & Public Chatrooms — FunChat 2026",
+    title: "Topic Communities & Public Chatrooms",
     description:
       "Explore trending topic communities and public discussion rooms. Connect around gaming, tech, crypto, music, and creative arts in real time.",
     keywords:
@@ -45,11 +46,26 @@ export default function SEO({
   schemaType = "WebPage",
 }) {
   const location = useLocation();
+  const [settings, setSettings] = useState(null);
+
+  useEffect(() => {
+    GetSettingApi()
+      .then((res) => {
+        if (res?.success && res?.result) {
+          setSettings(res.result);
+        }
+      })
+      .catch((err) => console.warn("Could not load settings in SEO:", err));
+  }, []);
 
   useEffect(() => {
     const defaultData = ROUTE_SEO_DATA[location.pathname] || ROUTE_SEO_DATA["/"];
-    const finalTitle = title || defaultData.title;
-    const finalDesc = description || defaultData.description;
+    const siteTitle = settings?.title || "FunChat 2026";
+    const rawTitle = title || defaultData.title;
+    const finalTitle = title ? title : `${siteTitle} — ${rawTitle}`;
+
+    const projectTag = settings?.project ? `${settings.project} · ` : "";
+    const finalDesc = description || `${projectTag}${defaultData.description}`;
     const finalKeywords = keywords || defaultData.keywords;
     const finalCanonical = canonical || defaultData.canonical || `https://funchat.live${location.pathname}`;
 

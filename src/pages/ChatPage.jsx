@@ -22,31 +22,41 @@ import AttachFileIcon from "@mui/icons-material/AttachFile";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import { Picker } from "ms-3d-emoji-picker";
+import { useAuth } from "../context/AuthContext.jsx";
 import AdBanner from "../components/AdBanner.jsx";
 import AdPopup from "../components/AdPopup.jsx";
 
 export default function ChatPage({
   isMatched,
   isSearching,
+  onStartChat,
+  onNext,
+  onStop,
+  onSend,
   messages,
+  partnerMode,
+  partnerName,
+  onReport,
+  onOpenReport,
+  onClose,
+  activeFilter,
+  selectedCountry,
+  onOpenFilter,
+  featureControl = {},
   isPartnerTyping,
   onJoin,
-  onNext,
-  onClose,
-  onReport,
   emojiOpen,
   onToggleEmoji,
   onEmojiSelect,
   inputRef,
   onComposerInput,
-  onSend,
   backendUrl,
   socketId,
-  partnerName,
 }) {
   const messageListRef = useRef(null);
   const navigate = useNavigate();
-  const handleBack = () => {
+  const { user } = useAuth();
+  const handleBackToHome = () => {
     onClose();
     navigate("/");
   };
@@ -54,8 +64,16 @@ export default function ChatPage({
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
   const [hasClickedInput, setHasClickedInput] = useState(false);
   const [profileName, setProfileName] = useState(
-    localStorage.getItem("funchat_profile_name") || "Stranger"
+    user?.username || localStorage.getItem("funchat_profile_name") || "Stranger"
   );
+
+  useEffect(() => {
+    if (user?.username) {
+      setProfileName(user.username);
+    } else {
+      setProfileName(localStorage.getItem("funchat_profile_name") || "Stranger");
+    }
+  }, [user]);
 
   useEffect(() => {
     const handleNameChange = () => {
@@ -146,7 +164,7 @@ export default function ChatPage({
           {/* Left: Mode badge + status */}
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Tooltip title="Back to Home" arrow>
-              <IconButton onClick={handleBack} size="small" sx={{ color: "#64748b", mr: 0.5 }}>
+              <IconButton onClick={handleBackToHome} size="small" sx={{ color: "#64748b", mr: 0.5 }}>
                 <ArrowBackIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -377,7 +395,7 @@ export default function ChatPage({
                 ))}
               </Box>
             )}
-            <Stack direction="row" spacing={1} alignItems="flex-end">
+            <Stack direction="row" spacing={1} alignItems="center">
               {/* Capsule enclosing emoji + input + attachment */}
               <Box className="cp-input-capsule">
                 {/* Emoji toggle */}
@@ -430,7 +448,7 @@ export default function ChatPage({
                 <IconButton
                   size="small"
                   className="cp-attach-btn"
-                  sx={{ color: "#94a3b8", p: "4px", ml: "2px", mb: "4px" }}
+                  sx={{ color: "#94a3b8", p: "4px" }}
                 >
                   <AttachFileIcon sx={{ fontSize: 20 }} />
                 </IconButton>
@@ -438,7 +456,7 @@ export default function ChatPage({
 
               {/* Send */}
               <Tooltip title="Send (Enter)" arrow>
-                <span>
+                <span style={{ display: "inline-flex", alignItems: "center" }}>
                   <IconButton
                     id="cp-send-btn"
                     className="cp-send-btn"
@@ -446,7 +464,7 @@ export default function ChatPage({
                     onMouseDown={(e) => e.preventDefault()}
                     disabled={!isMatched || isSearching}
                   >
-                    <SendRoundedIcon fontSize="small" />
+                    <SendRoundedIcon sx={{ fontSize: 20, ml: "2px" }} />
                   </IconButton>
                 </span>
               </Tooltip>

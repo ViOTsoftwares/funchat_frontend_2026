@@ -27,8 +27,13 @@ import ChatPage from "./pages/ChatPage.jsx";
 import VideoPage from "./pages/VideoPage.jsx";
 import CommunityPage from "./pages/CommunityPage.jsx";
 import CMSPage from "./pages/CMSPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 import FeatureStatusScreen from "./components/FeatureStatusScreen.jsx";
+import LoginModal from "./components/Auth/LoginModal.jsx";
+import ProtectedRoute from "./components/Auth/ProtectedRoute.jsx";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { toastMessage } from "./lib/toast.message.js";
 
 import { useSocket } from "./hooks/useSocket.js";
 import { useWebRTC } from "./hooks/useWebRTC.js";
@@ -44,6 +49,8 @@ import {
   setPartnerId,
   setPartnerName,
 } from "./store/chatSlice.js";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { ENV } from "./config/env.js";
 import "./styles/app.css";
 
@@ -395,6 +402,18 @@ export default function App() {
   function handleJoin(nextMode = mode) {
     if (!socketRef.current) return;
     const resolvedMode = normalizeMode(nextMode);
+
+    // Check if user has created/saved a username handle
+    const mySavedName =
+      localStorage.getItem("funchat_saved_username") ||
+      localStorage.getItem("funchat_profile_name");
+    if (!mySavedName || mySavedName === "Stranger") {
+      toastMessage("Please choose a handle first to start chatting!", "warning");
+      localStorage.removeItem("funchat_profile_popup_seen");
+      window.dispatchEvent(new Event("openProfileWelcomeModal"));
+      navigate("/");
+      return;
+    }
     
     // If the feature is not live (coming_soon or maintenance), do not attempt matchmaking
     if (featureControl[resolvedMode] && featureControl[resolvedMode] !== "live") {
@@ -419,13 +438,22 @@ export default function App() {
         console.error("Error ensuring local stream:", err)
       );
     }
-    const myName = localStorage.getItem("funchat_profile_name") || "Stranger";
+    const myName = mySavedName || "Stranger";
     socketRef.current.emit("join", { mode: resolvedMode, name: myName }, (ack) => {
       console.log("[join ack]", ack);
     });
   }
 
   function handleLandingStart(selectedMode) {
+    const mySavedName =
+      localStorage.getItem("funchat_saved_username") ||
+      localStorage.getItem("funchat_profile_name");
+    if (!mySavedName || mySavedName === "Stranger") {
+      toastMessage("Please choose a handle first to start chatting!", "warning");
+      localStorage.removeItem("funchat_profile_popup_seen");
+      window.dispatchEvent(new Event("openProfileWelcomeModal"));
+      return;
+    }
     dispatch(setMode(selectedMode));
     navigate(`/${selectedMode}`);
     if (featureControl[selectedMode] === "live") {
@@ -659,7 +687,9 @@ export default function App() {
       <CssBaseline />
       <SEO />
       <Box className={`app ${isFullscreenChat ? "app-fullscreen-chat" : ""}`}>
+        <ToastContainer position="top-right" autoClose={3500} theme="colored" />
         <Header status={status} featureControl={featureControl} />
+        <LoginModal />
 
         <Container maxWidth="lg" sx={{ pb: 4 }}>
           <Routes>
@@ -678,99 +708,109 @@ export default function App() {
             <Route
               path="/chat"
               element={
-                featureControl.chat && featureControl.chat !== "live" ? (
-                  <FeatureStatusScreen
-                    feature="chat"
-                    status={featureControl.chat}
-                    featureControl={featureControl}
-                  />
-                ) : (
-                  <ChatPage
-                    isMatched={isMatched}
-                    isSearching={isSearching}
-                    messages={messages}
-                    isPartnerTyping={isPartnerTyping}
-                    onJoin={handleJoin}
-                    onNext={handleNext}
-                    onClose={handleCloseChat}
-                    onReport={handleReport}
-                    emojiOpen={emojiOpen}
-                    onToggleEmoji={() => setEmojiOpen((v) => !v)}
-                    onEmojiSelect={handleEmojiSelect}
-                    inputRef={inputRef}
-                    onComposerInput={handleComposerInput}
-                    onSend={handleSend}
-                    backendUrl={ENV.API_URL}
-                    socketId={socketId}
-                    partnerName={partnerName}
-                  />
-                )
+                <ProtectedRoute>
+                  {featureControl.chat && featureControl.chat !== "live" ? (
+                    <FeatureStatusScreen
+                      feature="chat"
+                      status={featureControl.chat}
+                      featureControl={featureControl}
+                    />
+                  ) : (
+                    <ChatPage
+                      isMatched={isMatched}
+                      isSearching={isSearching}
+                      messages={messages}
+                      isPartnerTyping={isPartnerTyping}
+                      onJoin={handleJoin}
+                      onNext={handleNext}
+                      onClose={handleCloseChat}
+                      onReport={handleReport}
+                      emojiOpen={emojiOpen}
+                      onToggleEmoji={() => setEmojiOpen((v) => !v)}
+                      onEmojiSelect={handleEmojiSelect}
+                      inputRef={inputRef}
+                      onComposerInput={handleComposerInput}
+                      onSend={handleSend}
+                      backendUrl={ENV.API_URL}
+                      socketId={socketId}
+                      partnerName={partnerName}
+                    />
+                  )}
+                </ProtectedRoute>
               }
             />
             <Route
               path="/video"
               element={
-                featureControl.video && featureControl.video !== "live" ? (
-                  <FeatureStatusScreen
-                    feature="video"
-                    status={featureControl.video}
-                    featureControl={featureControl}
-                  />
-                ) : (
-                  <VideoPage
-                    isMatched={isMatched}
-                    isSearching={isSearching}
-                    localVideoRef={localVideoRef}
-                    remoteVideoRef={remoteVideoRef}
-                    onJoin={handleJoin}
-                    onNext={handleNext}
-                    onClose={handleCloseChat}
-                    onReport={handleReport}
-                    onStopVideo={() =>
-                      stopLocalVideo(localVideoRef, remoteVideoRef)
-                    }
-                    isMuted={isMuted}
-                    isVideoOff={isVideoOff}
-                    onToggleMute={toggleMute}
-                    onToggleVideo={toggleVideo}
-                    localStream={localStream}
-                    remoteStream={remoteStream}
-                    backendUrl={ENV.API_URL}
-                    socketId={socketId}
-                  />
-                )
+                <ProtectedRoute>
+                  {featureControl.video && featureControl.video !== "live" ? (
+                    <FeatureStatusScreen
+                      feature="video"
+                      status={featureControl.video}
+                      featureControl={featureControl}
+                    />
+                  ) : (
+                    <VideoPage
+                      isMatched={isMatched}
+                      isSearching={isSearching}
+                      localVideoRef={localVideoRef}
+                      remoteVideoRef={remoteVideoRef}
+                      onJoin={handleJoin}
+                      onNext={handleNext}
+                      onClose={handleCloseChat}
+                      onReport={handleReport}
+                      onStopVideo={() =>
+                        stopLocalVideo(localVideoRef, remoteVideoRef)
+                      }
+                      isMuted={isMuted}
+                      isVideoOff={isVideoOff}
+                      onToggleMute={toggleMute}
+                      onToggleVideo={toggleVideo}
+                      localStream={localStream}
+                      remoteStream={remoteStream}
+                      backendUrl={ENV.API_URL}
+                      socketId={socketId}
+                    />
+                  )}
+                </ProtectedRoute>
               }
             />
             <Route
               path="/community"
               element={
-                featureControl.community && featureControl.community !== "live" ? (
-                  <FeatureStatusScreen
-                    feature="community"
-                    status={featureControl.community}
-                    featureControl={featureControl}
-                  />
-                ) : (
-                  <CommunityPage />
-                )
+                <ProtectedRoute>
+                  {featureControl.community && featureControl.community !== "live" ? (
+                    <FeatureStatusScreen
+                      feature="community"
+                      status={featureControl.community}
+                      featureControl={featureControl}
+                    />
+                  ) : (
+                    <CommunityPage />
+                  )}
+                </ProtectedRoute>
               }
             />
             <Route
               path="/community/:groupId"
               element={
-                featureControl.community && featureControl.community !== "live" ? (
-                  <FeatureStatusScreen
-                    feature="community"
-                    status={featureControl.community}
-                    featureControl={featureControl}
-                  />
-                ) : (
-                  <CommunityPage />
-                )
+                <ProtectedRoute>
+                  {featureControl.community && featureControl.community !== "live" ? (
+                    <FeatureStatusScreen
+                      feature="community"
+                      status={featureControl.community}
+                      featureControl={featureControl}
+                    />
+                  ) : (
+                    <CommunityPage />
+                  )}
+                </ProtectedRoute>
               }
             />
-            {/* Dynamic CMS routes */}
+            {/* Dynamic CMS & Profile routes */}
             <Route path="/page/:identifier" element={<CMSPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/privacy" element={<Navigate to="/page/privacy-policy" replace />} />
             <Route path="/terms" element={<Navigate to="/page/terms-of-service" replace />} />
             <Route path="/about" element={<Navigate to="/page/about-us" replace />} />

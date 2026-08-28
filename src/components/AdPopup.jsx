@@ -13,6 +13,11 @@ import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { ENV } from "../config/env.js";
+import {
+  GetAdvertisementApi,
+  RecordAdImpressionApi,
+  RecordAdClickApi,
+} from "../Api.js";
 
 export default function AdPopup({
   placement = "popup_interstitial",
@@ -28,9 +33,8 @@ export default function AdPopup({
     let isMounted = true;
     const fetchPopupAd = async () => {
       try {
-        const res = await fetch(`${ENV.API_URL}/api/public/ads?placement=${placement}`);
-        const json = await res.json();
-        if (isMounted && json.ok && Array.isArray(json.data) && json.data.length > 0) {
+        const json = await GetAdvertisementApi({ placement });
+        if (isMounted && json?.ok && Array.isArray(json.data) && json.data.length > 0) {
           const selectedAd = json.data[0];
           if (selectedAd.popupEnabled === false) return;
 
@@ -67,9 +71,7 @@ export default function AdPopup({
 
               // Track impression
               if (selectedAd._id) {
-                fetch(`${ENV.API_URL}/api/public/ads/${selectedAd._id}/impression`, {
-                  method: "POST",
-                }).catch(() => {});
+                RecordAdImpressionApi(selectedAd._id);
               }
             }
           }, effectiveDelay);
@@ -146,9 +148,7 @@ export default function AdPopup({
   const handleAdClick = (e) => {
     e.stopPropagation();
     if (ad && ad._id) {
-      fetch(`${ENV.API_URL}/api/public/ads/${ad._id}/click`, {
-        method: "POST",
-      }).catch(() => {});
+      RecordAdClickApi(ad._id);
     }
     if (ad && ad.targetUrl) {
       window.open(ad.targetUrl, "_blank", "noopener,noreferrer");

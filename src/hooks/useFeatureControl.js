@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ENV } from "../config/env.js";
+import { GetFeatureControlApi } from "../Api.js";
 
 const DEFAULT_FEATURE_CONTROL = {
   chat: "live",
@@ -14,12 +14,10 @@ export function useFeatureControl(socketRef) {
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Initial REST fetch with native fetch
+    // 1. Initial REST fetch via Axios API
     const fetchFeatureControl = async () => {
       try {
-        const res = await fetch(`${ENV.API_URL}/api/public/feature-control`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const data = await GetFeatureControlApi();
         if (isMounted && data?.result) {
           setFeatureControl(data.result);
           setLoaded(true);

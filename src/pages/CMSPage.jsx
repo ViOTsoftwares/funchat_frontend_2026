@@ -21,7 +21,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import SecurityIcon from "@mui/icons-material/Security";
-import { ENV } from "../config/env.js";
+import { GetCMSApi, OneCMSApi } from "../Api.js";
 
 export default function CMSPage() {
   const { identifier } = useParams();
@@ -35,8 +35,7 @@ export default function CMSPage() {
 
   // Fetch all active pages for the sidebar
   useEffect(() => {
-    fetch(`${ENV.API_URL}/api/public/cms`)
-      .then((res) => res.json())
+    GetCMSApi()
       .then((data) => {
         if (data?.success && Array.isArray(data.result)) {
           setAllPages(data.result);
@@ -52,13 +51,7 @@ export default function CMSPage() {
     setError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    fetch(`${ENV.API_URL}/api/public/cms/${identifier}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error(res.status === 404 ? "Page not found" : "Failed to load document");
-        }
-        return res.json();
-      })
+    OneCMSApi(identifier)
       .then((data) => {
         if (data?.success && data.result) {
           setPageData(data.result);
@@ -67,7 +60,7 @@ export default function CMSPage() {
         }
       })
       .catch((err) => {
-        setError(err.message || "Failed to load content");
+        setError(err?.message || "Failed to load content");
       })
       .finally(() => {
         setLoading(false);
