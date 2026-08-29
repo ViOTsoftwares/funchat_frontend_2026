@@ -142,7 +142,13 @@ export default function ChatPage({
     const container = messageListRef.current;
     if (!container) return;
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-  }, [messages.length]);
+    const timer = setTimeout(() => {
+      if (messageListRef.current) {
+        messageListRef.current.scrollTo({ top: messageListRef.current.scrollHeight, behavior: "smooth" });
+      }
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [messages.length, isPartnerTyping]);
 
   const connectionStatus = isSearching
     ? "Searching…"
