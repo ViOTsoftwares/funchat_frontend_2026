@@ -76,6 +76,9 @@ export default function App() {
     pcRef,
     ensureLocalStream,
     ensurePeerConnection,
+    handleOffer,
+    handleAnswer,
+    addOrQueueIceCandidate,
     cleanupPeer,
     stopLocalVideo,
     isMuted,
@@ -325,26 +328,16 @@ export default function App() {
     };
 
     const onOffer = async ({ sdp }) => {
-      await ensureLocalStream(localVideoRef);
-      await ensurePeerConnection(localVideoRef, remoteVideoRef);
-      await pcRef.current.setRemoteDescription(sdp);
-      const answer = await pcRef.current.createAnswer();
-      await pcRef.current.setLocalDescription(answer);
+      const answer = await handleOffer(sdp, localVideoRef, remoteVideoRef);
       socket.emit("answer", { sdp: answer });
     };
 
     const onAnswer = async ({ sdp }) => {
-      if (!pcRef.current) return;
-      await pcRef.current.setRemoteDescription(sdp);
+      await handleAnswer(sdp);
     };
 
     const onIce = async ({ candidate }) => {
-      if (!pcRef.current || !candidate) return;
-      try {
-        await pcRef.current.addIceCandidate(candidate);
-      } catch {
-        // ignore invalid candidates
-      }
+      await addOrQueueIceCandidate(candidate);
     };
 
     const onPartnerNameChanged = ({ name }) => {
@@ -380,7 +373,7 @@ export default function App() {
       socket.off("partner_name_changed", onPartnerNameChanged);
       socket.off("typing");
     };
-  }, [socketRef, ensureLocalStream, ensurePeerConnection, cleanupPeer, pcRef]);
+  }, [socketRef, ensureLocalStream, ensurePeerConnection, handleOffer, handleAnswer, addOrQueueIceCandidate, cleanupPeer, pcRef]);
 
   useEffect(() => {
     const handleNameChange = () => {

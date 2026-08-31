@@ -89,20 +89,40 @@ export default function VideoPage({
     }
   }, [localStream]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- Bind remote stream imperatively ---
-  // remoteVideoRef always points to the remote <video> element.
-  useEffect(() => {
+  const [playError, setPlayError] = useState(false);
+
+  const attemptPlayRemoteVideo = useCallback(() => {
     const el = remoteVideoRef.current;
     if (!el) return;
     if (remoteStream) {
       if (el.srcObject !== remoteStream) {
         el.srcObject = remoteStream;
       }
-      el.play().catch(() => {});
+      el.play()
+        .then(() => setPlayError(false))
+        .catch((err) => {
+          console.warn("[VideoPage] Remote video play blocked/failed:", err);
+          setPlayError(true);
+        });
     } else {
       el.srcObject = null;
+      setPlayError(false);
     }
-  }, [remoteStream]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remoteStream, remoteVideoRef]);
+
+  // --- Bind remote stream imperatively ---
+  useEffect(() => {
+    attemptPlayRemoteVideo();
+  }, [remoteStream, attemptPlayRemoteVideo]);
+
+  const handleStageClick = () => {
+    if (remoteVideoRef.current && isMatched) {
+      remoteVideoRef.current
+        .play()
+        .then(() => setPlayError(false))
+        .catch(() => {});
+    }
+  };
 
   const connectionStatus = isSearching
     ? "Searching…"
@@ -174,7 +194,7 @@ export default function VideoPage({
 
       {/* ── VIDEO STAGE ── */}
       <Box className="cp-body">
-        <Box className="cp-video-stage cp-video-stage-fullscreen">
+        <Box className="cp-video-stage cp-video-stage-fullscreen" onClick={handleStageClick}>
 
           {/* ── REMOTE VIDEO (main stage) — always rendered, hidden when not matched ── */}
           <Box
@@ -196,6 +216,34 @@ export default function VideoPage({
             className="cp-video-main"
             sx={{ display: isMatched ? "none" : "block" }}
           />
+
+          {/* ── Autoplay fallback overlay: shown when remote video play fails ── */}
+          {isMatched && playError && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                zIndex: 10,
+                backgroundColor: "rgba(15, 23, 42, 0.85)",
+                color: "#ffffff",
+                px: 3,
+                py: 1.5,
+                borderRadius: 3,
+                cursor: "pointer",
+                textAlign: "center",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                backdropFilter: "blur(8px)",
+                boxShadow: "0 10px 25px -5px rgba(0,0,0,0.5)",
+              }}
+              onClick={handleStageClick}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                ▶ Tap to Play Video & Audio
+              </Typography>
+            </Box>
+          )}
 
           {/* ── "Partner" label overlay (only when matched) ── */}
           {isMatched && (

@@ -3,6 +3,7 @@ import { ICE_CONFIG } from "../lib/constants";
 
 export function useWebRTC(socketRef) {
   const pcRef = useRef(null);
+  const iceCandidatesQueueRef = useRef([]);
   // Keep a ref mirror of the stream and state so async callbacks always see fresh values
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
@@ -17,12 +18,10 @@ export function useWebRTC(socketRef) {
   // -----------------------------------------------------------------
   // ensureLocalStream
   //   Acquires the camera/mic once and caches it. Returns the stream.
-  //   Also directly writes to the provided video element if given.
+  //   Uses ideal constraints for mobile with fallback.
   // -----------------------------------------------------------------
   const ensureLocalStream = useCallback(async (videoRef) => {
-    // Re-use existing stream if we already have one
     if (localStreamRef.current) {
-      // Rebind to element in case we switched ref targets
       if (videoRef?.current) {
         videoRef.current.muted = true;
         videoRef.current.volume = 0;
@@ -32,7 +31,22 @@ export function useWebRTC(socketRef) {
       return localStreamRef.current;
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 30 },
+        },
+      });
+    } catch (err) {
+      console.warn("[WebRTC] Constrained getUserMedia failed, falling back to simple constraints:", err);
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    }
+
     // Synchronize acquired track state with current mute preferences
     stream.getAudioTracks().forEach((track) => {
       track.enabled = !isMutedRef.current;
@@ -54,6 +68,40 @@ export function useWebRTC(socketRef) {
   }, []);
 
   // -----------------------------------------------------------------
+  // ICE candidate queue processing
+  // -----------------------------------------------------------------
+  const processIceQueue = useCallback(async () => {
+    const pc = pcRef.current;
+    if (!pc || !pc.remoteDescription || !pc.remoteDescription.type) return;
+    if (iceCandidatesQueueRef.current.length > 0) {
+      console.log(`[WebRTC] Processing ${iceCandidatesQueueRef.current.length} queued ICE candidates`);
+      while (iceCandidatesQueueRef.current.length > 0) {
+        const candidate = iceCandidatesQueueRef.current.shift();
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.warn("[WebRTC] Error adding queued ICE candidate:", err);
+        }
+      }
+    }
+  }, []);
+
+  const addOrQueueIceCandidate = useCallback(async (candidate) => {
+    if (!candidate) return;
+    const pc = pcRef.current;
+    if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (err) {
+        console.warn("[WebRTC] Error adding ICE candidate:", err);
+      }
+    } else {
+      console.log("[WebRTC] Queuing ICE candidate until remote description is set");
+      iceCandidatesQueueRef.current.push(candidate);
+    }
+  }, []);
+
+  // -----------------------------------------------------------------
   // ensurePeerConnection
   //   Creates the RTCPeerConnection once, adds local tracks, and sets
   //   up ontrack to write the remote stream into state + the video el.
@@ -71,9 +119,9 @@ export function useWebRTC(socketRef) {
     };
 
     pc.ontrack = (event) => {
+      console.log("[WebRTC] ontrack received track:", event.track.kind);
       let stream = event.streams?.[0];
       if (!stream) {
-        // Build a MediaStream manually if no stream was attached
         if (remoteStreamRef.current) {
           remoteStreamRef.current.addTrack(event.track);
           stream = remoteStreamRef.current;
@@ -83,13 +131,16 @@ export function useWebRTC(socketRef) {
       }
 
       remoteStreamRef.current = stream;
-      setRemoteStream(stream);
+      // Always instantiate a new MediaStream reference so React state update detects a change
+      // and triggers VideoPage useEffect to re-bind video elements when video track arrives
+      const freshStream = new MediaStream(stream.getTracks());
+      setRemoteStream(freshStream);
 
-      // Also write directly to the element for speed (the useEffect in
-      // VideoPage will do the same, but this fires first)
       if (remoteVideoRef?.current) {
-        remoteVideoRef.current.srcObject = stream;
-        remoteVideoRef.current.play?.().catch(() => {});
+        remoteVideoRef.current.srcObject = freshStream;
+        remoteVideoRef.current.play?.().catch((err) => {
+          console.warn("[WebRTC] remoteVideoRef play error ontrack:", err);
+        });
       }
     };
 
@@ -108,13 +159,36 @@ export function useWebRTC(socketRef) {
   }, [ensureLocalStream, socketRef]);
 
   // -----------------------------------------------------------------
+  // handleOffer & handleAnswer signaling handlers with queue flushing
+  // -----------------------------------------------------------------
+  const handleOffer = useCallback(async (sdp, localVideoRef, remoteVideoRef) => {
+    await ensureLocalStream(localVideoRef);
+    const pc = await ensurePeerConnection(localVideoRef, remoteVideoRef);
+    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    await processIceQueue();
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    return answer;
+  }, [ensureLocalStream, ensurePeerConnection, processIceQueue]);
+
+  const handleAnswer = useCallback(async (sdp) => {
+    const pc = pcRef.current;
+    if (!pc) return;
+    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    await processIceQueue();
+  }, [processIceQueue]);
+
+  // -----------------------------------------------------------------
   // cleanupPeer — closes the peer connection, clears remote stream
   // -----------------------------------------------------------------
   const cleanupPeer = useCallback((remoteVideoRef) => {
     if (pcRef.current) {
+      pcRef.current.ontrack = null;
+      pcRef.current.onicecandidate = null;
       pcRef.current.close();
       pcRef.current = null;
     }
+    iceCandidatesQueueRef.current = [];
     remoteStreamRef.current = null;
     setRemoteStream(null);
     if (remoteVideoRef?.current) {
@@ -190,6 +264,9 @@ export function useWebRTC(socketRef) {
     remoteStream,
     ensureLocalStream,
     ensurePeerConnection,
+    handleOffer,
+    handleAnswer,
+    addOrQueueIceCandidate,
     cleanupPeer,
     stopLocalVideo,
     isMuted,
