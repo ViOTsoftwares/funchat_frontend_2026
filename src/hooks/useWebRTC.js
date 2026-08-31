@@ -132,22 +132,41 @@ export function useWebRTC(socketRef) {
       }
     };
 
-    pc.ontrack = (event) => {
-      console.log("[WebRTC] ontrack received track:", event.track.kind);
-      let stream = event.streams?.[0];
-      if (!stream) {
-        if (remoteStreamRef.current) {
-          remoteStreamRef.current.addTrack(event.track);
-          stream = remoteStreamRef.current;
-        } else {
-          stream = new MediaStream([event.track]);
+    pc.oniceconnectionstatechange = () => {
+      console.log("[WebRTC] ICE Connection State:", pc.iceConnectionState);
+      if (pc.iceConnectionState === "failed" || pc.iceConnectionState === "disconnected") {
+        console.warn("[WebRTC] ICE connection failed/disconnected. Attempting ICE restart...");
+        if (typeof pc.restartIce === "function") {
+          pc.restartIce();
         }
       }
+    };
 
-      remoteStreamRef.current = stream;
-      // Always instantiate a new MediaStream reference so React state update detects a change
-      // and triggers VideoPage useEffect to re-bind video elements when video track arrives
-      const freshStream = new MediaStream(stream.getTracks());
+    pc.onconnectionstatechange = () => {
+      console.log("[WebRTC] Peer Connection State:", pc.connectionState);
+    };
+
+    pc.ontrack = (event) => {
+      console.log("[WebRTC] ontrack received track:", event.track.kind, "id:", event.track.id);
+      if (!remoteStreamRef.current) {
+        remoteStreamRef.current = new MediaStream();
+      }
+
+      const existingTrack = remoteStreamRef.current.getTracks().find((t) => t.id === event.track.id);
+      if (!existingTrack) {
+        remoteStreamRef.current.addTrack(event.track);
+      }
+
+      if (event.streams && event.streams[0]) {
+        event.streams[0].getTracks().forEach((track) => {
+          if (!remoteStreamRef.current.getTracks().some((t) => t.id === track.id)) {
+            remoteStreamRef.current.addTrack(track);
+          }
+        });
+      }
+
+      const freshStream = new MediaStream(remoteStreamRef.current.getTracks());
+      console.log("[WebRTC] Remote stream updated. Total tracks:", freshStream.getTracks().length);
       setRemoteStream(freshStream);
 
       if (remoteVideoRef?.current) {

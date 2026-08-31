@@ -90,6 +90,7 @@ export default function VideoPage({
   }, [localStream]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [playError, setPlayError] = useState(false);
+  const [isAudioMutedByPolicy, setIsAudioMutedByPolicy] = useState(false);
 
   const attemptPlayRemoteVideo = useCallback(() => {
     const el = remoteVideoRef.current;
@@ -99,14 +100,28 @@ export default function VideoPage({
         el.srcObject = remoteStream;
       }
       el.play()
-        .then(() => setPlayError(false))
+        .then(() => {
+          setPlayError(false);
+          setIsAudioMutedByPolicy(false);
+        })
         .catch((err) => {
-          console.warn("[VideoPage] Remote video play blocked/failed:", err);
-          setPlayError(true);
+          console.warn("[VideoPage] Remote video unmuted play blocked, trying muted fallback:", err);
+          el.muted = true;
+          el.play()
+            .then(() => {
+              console.log("[VideoPage] Remote video playing in muted fallback mode");
+              setPlayError(false);
+              setIsAudioMutedByPolicy(true);
+            })
+            .catch((mutedErr) => {
+              console.warn("[VideoPage] Remote video muted play failed:", mutedErr);
+              setPlayError(true);
+            });
         });
     } else {
       el.srcObject = null;
       setPlayError(false);
+      setIsAudioMutedByPolicy(false);
     }
   }, [remoteStream, remoteVideoRef]);
 
@@ -118,15 +133,19 @@ export default function VideoPage({
         attemptPlayRemoteVideo();
       });
       return () => cancelAnimationFrame(raf);
-    };
+    }
   }, [remoteStream, isMatched, attemptPlayRemoteVideo]);
 
   const handleStageClick = () => {
-    if (remoteVideoRef.current && isMatched) {
-      remoteVideoRef.current
-        .play()
-        .then(() => setPlayError(false))
-        .catch(() => { });
+    const el = remoteVideoRef.current;
+    if (el && isMatched) {
+      el.muted = false;
+      el.play()
+        .then(() => {
+          setPlayError(false);
+          setIsAudioMutedByPolicy(false);
+        })
+        .catch(() => {});
     }
   };
 
@@ -209,7 +228,14 @@ export default function VideoPage({
             autoPlay
             playsInline
             className="cp-video-main"
-            sx={{ display: isMatched ? "block" : "none" }}
+            sx={{
+              display: isMatched ? "block" : "none",
+              width: "100%",
+              height: "100%",
+              minHeight: "100%",
+              objectFit: "contain",
+              backgroundColor: "#000000",
+            }}
           />
 
           {/* ── LOCAL VIDEO full-screen — shown while searching, acts as preview ── */}
@@ -220,8 +246,44 @@ export default function VideoPage({
             playsInline
             muted
             className="cp-video-main"
-            sx={{ display: isMatched ? "none" : "block" }}
+            sx={{
+              display: isMatched ? "none" : "block",
+              width: "100%",
+              height: "100%",
+              minHeight: "100%",
+              objectFit: "contain",
+              transform: "scaleX(-1)",
+              backgroundColor: "#000000",
+            }}
           />
+
+          {/* ── Muted Audio Banner: shown when video is playing in muted fallback mode ── */}
+          {isMatched && isAudioMutedByPolicy && !playError && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: 16,
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 10,
+                backgroundColor: "rgba(15, 23, 42, 0.85)",
+                color: "#38bdf8",
+                px: 2,
+                py: 0.75,
+                borderRadius: 999,
+                cursor: "pointer",
+                textAlign: "center",
+                border: "1px solid rgba(56, 189, 248, 0.3)",
+                backdropFilter: "blur(8px)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+              }}
+              onClick={handleStageClick}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                🔊 Tap screen to unmute partner's audio
+              </Typography>
+            </Box>
+          )}
 
           {/* ── Autoplay fallback overlay: shown when remote video play fails ── */}
           {isMatched && playError && (
@@ -279,6 +341,7 @@ export default function VideoPage({
                 playsInline
                 muted
                 className="cp-video-pip-feed"
+                sx={{ transform: "scaleX(-1)", objectFit: "cover" }}
                 ref={handlePipVideoRef}
               />
             </Box>
