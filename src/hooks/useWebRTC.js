@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { ICE_CONFIG } from "../lib/constants";
+import { toastMessage } from "../lib/toast.message";
 
 export function useWebRTC(socketRef) {
   const pcRef = useRef(null);
@@ -31,8 +32,16 @@ export function useWebRTC(socketRef) {
       return localStreamRef.current;
     }
 
+    if (typeof window !== "undefined" && !window.isSecureContext && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      console.warn("[WebRTC] Non-secure context (HTTP) detected on LAN IP. Camera access may be blocked by browser.");
+      toastMessage("Mobile browser requires HTTPS or localhost for camera access. Please use an HTTPS tunnel or localhost.", "warning");
+    }
+
     let stream;
     try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error("navigator.mediaDevices.getUserMedia is unavailable (HTTP non-secure context or unsupported browser)");
+      }
       stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: {
@@ -44,7 +53,12 @@ export function useWebRTC(socketRef) {
       });
     } catch (err) {
       console.warn("[WebRTC] Constrained getUserMedia failed, falling back to simple constraints:", err);
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      if (navigator?.mediaDevices?.getUserMedia) {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } else {
+        toastMessage("Camera access blocked or unsupported on this browser.", "error");
+        throw err;
+      }
     }
 
     // Synchronize acquired track state with current mute preferences

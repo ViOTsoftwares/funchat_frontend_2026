@@ -2263,6 +2263,29 @@ body.fullscreen-lock {
   color: #94a3b8 !important;
 }
 
+.vp-root .cp-body {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.vp-root .cp-video-stage {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  background: #000000 !important;
+}
+
 .cp-video-stage-fullscreen .cp-video-main {
   flex: 1 !important;
   width: 100% !important;

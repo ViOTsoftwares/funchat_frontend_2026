@@ -64,7 +64,7 @@ export default function VideoPage({
         el.volume = 0;
         if (localStream && el.srcObject !== localStream) {
           el.srcObject = localStream;
-          el.play().catch(() => {});
+          el.play().catch(() => { });
         }
       }
     },
@@ -83,7 +83,7 @@ export default function VideoPage({
       if (el.srcObject !== localStream) {
         el.srcObject = localStream;
       }
-      el.play().catch(() => {});
+      el.play().catch(() => { });
     } else {
       el.srcObject = null;
     }
@@ -113,14 +113,20 @@ export default function VideoPage({
   // --- Bind remote stream imperatively ---
   useEffect(() => {
     attemptPlayRemoteVideo();
-  }, [remoteStream, attemptPlayRemoteVideo]);
+    if (isMatched) {
+      const raf = requestAnimationFrame(() => {
+        attemptPlayRemoteVideo();
+      });
+      return () => cancelAnimationFrame(raf);
+    };
+  }, [remoteStream, isMatched, attemptPlayRemoteVideo]);
 
   const handleStageClick = () => {
     if (remoteVideoRef.current && isMatched) {
       remoteVideoRef.current
         .play()
         .then(() => setPlayError(false))
-        .catch(() => {});
+        .catch(() => { });
     }
   };
 
