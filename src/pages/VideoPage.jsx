@@ -59,9 +59,13 @@ export default function VideoPage({
   // Define the PiP video ref callback at the top level to comply with the Rules of Hooks
   const handlePipVideoRef = useCallback(
     (el) => {
-      if (el && localStream && el.srcObject !== localStream) {
-        el.srcObject = localStream;
-        el.play().catch(() => {});
+      if (el) {
+        el.muted = true;
+        el.volume = 0;
+        if (localStream && el.srcObject !== localStream) {
+          el.srcObject = localStream;
+          el.play().catch(() => {});
+        }
       }
     },
     [localStream]
@@ -73,6 +77,8 @@ export default function VideoPage({
   useEffect(() => {
     const el = localVideoRef.current;
     if (!el) return;
+    el.muted = true;
+    el.volume = 0;
     if (localStream) {
       if (el.srcObject !== localStream) {
         el.srcObject = localStream;
@@ -283,18 +289,22 @@ export default function VideoPage({
         </Box>
       </Box>
 
-      {/* ── SPONSOR CARD FOR VIDEO CALL ── */}
-      <Box sx={{ maxWidth: 420, mx: "auto", my: 2, px: 2 }}>
-        <AdBanner placement="video_call_banner" />
-      </Box>
+      {/* ── SPONSOR CARD FOR VIDEO CALL (Shown when not in call) ── */}
+      {!isMatched && (
+        <Box sx={{ maxWidth: 420, mx: "auto", my: 2, px: 2 }}>
+          <AdBanner placement="video_call_banner" />
+        </Box>
+      )}
 
-      {/* ── SESSION FOOTER ── */}
-      <Box className="cp-footer">
-        <Typography className="cp-footer-text">
-          Session · {socketId ? `ID: ${socketId.slice(0, 8)}…` : "Not connected"}
-        </Typography>
-        <Typography className="cp-footer-text">{backendUrl}</Typography>
-      </Box>
+      {/* ── SESSION FOOTER (Shown when not in call on mobile) ── */}
+      {!isMatched && (
+        <Box className="cp-footer">
+          <Typography className="cp-footer-text">
+            Session · {socketId ? `ID: ${socketId.slice(0, 8)}…` : "Not connected"}
+          </Typography>
+          <Typography className="cp-footer-text">{backendUrl}</Typography>
+        </Box>
+      )}
 
       {/* ── POPUP DIALOG AD ── */}
       <AdPopup placement="popup_interstitial" delayMs={5000} />

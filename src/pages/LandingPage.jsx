@@ -98,13 +98,6 @@ export default function LandingPage({
     };
   }, []);
 
-  const handleProfileNameChange = (val) => {
-    setProfileName(val);
-    localStorage.setItem("funchat_profile_name", val);
-    localStorage.setItem("funchat_saved_username", val);
-    window.dispatchEvent(new Event("profileNameChanged"));
-  };
-
   const handleStartChatWithCheck = () => {
     const savedName =
       user?.username ||

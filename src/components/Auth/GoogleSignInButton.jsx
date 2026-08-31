@@ -38,19 +38,32 @@ export default function GoogleSignInButton({
   onError,
   text = "Continue with Google",
   variant = "full", // "full" or "compact"
+  preferredUsername,
 }) {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  const getSiteUsername = () => {
+    const saved =
+      preferredUsername ||
+      localStorage.getItem("funchat_saved_username") ||
+      localStorage.getItem("funchat_profile_name") ||
+      "";
+    return saved && saved !== "Stranger" ? saved.trim() : "";
+  };
 
   const handleGoogleSuccess = async (tokenResponse) => {
     setLoading(true);
     try {
       const accessToken = tokenResponse?.access_token;
       const idToken = tokenResponse?.id_token || tokenResponse?.credential;
+      const siteUsername = getSiteUsername();
 
       const res = await GoogleLoginApi({
         access_token: accessToken,
         credential: idToken,
+        username: siteUsername,
+        preferredUsername: siteUsername,
       });
 
       if (res?.success && res?.token) {
@@ -75,7 +88,9 @@ export default function GoogleSignInButton({
       // Initiate Server-side Dynamic OAuth Redirect
       const apiUrl = ENV.API_URL || "http://localhost:4000";
       const returnTo = encodeURIComponent(window.location.origin + "/login");
-      window.location.href = `${apiUrl}/api/public/auth/google/redirect?returnTo=${returnTo}`;
+      const siteUsername = getSiteUsername();
+      const unameParam = siteUsername ? `&username=${encodeURIComponent(siteUsername)}` : "";
+      window.location.href = `${apiUrl}/api/public/auth/google/redirect?returnTo=${returnTo}${unameParam}`;
     } else if (onError) {
       onError("Google Sign-In was cancelled or encountered an issue.");
     }
@@ -93,7 +108,9 @@ export default function GoogleSignInButton({
       // Directly trigger Dynamic Server OAuth Redirect if no client-side ID set
       const apiUrl = ENV.API_URL || "http://localhost:4000";
       const returnTo = encodeURIComponent(window.location.origin + "/login");
-      window.location.href = `${apiUrl}/api/public/auth/google/redirect?returnTo=${returnTo}`;
+      const siteUsername = getSiteUsername();
+      const unameParam = siteUsername ? `&username=${encodeURIComponent(siteUsername)}` : "";
+      window.location.href = `${apiUrl}/api/public/auth/google/redirect?returnTo=${returnTo}${unameParam}`;
       return;
     }
     try {

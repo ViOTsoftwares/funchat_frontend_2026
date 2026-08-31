@@ -3,9 +3,11 @@ import { ICE_CONFIG } from "../lib/constants";
 
 export function useWebRTC(socketRef) {
   const pcRef = useRef(null);
-  // Keep a ref mirror of the stream so async callbacks always see fresh values
+  // Keep a ref mirror of the stream and state so async callbacks always see fresh values
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
+  const isMutedRef = useRef(false);
+  const isVideoOffRef = useRef(false);
 
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
@@ -22,6 +24,8 @@ export function useWebRTC(socketRef) {
     if (localStreamRef.current) {
       // Rebind to element in case we switched ref targets
       if (videoRef?.current) {
+        videoRef.current.muted = true;
+        videoRef.current.volume = 0;
         videoRef.current.srcObject = localStreamRef.current;
         videoRef.current.play?.().catch(() => {});
       }
@@ -29,10 +33,20 @@ export function useWebRTC(socketRef) {
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    // Synchronize acquired track state with current mute preferences
+    stream.getAudioTracks().forEach((track) => {
+      track.enabled = !isMutedRef.current;
+    });
+    stream.getVideoTracks().forEach((track) => {
+      track.enabled = !isVideoOffRef.current;
+    });
+
     localStreamRef.current = stream;
     setLocalStream(stream);
 
     if (videoRef?.current) {
+      videoRef.current.muted = true;
+      videoRef.current.volume = 0;
       videoRef.current.srcObject = stream;
       videoRef.current.play?.().catch(() => {});
     }
@@ -81,7 +95,14 @@ export function useWebRTC(socketRef) {
 
     // Ensure we have local tracks before creating the offer/answer
     const stream = await ensureLocalStream(localVideoRef);
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    stream.getTracks().forEach((track) => {
+      if (track.kind === "audio") {
+        track.enabled = !isMutedRef.current;
+      } else if (track.kind === "video") {
+        track.enabled = !isVideoOffRef.current;
+      }
+      pc.addTrack(track, stream);
+    });
 
     return pc;
   }, [ensureLocalStream, socketRef]);
@@ -111,6 +132,8 @@ export function useWebRTC(socketRef) {
       setLocalStream(null);
       if (localVideoRef?.current) localVideoRef.current.srcObject = null;
     }
+    isMutedRef.current = false;
+    isVideoOffRef.current = false;
     setIsMuted(false);
     setIsVideoOff(false);
     cleanupPeer(remoteVideoRef);
@@ -120,22 +143,44 @@ export function useWebRTC(socketRef) {
   // toggleMute / toggleVideo
   // -----------------------------------------------------------------
   const toggleMute = useCallback(() => {
+    const nextMuted = !isMutedRef.current;
+    isMutedRef.current = nextMuted;
+    setIsMuted(nextMuted);
+
     const stream = localStreamRef.current;
     if (stream) {
       stream.getAudioTracks().forEach((track) => {
-        track.enabled = !track.enabled;
+        track.enabled = !nextMuted;
       });
-      setIsMuted((prev) => !prev);
+    }
+
+    if (pcRef.current) {
+      pcRef.current.getSenders().forEach((sender) => {
+        if (sender.track && sender.track.kind === "audio") {
+          sender.track.enabled = !nextMuted;
+        }
+      });
     }
   }, []);
 
   const toggleVideo = useCallback(() => {
+    const nextVideoOff = !isVideoOffRef.current;
+    isVideoOffRef.current = nextVideoOff;
+    setIsVideoOff(nextVideoOff);
+
     const stream = localStreamRef.current;
     if (stream) {
       stream.getVideoTracks().forEach((track) => {
-        track.enabled = !track.enabled;
+        track.enabled = !nextVideoOff;
       });
-      setIsVideoOff((prev) => !prev);
+    }
+
+    if (pcRef.current) {
+      pcRef.current.getSenders().forEach((sender) => {
+        if (sender.track && sender.track.kind === "video") {
+          sender.track.enabled = !nextVideoOff;
+        }
+      });
     }
   }, []);
 

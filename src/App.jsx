@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import {
   Box,
+  Button,
   CircularProgress,
   Container,
   CssBaseline,
@@ -31,7 +32,6 @@ import LoginPage from "./pages/LoginPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import ComingSoonPage from "./pages/ComingSoonPage.jsx";
 import MaintenancePage from "./pages/MaintenancePage.jsx";
-import FeatureStatusScreen from "./components/FeatureStatusScreen.jsx";
 import LoginModal from "./components/Auth/LoginModal.jsx";
 import ProtectedRoute from "./components/Auth/ProtectedRoute.jsx";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -733,12 +733,10 @@ export default function App() {
               path="/chat"
               element={
                 <ProtectedRoute>
-                  {featureControl.chat && featureControl.chat !== "live" ? (
-                    <FeatureStatusScreen
-                      feature="chat"
-                      status={featureControl.chat}
-                      featureControl={featureControl}
-                    />
+                  {featureControl.chat === "maintenance" ? (
+                    <Navigate to="/maintenance" replace />
+                  ) : featureControl.chat === "coming_soon" ? (
+                    <Navigate to="/coming-soon" replace />
                   ) : (
                     <ChatPage
                       isMatched={isMatched}
@@ -767,12 +765,10 @@ export default function App() {
               path="/video"
               element={
                 <ProtectedRoute>
-                  {featureControl.video && featureControl.video !== "live" ? (
-                    <FeatureStatusScreen
-                      feature="video"
-                      status={featureControl.video}
-                      featureControl={featureControl}
-                    />
+                  {featureControl.video === "maintenance" ? (
+                    <Navigate to="/maintenance" replace />
+                  ) : featureControl.video === "coming_soon" ? (
+                    <Navigate to="/coming-soon" replace />
                   ) : (
                     <VideoPage
                       isMatched={isMatched}
@@ -803,12 +799,10 @@ export default function App() {
               path="/community"
               element={
                 <ProtectedRoute>
-                  {featureControl.community && featureControl.community !== "live" ? (
-                    <FeatureStatusScreen
-                      feature="community"
-                      status={featureControl.community}
-                      featureControl={featureControl}
-                    />
+                  {featureControl.community === "maintenance" ? (
+                    <Navigate to="/maintenance" replace />
+                  ) : featureControl.community === "coming_soon" ? (
+                    <Navigate to="/coming-soon" replace />
                   ) : (
                     <CommunityPage />
                   )}
@@ -819,12 +813,10 @@ export default function App() {
               path="/community/:groupId"
               element={
                 <ProtectedRoute>
-                  {featureControl.community && featureControl.community !== "live" ? (
-                    <FeatureStatusScreen
-                      feature="community"
-                      status={featureControl.community}
-                      featureControl={featureControl}
-                    />
+                  {featureControl.community === "maintenance" ? (
+                    <Navigate to="/maintenance" replace />
+                  ) : featureControl.community === "coming_soon" ? (
+                    <Navigate to="/coming-soon" replace />
                   ) : (
                     <CommunityPage />
                   )}
@@ -860,11 +852,12 @@ export default function App() {
                 top: { xs: 16, sm: 24 },
                 left: { xs: 16, sm: 24 },
                 color: "#fff",
-                background: "rgba(255, 255, 255, 0.12)",
+                background: "rgba(255, 255, 255, 0.15)",
                 backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                zIndex: 50,
                 "&:hover": {
-                  background: "rgba(255, 255, 255, 0.22)",
+                  background: "rgba(255, 255, 255, 0.3)",
                   transform: "scale(1.05)",
                 },
                 transition: "all 0.2s ease",
@@ -875,13 +868,40 @@ export default function App() {
 
             <Paper className="match-card" elevation={0}>
               <CircularProgress size={28} />
-              <Box>
+              <Box sx={{ flex: 1 }}>
                 <Typography variant="subtitle1" fontWeight={700}>
                   Finding a suitable match...
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                   We are connecting you with an available {mode} partner.
                 </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="inherit"
+                  startIcon={<ArrowBackIcon />}
+                  onClick={() => {
+                    handleCloseChat();
+                    navigate("/");
+                  }}
+                  sx={{
+                    borderRadius: "999px",
+                    textTransform: "none",
+                    fontWeight: 700,
+                    fontSize: "12.5px",
+                    px: 2,
+                    py: 0.5,
+                    borderColor: "rgba(0, 0, 0, 0.25)",
+                    color: "#334155",
+                    "&:hover": {
+                      borderColor: "#6366f1",
+                      color: "#6366f1",
+                      background: "rgba(99, 102, 241, 0.08)",
+                    },
+                  }}
+                >
+                  Cancel & Go Back
+                </Button>
               </Box>
             </Paper>
           </Box>

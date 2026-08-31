@@ -782,6 +782,7 @@ export default function LoginModal() {
 
             {/* Google OAuth Login */}
             <GoogleSignInButton
+              preferredUsername={username}
               onSuccess={() => {
                 setStep(3);
               }}

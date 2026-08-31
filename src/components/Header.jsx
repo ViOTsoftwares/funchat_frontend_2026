@@ -28,12 +28,11 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
-import EditIcon from "@mui/icons-material/Edit";
-import GroupsIcon from "@mui/icons-material/Groups";
-import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import GroupsIcon from "@mui/icons-material/Groups";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { GetSettingApi } from "../Api.js";
@@ -103,13 +102,6 @@ export default function Header({ status = "Online", featureControl = {} }) {
     window.addEventListener("profileNameChanged", handleNameChange);
     return () => window.removeEventListener("profileNameChanged", handleNameChange);
   }, []);
-
-  const handleProfileNameChange = (val) => {
-    const newVal = val || "Stranger";
-    setProfileName(newVal);
-    localStorage.setItem("funchat_profile_name", newVal);
-    window.dispatchEvent(new Event("profileNameChanged"));
-  };
 
   const isOnline = status?.toLowerCase().includes("online");
 
@@ -322,6 +314,8 @@ export default function Header({ status = "Online", featureControl = {} }) {
                 onClick={() => {
                   if (isAuthenticated) {
                     navigate("/profile");
+                  } else {
+                    window.dispatchEvent(new Event("openProfileWelcomeModal"));
                   }
                 }}
                 sx={{
@@ -332,7 +326,7 @@ export default function Header({ status = "Online", featureControl = {} }) {
                   px: { xs: 0.75, sm: 1.25, md: 1.5 },
                   py: { xs: 0.35, sm: 0.5, md: 0.75 },
                   border: "1px solid rgba(255, 255, 255, 0.08)",
-                  cursor: isAuthenticated ? "pointer" : "default",
+                  cursor: "pointer",
                   transition: "all 0.2s ease",
                   "&:hover": {
                     background: "rgba(255, 255, 255, 0.1)",
@@ -353,52 +347,15 @@ export default function Header({ status = "Online", featureControl = {} }) {
                   Handle:
                 </Typography>
 
-                {isAuthenticated ? (
-                  <Box
-                    sx={{
-                      position: "relative",
-                      display: "flex",
-                      alignItems: "center"
-                    }}
-                  >
-                    <Box
-                      component="input"
-                      type="text"
-                      value={profileName}
-                      onChange={(e) => handleProfileNameChange(e.target.value)}
-                      sx={{
-                        background: "transparent",
-                        border: "none",
-                        outline: "none",
-                        color: "#fff",
-                        fontWeight: 700,
-                        fontSize: { xs: "12.5px", sm: "14px", md: "15px" },
-                        width: { xs: "52px", sm: "70px", md: "90px" },
-                        paddingRight: "16px",
-                        textAlign: "left"
-                      }}
-                    />
-                    <EditIcon
-                      sx={{
-                        position: "absolute",
-                        right: 0,
-                        color: "rgba(255, 255, 255, 0.55)",
-                        fontSize: { xs: 11, sm: 13, md: 14 },
-                        pointerEvents: "none"
-                      }}
-                    />
-                  </Box>
-                ) : (
-                  <Typography
-                    sx={{
-                      color: "#a5b4fc",
-                      fontWeight: 700,
-                      fontSize: { xs: "12.5px", sm: "14px" },
-                    }}
-                  >
-                    @{profileName}
-                  </Typography>
-                )}
+                <Typography
+                  sx={{
+                    color: "#a5b4fc",
+                    fontWeight: 700,
+                    fontSize: { xs: "12.5px", sm: "14px", md: "15px" },
+                  }}
+                >
+                  @{profileName}
+                </Typography>
               </Box>
 
               {/* AUTH BUTTON / USER PILL */}
@@ -784,7 +741,6 @@ export default function Header({ status = "Online", featureControl = {} }) {
               <Typography sx={{ fontWeight: 800, color: "#818cf8", fontSize: "15px" }}>
                 @{profileName}
               </Typography>
-              <EditIcon sx={{ color: "rgba(255,255,255,0.5)", fontSize: 16 }} />
             </Stack>
           </Box>
 

@@ -472,6 +472,7 @@ export default function LoginPage() {
               <Box>
                 {/* 1. Google One-Tap Sign In */}
                 <GoogleSignInButton
+                  preferredUsername={username}
                   text="Continue with Google"
                   onSuccess={() => {
                     setStep(3);
