@@ -27,6 +27,8 @@ import LandingPage from "./pages/LandingPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import VideoPage from "./pages/VideoPage.jsx";
 import CommunityPage from "./pages/CommunityPage.jsx";
+import CoinRushPage from "./pages/CoinRushPage.jsx";
+import GamePage from "./pages/GamePage.jsx";
 import CMSPage from "./pages/CMSPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
@@ -816,6 +818,27 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/game"
+              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+            />
+            <Route
+              path="/game/:gameId"
+              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+            />
+            <Route
+              path="/games"
+              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+            />
+            <Route
+              path="/games/:gameId"
+              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+            />
+            <Route
+              path="/coin-rush"
+              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+            />
+
             {/* Standalone Coming Soon & Maintenance routes */}
             <Route path="/coming-soon" element={<ComingSoonPage />} />
             <Route path="/maintenance" element={<MaintenancePage />} />

@@ -33,6 +33,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { GetSettingApi } from "../Api.js";
@@ -62,6 +63,12 @@ const NAV_LINKS = [
     path: "/community",
     Icon: GroupsIcon,
     featureKey: "community",
+  },
+  {
+    label: "Games",
+    path: "/game",
+    Icon: SportsEsportsIcon,
+    featureKey: null,
   },
 ];
 
