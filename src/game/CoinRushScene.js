@@ -392,6 +392,7 @@ export default class CoinRushScene extends Phaser.Scene {
 
     if (localSprite) {
       const inputDir = this.getInputDirection();
+      const speedMag = Math.hypot(inputDir.dx, inputDir.dy);
       let currentSpeed = localSprite.hasSpeedPowerUp ? BASE_SPEED * 1.8 : BASE_SPEED;
 
       let nextX = this.predictedPos.x + inputDir.dx * currentSpeed * dt;
