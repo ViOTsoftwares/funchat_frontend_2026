@@ -25,6 +25,11 @@ import {
   Avatar,
   ToggleButtonGroup,
   ToggleButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
@@ -41,6 +46,9 @@ import SmartphoneIcon from "@mui/icons-material/Smartphone";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ShuffleIcon from "@mui/icons-material/Shuffle";
 import PeopleIcon from "@mui/icons-material/People";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import TuneIcon from "@mui/icons-material/Tune";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 export default function CoinRushPage({ socketRef, socketId, status }) {
   const navigate = useNavigate();
@@ -53,6 +61,47 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
   const [gameStatus, setGameStatus] = useState("LOBBY"); // LOBBY, WAITING, COUNTDOWN, PLAYING, ENDED
   const [countdownVal, setCountdownVal] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(60);
+
+  // Leave Warning & Joystick Customization States
+  const [leaveWarningOpen, setLeaveWarningOpen] = useState(false);
+  const [joystickSettingsOpen, setJoystickSettingsOpen] = useState(false);
+  const [joystickConfig, setJoystickConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem("funchat_joystick_config");
+      return saved ? JSON.parse(saved) : { theme: "neon", mode: "fixed", size: "standard" };
+    } catch {
+      return { theme: "neon", mode: "fixed", size: "standard" };
+    }
+  });
+
+  // Manage body class for hiding header on mobile when joined
+  useEffect(() => {
+    if (gameStatus !== "LOBBY") {
+      document.body.classList.add("coin-rush-in-game");
+    } else {
+      document.body.classList.remove("coin-rush-in-game");
+    }
+    return () => {
+      document.body.classList.remove("coin-rush-in-game");
+    };
+  }, [gameStatus]);
+
+  const handleJoystickConfigChange = (newConfig) => {
+    const updated = { ...joystickConfig, ...newConfig };
+    setJoystickConfig(updated);
+    try {
+      localStorage.setItem("funchat_joystick_config", JSON.stringify(updated));
+    } catch (e) {
+      console.warn("Could not save joystick config to localStorage", e);
+    }
+
+    if (phaserGameRef.current) {
+      const scene = phaserGameRef.current.scene.getScene("CoinRushScene");
+      if (scene && typeof scene.updateJoystickConfig === "function") {
+        scene.updateJoystickConfig(updated);
+      }
+    }
+  };
 
   // Player capacity selection (2, 4, 8)
   const [playerCapacity, setPlayerCapacity] = useState(2); // default 2 players mode
@@ -136,30 +185,27 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
     let lastRenderTimestamp = 0;
 
     const onGameState = (state) => {
+      if (!state) return;
       const now = Date.now();
       
-      // Update timer only when second changes
-      if (typeof state.timeRemaining === "number" && state.timeRemaining !== lastTimeRemaining) {
-        lastTimeRemaining = state.timeRemaining;
+      // Immediate timer update
+      if (typeof state.timeRemaining === "number") {
         setTimeRemaining(state.timeRemaining);
       }
 
-      // Throttle player list and score HUD updates to 4 updates per second (every 250ms)
-      if (now - lastRenderTimestamp >= 250 || state.timeRemaining === 0) {
-        lastRenderTimestamp = now;
-
-        if (state.players) {
-          setPlayers(state.players);
-          const me = state.players.find((p) => p.id === socket.id);
-          if (me) {
-            setMyScore(me.score || 0);
-            setMyPowerUp(me.powerUp);
-            if (me.powerUp?.expiresAt) {
-              const rem = Math.max(0, Math.ceil((me.powerUp.expiresAt - now) / 1000));
-              setPowerUpTimeLeft(rem);
-            } else {
-              setPowerUpTimeLeft(0);
-            }
+      // Immediate player score & leaderboard update
+      if (state.players) {
+        setPlayers(state.players);
+        const myId = socket.id || socketId || socketRef.current?.id;
+        const me = state.players.find((p) => p.id === myId);
+        if (me) {
+          setMyScore(me.score || 0);
+          setMyPowerUp(me.powerUp || null);
+          if (me.powerUp?.expiresAt) {
+            const rem = Math.max(0, Math.ceil((me.powerUp.expiresAt - now) / 1000));
+            setPowerUpTimeLeft(rem);
+          } else {
+            setPowerUpTimeLeft(0);
           }
         }
       }
@@ -237,6 +283,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
         roomId: roomState.roomId,
         arenaWalls: roomState.arenaWalls,
         arenaSize: roomState.arenaSize,
+        joystickConfig,
       });
     }
 
@@ -252,6 +299,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
   const handleQuickMatch = () => {
     const socket = socketRef.current;
     if (!socket) return;
+    if (!socket.connected) socket.connect();
     setIsSearchingQuickMatch(true);
     const name = localStorage.getItem("funchat_profile_name") || "Player";
     const selectedCap = Number(playerCapacity) || 2;
@@ -273,6 +321,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
   const handleCreateRoom = () => {
     const socket = socketRef.current;
     if (!socket) return;
+    if (!socket.connected) socket.connect();
     const name = localStorage.getItem("funchat_profile_name") || "Player 1";
     const selectedCap = Number(playerCapacity) || 2;
     socket.emit("coinRush_createRoom", { name, maxPlayers: selectedCap, isPublic: false }, (res) => {
@@ -292,6 +341,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
   const handleJoinRoom = () => {
     const socket = socketRef.current;
     if (!socket || !joinCodeInput.trim()) return;
+    if (!socket.connected) socket.connect();
     const name = localStorage.getItem("funchat_profile_name") || "Player";
     socket.emit("coinRush_joinRoom", { roomId: joinCodeInput.trim(), name }, (res) => {
       if (res?.ok) {
@@ -589,27 +639,69 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
               pointerEvents: "none",
             }}
           >
-            {/* Top-Left: Player Score */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: "5px 12px", sm: "8px 18px" },
-                borderRadius: { xs: "12px", sm: "16px" },
-                background: "rgba(15, 23, 42, 0.88)",
-                backdropFilter: "blur(16px)",
-                border: "1px solid rgba(245, 158, 11, 0.5)",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.5), 0 0 20px rgba(245, 158, 11, 0.2)",
-                color: "#fff",
-                pointerEvents: "auto",
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <Typography variant="h6" fontWeight={900} sx={{ fontSize: { xs: "13px", sm: "18px" }, color: "#fde047", letterSpacing: "0.5px" }}>
-                🪙 {myScore} pts
-              </Typography>
-            </Paper>
+            {/* Top-Left: Mobile Back Arrow, Joystick Tune Icon & Player Score */}
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ pointerEvents: "auto" }}>
+              <Tooltip title="Leave Game / Exit Room">
+                <IconButton
+                  onClick={() => setLeaveWarningOpen(true)}
+                  sx={{
+                    color: "#f87171",
+                    background: "rgba(15, 23, 42, 0.9)",
+                    backdropFilter: "blur(16px)",
+                    border: "1px solid rgba(239, 68, 68, 0.4)",
+                    boxShadow: "0 8px 20px rgba(0,0,0,0.5)",
+                    p: { xs: "6px", sm: "8px" },
+                    "&:hover": {
+                      background: "rgba(239, 68, 68, 0.25)",
+                      transform: "scale(1.05)",
+                    },
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Customize Virtual Joystick">
+                <IconButton
+                  onClick={() => setJoystickSettingsOpen(true)}
+                  sx={{
+                    color: "#818cf8",
+                    background: "rgba(15, 23, 42, 0.9)",
+                    backdropFilter: "blur(16px)",
+                    border: "1px solid rgba(99, 102, 241, 0.4)",
+                    boxShadow: "0 8px 20px rgba(0,0,0,0.5)",
+                    p: { xs: "6px", sm: "8px" },
+                    "&:hover": {
+                      background: "rgba(99, 102, 241, 0.25)",
+                      transform: "scale(1.05)",
+                    },
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <TuneIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
+                </IconButton>
+              </Tooltip>
+
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: "5px 10px", sm: "8px 18px" },
+                  borderRadius: { xs: "12px", sm: "16px" },
+                  background: "rgba(15, 23, 42, 0.88)",
+                  backdropFilter: "blur(16px)",
+                  border: "1px solid rgba(245, 158, 11, 0.5)",
+                  boxShadow: "0 10px 25px rgba(0,0,0,0.5), 0 0 20px rgba(245, 158, 11, 0.2)",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <Typography variant="h6" fontWeight={900} sx={{ fontSize: { xs: "12px", sm: "17px" }, color: "#fde047", letterSpacing: "0.5px" }}>
+                  🪙 {myScore} pts
+                </Typography>
+              </Paper>
+            </Stack>
 
             {/* Top-Center: Round Timer */}
             <Paper
@@ -637,8 +729,13 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                   }}
                 />
                 <TimerIcon sx={{ fontSize: { xs: 16, sm: 20 }, color: timeRemaining <= 10 ? "#ef4444" : "#818cf8" }} />
-                <Typography variant="h6" fontWeight={900} sx={{ fontSize: { xs: "13px", sm: "18px" } }}>
-                  00:{timeRemaining < 10 ? `0${timeRemaining}` : timeRemaining}
+                <Typography variant="h6" fontWeight={900} sx={{ fontSize: { xs: "13px", sm: "18px" }, fontFamily: "monospace" }}>
+                  {(() => {
+                    const s = Math.max(0, Number(timeRemaining) || 0);
+                    const mins = Math.floor(s / 60);
+                    const rem = s % 60;
+                    return `${mins < 10 ? '0' + mins : mins}:${rem < 10 ? '0' + rem : rem}`;
+                  })()}
                 </Typography>
               </Stack>
             </Paper>
@@ -959,8 +1056,9 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
             ref={canvasContainerRef}
             sx={{
               width: "100%",
-              height: { xs: "550px", sm: "650px", md: "720px" },
-              borderRadius: "28px",
+              height: { xs: "calc(100vh - 120px)", sm: "640px", md: "720px" },
+              minHeight: { xs: "480px", sm: "600px" },
+              borderRadius: { xs: "20px", sm: "28px" },
               overflow: "hidden",
               border: "1px solid rgba(99, 102, 241, 0.35)",
               boxShadow: "0 25px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(99, 102, 241, 0.15)",
@@ -970,6 +1068,220 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
           />
         </Box>
       )}
+
+      {/* ── LEAVE GAME WARNING POPUP DIALOG ── */}
+      <Dialog
+        open={leaveWarningOpen}
+        onClose={() => setLeaveWarningOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: "24px",
+            background: "rgba(15, 23, 42, 0.96)",
+            backdropFilter: "blur(24px)",
+            border: "1px solid rgba(239, 68, 68, 0.4)",
+            boxShadow: "0 25px 70px rgba(0,0,0,0.8), 0 0 40px rgba(239, 68, 68, 0.2)",
+            color: "#fff",
+            p: 1,
+            maxWidth: 440,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900, fontSize: "1.3rem", display: "flex", alignItems: "center", gap: 1.5, color: "#f87171" }}>
+          <WarningAmberIcon sx={{ fontSize: 32, color: "#ef4444" }} />
+          Leave Active Match?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: "rgba(255, 255, 255, 0.8)", fontWeight: 600, fontSize: "14.5px", lineHeight: 1.6 }}>
+            Are you sure you want to exit? You will forfeit your current match score and leave the room.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, gap: 1.5 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setLeaveWarningOpen(false)}
+            sx={{
+              borderRadius: "14px",
+              color: "rgba(255,255,255,0.85)",
+              borderColor: "rgba(255,255,255,0.2)",
+              fontWeight: 700,
+              textTransform: "none",
+              px: 2.5,
+            }}
+          >
+            Keep Playing
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              setLeaveWarningOpen(false);
+              handleLeaveRoom();
+            }}
+            sx={{
+              borderRadius: "14px",
+              fontWeight: 900,
+              textTransform: "none",
+              px: 3,
+              background: "linear-gradient(135deg, #ef4444, #dc2626)",
+              boxShadow: "0 8px 25px rgba(239, 68, 68, 0.4)",
+            }}
+          >
+            Yes, Leave Match
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── JOYSTICK CUSTOMIZATION MODAL DIALOG ── */}
+      <Dialog
+        open={joystickSettingsOpen}
+        onClose={() => setJoystickSettingsOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: "24px",
+            background: "rgba(15, 23, 42, 0.96)",
+            backdropFilter: "blur(24px)",
+            border: "1px solid rgba(99, 102, 241, 0.4)",
+            boxShadow: "0 25px 70px rgba(0,0,0,0.8), 0 0 40px rgba(99, 102, 241, 0.25)",
+            color: "#fff",
+            p: 1,
+            maxWidth: 480,
+            width: "92%",
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900, fontSize: "1.3rem", display: "flex", alignItems: "center", gap: 1.5, color: "#818cf8" }}>
+          <TuneIcon sx={{ fontSize: 28, color: "#38bdf8" }} />
+          Customize Touch Joystick
+        </DialogTitle>
+
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            {/* Theme Choice */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#a5b4fc", mb: 1 }}>
+                🎨 JOYSTICK VISUAL THEME
+              </Typography>
+              <ToggleButtonGroup
+                value={joystickConfig.theme}
+                exclusive
+                onChange={(e, val) => val && handleJoystickConfigChange({ theme: val })}
+                fullWidth
+                size="small"
+                sx={{
+                  gap: 1,
+                  flexDirection: { xs: "column", sm: "row" },
+                  "& .MuiToggleButton-root": {
+                    color: "#fff",
+                    borderColor: "rgba(255,255,255,0.15)",
+                    borderRadius: "12px !important",
+                    fontWeight: 800,
+                    fontSize: "12.5px",
+                    py: 0.8,
+                    textTransform: "none",
+                    "&.Mui-selected": {
+                      background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+                      color: "#fff",
+                      borderColor: "transparent",
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="neon">🌌 Neon Indigo</ToggleButton>
+                <ToggleButton value="cyber">🌸 Cyber Pink</ToggleButton>
+                <ToggleButton value="gold">🪙 Golden Amber</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            {/* Position Mode Choice */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#a5b4fc", mb: 1 }}>
+                📍 POSITIONING MODE
+              </Typography>
+              <ToggleButtonGroup
+                value={joystickConfig.mode}
+                exclusive
+                onChange={(e, val) => val && handleJoystickConfigChange({ mode: val })}
+                fullWidth
+                size="small"
+                sx={{
+                  gap: 1,
+                  flexDirection: { xs: "column", sm: "row" },
+                  "& .MuiToggleButton-root": {
+                    color: "#fff",
+                    borderColor: "rgba(255,255,255,0.15)",
+                    borderRadius: "12px !important",
+                    fontWeight: 800,
+                    fontSize: "12.5px",
+                    py: 0.8,
+                    textTransform: "none",
+                    "&.Mui-selected": {
+                      background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+                      color: "#fff",
+                      borderColor: "transparent",
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="fixed">📌 Fixed Bottom-Left</ToggleButton>
+                <ToggleButton value="dynamic">👈 Dynamic Touch</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            {/* Size Scale Choice */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#a5b4fc", mb: 1 }}>
+                📏 JOYSTICK SIZE SCALE
+              </Typography>
+              <ToggleButtonGroup
+                value={joystickConfig.size}
+                exclusive
+                onChange={(e, val) => val && handleJoystickConfigChange({ size: val })}
+                fullWidth
+                size="small"
+                sx={{
+                  gap: 1,
+                  flexDirection: { xs: "column", sm: "row" },
+                  "& .MuiToggleButton-root": {
+                    color: "#fff",
+                    borderColor: "rgba(255,255,255,0.15)",
+                    borderRadius: "12px !important",
+                    fontWeight: 800,
+                    fontSize: "12.5px",
+                    py: 0.8,
+                    textTransform: "none",
+                    "&.Mui-selected": {
+                      background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+                      color: "#fff",
+                      borderColor: "transparent",
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="compact">🔍 Compact (85%)</ToggleButton>
+                <ToggleButton value="standard">⚖️ Standard (100%)</ToggleButton>
+                <ToggleButton value="large">🔎 Large (125%)</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={() => setJoystickSettingsOpen(false)}
+            sx={{
+              borderRadius: "14px",
+              fontWeight: 900,
+              py: 1.2,
+              background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+              textTransform: "none",
+            }}
+          >
+            Done & Save Settings
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

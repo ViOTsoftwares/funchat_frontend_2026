@@ -29,9 +29,14 @@ export default class CoinRushScene extends Phaser.Scene {
     // Local client-side predicted position
     this.predictedPos = { x: 600, y: 400 };
 
-    // Keyboard & D-Pad states
+    // Keyboard, D-Pad & Joystick states
     this.keyState = { Up: false, Down: false, Left: false, Right: false };
     this.dpadState = { Up: false, Down: false, Left: false, Right: false };
+    this.joystickVector = { dx: 0, dy: 0 };
+    this.joystickPointer = null;
+    this.joystickContainer = null;
+    this.joystickKnob = null;
+    this.joystickConfig = { theme: "neon", mode: "fixed", size: "standard" };
 
     this.onKeyDown = null;
     this.onKeyUp = null;
@@ -44,6 +49,7 @@ export default class CoinRushScene extends Phaser.Scene {
     this.localPlayerId = data.socket?.id;
     this.arenaWalls = data.arenaWalls || [];
     this.arenaSize = data.arenaSize || { width: 1200, height: 800 };
+    this.joystickConfig = data.joystickConfig || { theme: "neon", mode: "fixed", size: "standard" };
   }
 
   create() {
@@ -92,8 +98,8 @@ export default class CoinRushScene extends Phaser.Scene {
     // 4. Create Particle Textures for trails & explosions
     this.createParticleTextures();
 
-    // 5. Create Touch On-Screen D-Pad
-    this.createOnScreenDPad();
+    // 5. Create 360-Degree Analog Virtual Touch Joystick
+    this.createAnalogJoystick();
 
     // 6. Setup Keyboard Controls in Phaser
     if (this.input && this.input.keyboard) {
@@ -106,16 +112,19 @@ export default class CoinRushScene extends Phaser.Scene {
       });
     }
 
-    // 7. Register Socket Event Listeners
+    // 7. Register Socket Event Listeners with bound handlers (prevents unregistering page listeners)
     if (this.socket) {
-      // Remove any existing listeners first to prevent duplicates
-      this.socket.off("coinRush_gameState");
-      this.socket.off("coinRush_coinCollected");
-      this.socket.off("coinRush_powerUpCollected");
+      this.boundHandleGameState = (state) => this.handleGameState(state);
+      this.boundHandleCoinCollected = (data) => this.handleCoinCollected(data);
+      this.boundHandlePowerUpCollected = (data) => this.handlePowerUpCollected(data);
 
-      this.socket.on("coinRush_gameState", (state) => this.handleGameState(state));
-      this.socket.on("coinRush_coinCollected", (data) => this.handleCoinCollected(data));
-      this.socket.on("coinRush_powerUpCollected", (data) => this.handlePowerUpCollected(data));
+      this.socket.off("coinRush_gameState", this.boundHandleGameState);
+      this.socket.off("coinRush_coinCollected", this.boundHandleCoinCollected);
+      this.socket.off("coinRush_powerUpCollected", this.boundHandlePowerUpCollected);
+
+      this.socket.on("coinRush_gameState", this.boundHandleGameState);
+      this.socket.on("coinRush_coinCollected", this.boundHandleCoinCollected);
+      this.socket.on("coinRush_powerUpCollected", this.boundHandlePowerUpCollected);
     }
 
     // 8. Register Lifecycle Cleanup Hooks for Phaser Shutdown & Destroy
@@ -135,63 +144,151 @@ export default class CoinRushScene extends Phaser.Scene {
     }
   }
 
-  createOnScreenDPad() {
-    const container = this.add.container(90, this.arenaSize.height - 90);
+  createAnalogJoystick() {
+    if (this.joystickContainer) {
+      this.joystickContainer.destroy();
+    }
+
+    const { theme = "neon", mode = "fixed", size = "standard" } = this.joystickConfig || {};
+    const scale = size === "compact" ? 0.8 : size === "large" ? 1.25 : 1.0;
+
+    const themeColors = {
+      neon: { base: 0x1e1b4b, stroke: 0x6366f1, glow: 0x818cf8, knob: 0x38bdf8, inner: 0xffffff },
+      cyber: { base: 0x4c0519, stroke: 0xec4899, glow: 0xf472b6, knob: 0xa855f7, inner: 0xffffff },
+      gold: { base: 0x451a03, stroke: 0xf59e0b, glow: 0xfde047, knob: 0xf59e0b, inner: 0xffffff },
+    }[theme] || { base: 0x1e1b4b, stroke: 0x6366f1, glow: 0x818cf8, knob: 0x38bdf8, inner: 0xffffff };
+
+    const fixedX = Math.round(110 * scale);
+    const fixedY = Math.round(this.arenaSize.height - 110 * scale);
+    this.joystickCenter = { x: fixedX, y: fixedY };
+
+    const container = this.add.container(fixedX, fixedY);
     container.setScrollFactor(0);
     container.setDepth(1000);
+    if (mode === "dynamic") {
+      container.setAlpha(0.3);
+    }
 
-    const btnRadius = 24;
-    const btnOffset = 42;
-    const btnStyle = { fontSize: "16px", color: "#ffffff", fontWeight: "bold" };
+    // Outer Glow Ring
+    const outerGlow = this.add.circle(0, 0, Math.round(62 * scale), themeColors.glow, 0.2);
 
-    // UP Button
-    const upBtn = this.add.circle(0, -btnOffset, btnRadius, 0x6366f1, 0.75);
-    upBtn.setStrokeStyle(2, 0xffffff, 0.9);
-    upBtn.setInteractive({ useHandCursor: true });
-    const upTxt = this.add.text(0, -btnOffset, "▲", btnStyle).setOrigin(0.5);
+    // Outer Base Circle
+    const baseCircle = this.add.circle(0, 0, Math.round(52 * scale), themeColors.base, 0.75);
+    baseCircle.setStrokeStyle(3 * scale, themeColors.stroke, 0.9);
 
-    // DOWN Button
-    const downBtn = this.add.circle(0, btnOffset, btnRadius, 0x6366f1, 0.75);
-    downBtn.setStrokeStyle(2, 0xffffff, 0.9);
-    downBtn.setInteractive({ useHandCursor: true });
-    const downTxt = this.add.text(0, btnOffset, "▼", btnStyle).setOrigin(0.5);
+    // Subtle direction accent dots
+    const topDot = this.add.circle(0, -Math.round(34 * scale), 3 * scale, themeColors.stroke, 0.7);
+    const bottomDot = this.add.circle(0, Math.round(34 * scale), 3 * scale, themeColors.stroke, 0.7);
+    const leftDot = this.add.circle(-Math.round(34 * scale), 0, 3 * scale, themeColors.stroke, 0.7);
+    const rightDot = this.add.circle(Math.round(34 * scale), 0, 3 * scale, themeColors.stroke, 0.7);
 
-    // LEFT Button
-    const leftBtn = this.add.circle(-btnOffset, 0, btnRadius, 0x6366f1, 0.75);
-    leftBtn.setStrokeStyle(2, 0xffffff, 0.9);
-    leftBtn.setInteractive({ useHandCursor: true });
-    const leftTxt = this.add.text(-btnOffset, 0, "◄", btnStyle).setOrigin(0.5);
+    // Movable Knob Container
+    const knobGlow = this.add.circle(0, 0, Math.round(28 * scale), themeColors.knob, 0.35);
+    const knobBody = this.add.circle(0, 0, Math.round(22 * scale), themeColors.knob, 0.9);
+    knobBody.setStrokeStyle(2.5 * scale, 0xffffff, 0.95);
+    const knobCore = this.add.circle(0, 0, Math.round(8 * scale), themeColors.inner, 0.9);
 
-    // RIGHT Button
-    const rightBtn = this.add.circle(btnOffset, 0, btnRadius, 0x6366f1, 0.75);
-    rightBtn.setStrokeStyle(2, 0xffffff, 0.9);
-    rightBtn.setInteractive({ useHandCursor: true });
-    const rightTxt = this.add.text(btnOffset, 0, "►", btnStyle).setOrigin(0.5);
+    const knobContainer = this.add.container(0, 0);
+    knobContainer.add([knobGlow, knobBody, knobCore]);
 
-    const centerCore = this.add.circle(0, 0, 16, 0x1e1b4b, 0.9);
-    centerCore.setStrokeStyle(2, 0x818cf8, 0.8);
+    container.add([outerGlow, baseCircle, topDot, bottomDot, leftDot, rightDot, knobContainer]);
 
-    upBtn.on("pointerdown", () => { this.dpadState.Up = true; upBtn.setFillStyle(0x38bdf8, 0.95); });
-    upBtn.on("pointerover", () => { if (this.input.activePointer.isDown) { this.dpadState.Up = true; upBtn.setFillStyle(0x38bdf8, 0.95); } });
-    upBtn.on("pointerup", () => { this.dpadState.Up = false; upBtn.setFillStyle(0x6366f1, 0.75); });
-    upBtn.on("pointerout", () => { this.dpadState.Up = false; upBtn.setFillStyle(0x6366f1, 0.75); });
+    this.joystickContainer = container;
+    this.joystickKnob = knobContainer;
+    this.joystickScale = scale;
+    this.joystickMaxRadius = 50 * scale;
 
-    downBtn.on("pointerdown", () => { this.dpadState.Down = true; downBtn.setFillStyle(0x38bdf8, 0.95); });
-    downBtn.on("pointerover", () => { if (this.input.activePointer.isDown) { this.dpadState.Down = true; downBtn.setFillStyle(0x38bdf8, 0.95); } });
-    downBtn.on("pointerup", () => { this.dpadState.Down = false; downBtn.setFillStyle(0x6366f1, 0.75); });
-    downBtn.on("pointerout", () => { this.dpadState.Down = false; downBtn.setFillStyle(0x6366f1, 0.75); });
+    // Enable multi-touch pointers in Phaser
+    if (this.input) {
+      this.input.addPointer(2);
+      this.input.on("pointerdown", this.handleJoystickPointerDown, this);
+      this.input.on("pointermove", this.handleJoystickPointerMove, this);
+      this.input.on("pointerup", this.handleJoystickPointerUp, this);
+    }
+  }
 
-    leftBtn.on("pointerdown", () => { this.dpadState.Left = true; leftBtn.setFillStyle(0x38bdf8, 0.95); });
-    leftBtn.on("pointerover", () => { if (this.input.activePointer.isDown) { this.dpadState.Left = true; leftBtn.setFillStyle(0x38bdf8, 0.95); } });
-    leftBtn.on("pointerup", () => { this.dpadState.Left = false; leftBtn.setFillStyle(0x6366f1, 0.75); });
-    leftBtn.on("pointerout", () => { this.dpadState.Left = false; leftBtn.setFillStyle(0x6366f1, 0.75); });
+  handleJoystickPointerDown(pointer) {
+    if (this.joystickPointer) return;
 
-    rightBtn.on("pointerdown", () => { this.dpadState.Right = true; rightBtn.setFillStyle(0x38bdf8, 0.95); });
-    rightBtn.on("pointerover", () => { if (this.input.activePointer.isDown) { this.dpadState.Right = true; rightBtn.setFillStyle(0x38bdf8, 0.95); } });
-    rightBtn.on("pointerup", () => { this.dpadState.Right = false; rightBtn.setFillStyle(0x6366f1, 0.75); });
-    rightBtn.on("pointerout", () => { this.dpadState.Right = false; rightBtn.setFillStyle(0x6366f1, 0.75); });
+    const { mode = "fixed" } = this.joystickConfig || {};
+    const px = pointer.x;
+    const py = pointer.y;
 
-    container.add([upBtn, downBtn, leftBtn, rightBtn, upTxt, downTxt, leftTxt, rightTxt, centerCore]);
+    if (mode === "dynamic") {
+      if (px < (this.cameras.main?.width || 1200) * 0.55) {
+        this.joystickPointer = pointer;
+        this.joystickCenter = { x: px, y: py };
+        this.joystickContainer.setPosition(px, py);
+        this.joystickContainer.setAlpha(1);
+        this.joystickKnob.setPosition(0, 0);
+      }
+    } else {
+      const dist = Math.hypot(px - this.joystickCenter.x, py - this.joystickCenter.y);
+      if (dist <= 85 * (this.joystickScale || 1.0)) {
+        this.joystickPointer = pointer;
+        this.joystickContainer.setAlpha(1);
+        this.handleJoystickPointerMove(pointer);
+      }
+    }
+  }
+
+  handleJoystickPointerMove(pointer) {
+    if (!this.joystickPointer || pointer.id !== this.joystickPointer.id) return;
+
+    const dx = pointer.x - this.joystickCenter.x;
+    const dy = pointer.y - this.joystickCenter.y;
+    const dist = Math.hypot(dx, dy);
+    const maxRadius = this.joystickMaxRadius || 50;
+
+    const clampedDist = Math.min(dist, maxRadius);
+    const angle = Math.atan2(dy, dx);
+
+    const kx = Math.cos(angle) * clampedDist;
+    const ky = Math.sin(angle) * clampedDist;
+
+    this.joystickKnob.setPosition(kx, ky);
+
+    this.joystickVector = {
+      dx: maxRadius > 0 ? (Math.cos(angle) * clampedDist) / maxRadius : 0,
+      dy: maxRadius > 0 ? (Math.sin(angle) * clampedDist) / maxRadius : 0,
+    };
+  }
+
+  handleJoystickPointerUp(pointer) {
+    if (!this.joystickPointer || pointer.id !== this.joystickPointer.id) return;
+
+    this.joystickPointer = null;
+    this.joystickVector = { dx: 0, dy: 0 };
+
+    if (this.tweens && this.joystickKnob) {
+      this.tweens.add({
+        targets: this.joystickKnob,
+        x: 0,
+        y: 0,
+        duration: 150,
+        ease: "Back.easeOut",
+      });
+    } else if (this.joystickKnob) {
+      this.joystickKnob.setPosition(0, 0);
+    }
+
+    if (this.joystickConfig?.mode === "dynamic" && this.joystickContainer) {
+      if (this.tweens) {
+        this.tweens.add({
+          targets: this.joystickContainer,
+          alpha: 0.3,
+          duration: 200,
+        });
+      } else {
+        this.joystickContainer.setAlpha(0.3);
+      }
+    }
+  }
+
+  updateJoystickConfig(newConfig) {
+    if (!newConfig) return;
+    this.joystickConfig = { ...this.joystickConfig, ...newConfig };
+    this.createAnalogJoystick();
   }
 
   drawArenaGrid() {
@@ -358,6 +455,12 @@ export default class CoinRushScene extends Phaser.Scene {
     let dx = 0;
     let dy = 0;
 
+    // 1. Analog Virtual Touch Joystick Input (360 Degree Continuous Vector)
+    if (this.joystickVector && (this.joystickVector.dx !== 0 || this.joystickVector.dy !== 0)) {
+      return { dx: this.joystickVector.dx, dy: this.joystickVector.dy };
+    }
+
+    // 2. Direct Window Keyboard Event Input
     if (this.keyState) {
       if (this.keyState.Left) dx -= 1;
       if (this.keyState.Right) dx += 1;
@@ -365,6 +468,7 @@ export default class CoinRushScene extends Phaser.Scene {
       if (this.keyState.Down) dy += 1;
     }
 
+    // 3. On-Screen D-Pad Buttons Input
     if (this.dpadState) {
       if (this.dpadState.Left) dx -= 1;
       if (this.dpadState.Right) dx += 1;
@@ -372,6 +476,7 @@ export default class CoinRushScene extends Phaser.Scene {
       if (this.dpadState.Down) dy += 1;
     }
 
+    // 4. Phaser Cursors & WASD Keys Input
     if (dx === 0 && dy === 0 && this.cursors && this.wasd) {
       if (this.wasd.left.isDown || this.cursors.left.isDown) dx -= 1;
       if (this.wasd.right.isDown || this.cursors.right.isDown) dx += 1;
@@ -704,9 +809,19 @@ export default class CoinRushScene extends Phaser.Scene {
     if (this.onWindowBlur) window.removeEventListener("blur", this.onWindowBlur);
 
     if (this.socket) {
-      this.socket.off("coinRush_gameState");
-      this.socket.off("coinRush_coinCollected");
-      this.socket.off("coinRush_powerUpCollected");
+      if (this.boundHandleGameState) this.socket.off("coinRush_gameState", this.boundHandleGameState);
+      if (this.boundHandleCoinCollected) this.socket.off("coinRush_coinCollected", this.boundHandleCoinCollected);
+      if (this.boundHandlePowerUpCollected) this.socket.off("coinRush_powerUpCollected", this.boundHandlePowerUpCollected);
+    }
+
+    if (this.input) {
+      this.input.off("pointerdown", this.handleJoystickPointerDown, this);
+      this.input.off("pointermove", this.handleJoystickPointerMove, this);
+      this.input.off("pointerup", this.handleJoystickPointerUp, this);
+    }
+    if (this.joystickContainer) {
+      this.joystickContainer.destroy();
+      this.joystickContainer = null;
     }
 
     this.playerSprites.forEach((p) => {

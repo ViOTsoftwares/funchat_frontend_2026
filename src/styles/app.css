@@ -117,6 +117,21 @@ body.fullscreen-lock {
   }
 }
 
+/* Mobile header auto-hide during active Coin Rush game */
+@media (max-width: 899px) {
+  body.coin-rush-in-game .MuiAppBar-root {
+    display: none !important;
+  }
+  body.coin-rush-in-game .app {
+    padding-top: 10px !important;
+  }
+  body.coin-rush-in-game .MuiContainer-root {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    padding-top: 4px !important;
+  }
+}
+
 /* Container occupies the remaining height below the header */
 .app-fullscreen-chat > .MuiContainer-root {
   flex: 1 !important;
