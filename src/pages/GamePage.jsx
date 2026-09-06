@@ -79,7 +79,7 @@ export default function GamePage({ socketRef, socketId, status }) {
           <Stack className="coin-rush-sub-header" direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, px: 1 }}>
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Chip label="🟢 LIVE NOW" color="success" size="small" sx={{ fontWeight: 900, px: 1 }} />
-              <Typography variant="h5" fontWeight={900} sx={{ color: "#fff" }}>
+              <Typography variant="h5" fontWeight={900} sx={{ color: "#0f172a" }}>
                 🪙 Coin Rush Multiplayer
               </Typography>
             </Stack>
@@ -88,7 +88,19 @@ export default function GamePage({ socketRef, socketId, status }) {
               size="small"
               variant="outlined"
               onClick={() => navigate("/game")}
-              sx={{ color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.2)", borderRadius: "12px", textTransform: "none", px: 2 }}
+              sx={{
+                color: "#1e293b",
+                borderColor: "rgba(15, 23, 42, 0.25)",
+                borderRadius: "12px",
+                textTransform: "none",
+                fontWeight: 700,
+                px: 2,
+                "&:hover": {
+                  borderColor: "#6366f1",
+                  color: "#6366f1",
+                  background: "rgba(99, 102, 241, 0.08)",
+                },
+              }}
             >
               ← Back to Games Directory
             </Button>
