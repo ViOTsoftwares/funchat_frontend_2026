@@ -76,10 +76,10 @@ export default function GamePage({ socketRef, socketId, status }) {
       {/* ── COIN RUSH GAME ARENA VIEW (WHEN ON /game/coin-rush) ── */}
       {isCoinRushRoute ? (
         <Box>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, px: 1 }}>
+          <Stack className="coin-rush-sub-header" direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, px: 1 }}>
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Chip label="🟢 LIVE NOW" color="success" size="small" sx={{ fontWeight: 900, px: 1 }} />
-              <Typography variant="h5" fontWeight={900} sx={{ color: "#290c0cff" }}>
+              <Typography variant="h5" fontWeight={900} sx={{ color: "#fff" }}>
                 🪙 Coin Rush Multiplayer
               </Typography>
             </Stack>

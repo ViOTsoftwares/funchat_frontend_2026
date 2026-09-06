@@ -86,6 +86,21 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
     };
   }, [gameStatus]);
 
+  // Handle orientation changes and window resizing for Phaser scale auto-refresh
+  useEffect(() => {
+    const handleResize = () => {
+      if (phaserGameRef.current && phaserGameRef.current.scale) {
+        phaserGameRef.current.scale.refresh();
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
+  }, []);
+
   const handleJoystickConfigChange = (newConfig) => {
     const updated = { ...joystickConfig, ...newConfig };
     setJoystickConfig(updated);
@@ -1054,6 +1069,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
           {/* ── PHASER CANVAS MOUNT CONTAINER ── */}
           <Box
             ref={canvasContainerRef}
+            className="coin-rush-canvas-container"
             sx={{
               width: "100%",
               height: { xs: "calc(100vh - 120px)", sm: "640px", md: "720px" },
