@@ -205,6 +205,7 @@ export default class CoinRushScene extends Phaser.Scene {
       this.input.on("pointermove", this.handleJoystickPointerMove, this);
       this.input.on("pointerup", this.handleJoystickPointerUp, this);
       this.input.on("pointerupoutside", this.handleJoystickPointerUp, this);
+      this.input.on("pointercancel", this.handleJoystickPointerUp, this);
     }
   }
 
@@ -215,8 +216,12 @@ export default class CoinRushScene extends Phaser.Scene {
     const px = pointer.x;
     const py = pointer.y;
 
+    const mainCam = this.cameras.main;
+    const camW = mainCam?.width || 1200;
+    const camH = mainCam?.height || 800;
+
     if (mode === "dynamic") {
-      if (px < (this.cameras.main?.width || 1200) * 0.55) {
+      if (px < camW * 0.55) {
         this.joystickPointer = pointer;
         this.joystickCenter = { x: px, y: py };
         this.joystickContainer.setPosition(px, py);
@@ -225,16 +230,17 @@ export default class CoinRushScene extends Phaser.Scene {
       }
     } else {
       const dist = Math.hypot(px - this.joystickCenter.x, py - this.joystickCenter.y);
-      if (dist <= 120 * (this.joystickScale || 1.0)) {
+      const isLeftQuadrant = px < camW * 0.5 && py > camH * 0.35;
+      if (dist <= 180 * (this.joystickScale || 1.0) || isLeftQuadrant) {
         this.joystickPointer = pointer;
         this.joystickContainer.setAlpha(1);
-        this.handleJoystickPointerMove(pointer);
+        this.updateActiveJoystickPosition(pointer);
       }
     }
   }
 
-  handleJoystickPointerMove(pointer) {
-    if (!this.joystickPointer || pointer.id !== this.joystickPointer.id) return;
+  updateActiveJoystickPosition(pointer) {
+    if (!pointer) return;
 
     const dx = pointer.x - this.joystickCenter.x;
     const dy = pointer.y - this.joystickCenter.y;
@@ -247,16 +253,23 @@ export default class CoinRushScene extends Phaser.Scene {
     const kx = Math.cos(angle) * clampedDist;
     const ky = Math.sin(angle) * clampedDist;
 
-    this.joystickKnob.setPosition(kx, ky);
+    if (this.joystickKnob) {
+      this.joystickKnob.setPosition(kx, ky);
+    }
 
     this.joystickVector = {
-      dx: maxRadius > 0 ? (Math.cos(angle) * clampedDist) / maxRadius : 0,
-      dy: maxRadius > 0 ? (Math.sin(angle) * clampedDist) / maxRadius : 0,
+      dx: maxRadius > 0 ? kx / maxRadius : 0,
+      dy: maxRadius > 0 ? ky / maxRadius : 0,
     };
   }
 
-  handleJoystickPointerUp(pointer) {
+  handleJoystickPointerMove(pointer) {
     if (!this.joystickPointer || pointer.id !== this.joystickPointer.id) return;
+    this.updateActiveJoystickPosition(pointer);
+  }
+
+  handleJoystickPointerUp(pointer) {
+    if (!this.joystickPointer || (pointer && pointer.id !== this.joystickPointer.id)) return;
 
     this.joystickPointer = null;
     this.joystickVector = { dx: 0, dy: 0 };
@@ -266,7 +279,7 @@ export default class CoinRushScene extends Phaser.Scene {
         targets: this.joystickKnob,
         x: 0,
         y: 0,
-        duration: 150,
+        duration: 120,
         ease: "Back.easeOut",
       });
     } else if (this.joystickKnob) {
@@ -278,7 +291,7 @@ export default class CoinRushScene extends Phaser.Scene {
         this.tweens.add({
           targets: this.joystickContainer,
           alpha: 0.3,
-          duration: 200,
+          duration: 180,
         });
       } else {
         this.joystickContainer.setAlpha(0.3);
@@ -356,7 +369,16 @@ export default class CoinRushScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    const dt = delta / 1000;
+    const dt = Math.min(delta / 1000, 0.1);
+
+    // 0. Continuous Frame-by-Frame Touch Pointer Position Refresh
+    if (this.joystickPointer) {
+      if (this.joystickPointer.isDown) {
+        this.updateActiveJoystickPosition(this.joystickPointer);
+      } else {
+        this.handleJoystickPointerUp(this.joystickPointer);
+      }
+    }
 
     // 1. Process Input & Send to Server (30 updates / sec)
     if (time - this.lastInputTime > 30) {
@@ -387,17 +409,17 @@ export default class CoinRushScene extends Phaser.Scene {
       this.predictedPos.x = Math.max(PLAYER_RADIUS + 20, Math.min(this.arenaSize.width - PLAYER_RADIUS - 20, this.predictedPos.x));
       this.predictedPos.y = Math.max(PLAYER_RADIUS + 20, Math.min(this.arenaSize.height - PLAYER_RADIUS - 20, this.predictedPos.y));
 
-      // Reconcile with server target position smoothly
+      // Continuous Frame-rate Independent Exponential Lerp Reconciliation (Silky smooth, no snapping!)
       const distToServer = Math.hypot(this.predictedPos.x - localSprite.targetX, this.predictedPos.y - localSprite.targetY);
-      const speedMag = Math.hypot(inputDir.dx, inputDir.dy);
 
-      if (distToServer > 50) {
+      if (distToServer > 120) {
+        // Hard snap only on severe network lag spike (> 120px)
         this.predictedPos.x = localSprite.targetX;
         this.predictedPos.y = localSprite.targetY;
-      } else if (speedMag <= 0.05) {
-        // Soft lerp prediction towards server position when stationary
-        this.predictedPos.x = Phaser.Math.Linear(this.predictedPos.x, localSprite.targetX, 0.2);
-        this.predictedPos.y = Phaser.Math.Linear(this.predictedPos.y, localSprite.targetY, 0.2);
+      } else if (distToServer > 0.5) {
+        const lerpFactor = 1 - Math.exp(-14 * dt);
+        this.predictedPos.x = Phaser.Math.Linear(this.predictedPos.x, localSprite.targetX, lerpFactor);
+        this.predictedPos.y = Phaser.Math.Linear(this.predictedPos.y, localSprite.targetY, lerpFactor);
       }
 
       localSprite.container.x = this.predictedPos.x;
@@ -521,8 +543,20 @@ export default class CoinRushScene extends Phaser.Scene {
 
   sendPlayerInput() {
     if (!this.socket || !this.socket.connected) return;
-    const { dx, dy } = this.getInputDirection();
-    this.socket.emit("coinRush_playerInput", { dx, dy, roomId: this.roomId });
+    const inputDir = this.getInputDirection();
+    const isMoving = inputDir.dx !== 0 || inputDir.dy !== 0;
+
+    if (
+      this.lastSentInputDir &&
+      this.lastSentInputDir.dx === inputDir.dx &&
+      this.lastSentInputDir.dy === inputDir.dy &&
+      !isMoving
+    ) {
+      return;
+    }
+
+    this.lastSentInputDir = { dx: inputDir.dx, dy: inputDir.dy };
+    this.socket.emit("coinRush_playerInput", { dx: inputDir.dx, dy: inputDir.dy, roomId: this.roomId });
   }
 
   handleGameState(state) {
@@ -620,7 +654,7 @@ export default class CoinRushScene extends Phaser.Scene {
     // Camera follow local player smoothly
     const localSprite = this.playerSprites.get(this.socket?.id);
     if (localSprite && !this.cameras.main.isFollowing) {
-      this.cameras.main.startFollow(localSprite.container, true, 0.12, 0.12);
+      this.cameras.main.startFollow(localSprite.container, true, 0.2, 0.2);
     }
   }
 
@@ -948,6 +982,7 @@ export default class CoinRushScene extends Phaser.Scene {
       this.input.off("pointermove", this.handleJoystickPointerMove, this);
       this.input.off("pointerup", this.handleJoystickPointerUp, this);
       this.input.off("pointerupoutside", this.handleJoystickPointerUp, this);
+      this.input.off("pointercancel", this.handleJoystickPointerUp, this);
     }
     if (this.joystickContainer) {
       this.joystickContainer.destroy();

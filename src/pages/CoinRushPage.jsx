@@ -284,7 +284,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
         },
         fps: {
           target: 60,
-          forceSetTimeOut: true,
+          forceSetTimeOut: false,
         },
         scene: [CoinRushScene],
         backgroundColor: "#090d16",
