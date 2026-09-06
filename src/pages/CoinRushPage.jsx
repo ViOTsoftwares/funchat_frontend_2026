@@ -773,7 +773,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
               <Typography variant="caption" fontWeight={900} sx={{ fontSize: { xs: "10px", sm: "12px" }, color: "rgba(255, 255, 255, 0.6)", mb: 0.8, display: "block", letterSpacing: "0.5px" }}>
                 🏆 LEADERBOARD ({players.length}/{activeMaxCapacity})
               </Typography>
-              {sortedPlayers.slice(0, 5).map((p, idx) => {
+              {sortedPlayers.slice(0, typeof window !== "undefined" && window.innerWidth < 600 ? 2 : 5).map((p, idx) => {
                 const isMe = p.id === socketRef.current?.id;
                 return (
                   <Stack

@@ -158,8 +158,8 @@ export default class CoinRushScene extends Phaser.Scene {
       gold: { base: 0x451a03, stroke: 0xf59e0b, glow: 0xfde047, knob: 0xf59e0b, inner: 0xffffff },
     }[theme] || { base: 0x1e1b4b, stroke: 0x6366f1, glow: 0x818cf8, knob: 0x38bdf8, inner: 0xffffff };
 
-    const fixedX = Math.round(110 * scale);
-    const fixedY = Math.round(this.arenaSize.height - 110 * scale);
+    const fixedX = Math.round(130 * scale);
+    const fixedY = Math.round(this.arenaSize.height - 170 * scale);
     this.joystickCenter = { x: fixedX, y: fixedY };
 
     const container = this.add.container(fixedX, fixedY);
@@ -224,7 +224,7 @@ export default class CoinRushScene extends Phaser.Scene {
       }
     } else {
       const dist = Math.hypot(px - this.joystickCenter.x, py - this.joystickCenter.y);
-      if (dist <= 85 * (this.joystickScale || 1.0)) {
+      if (dist <= 120 * (this.joystickScale || 1.0)) {
         this.joystickPointer = pointer;
         this.joystickContainer.setAlpha(1);
         this.handleJoystickPointerMove(pointer);

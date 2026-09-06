@@ -76,10 +76,26 @@ export default function GamePage({ socketRef, socketId, status }) {
       {/* ── COIN RUSH GAME ARENA VIEW (WHEN ON /game/coin-rush) ── */}
       {isCoinRushRoute ? (
         <Box>
-          <Stack className="coin-rush-sub-header" direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, px: 1 }}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Chip label="🟢 LIVE NOW" color="success" size="small" sx={{ fontWeight: 900, px: 1 }} />
-              <Typography variant="h5" fontWeight={900} sx={{ color: "#0f172a" }}>
+          <Stack
+            className="coin-rush-sub-header"
+            direction={{ xs: "column", sm: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            spacing={1.5}
+            sx={{ mb: 2, px: 1 }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "nowrap" }}>
+              <Chip label="🟢 LIVE" color="success" size="small" sx={{ fontWeight: 900, px: 0.8, fontSize: "11px" }} />
+              <Typography
+                variant="h5"
+                fontWeight={900}
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: "1.1rem", sm: "1.35rem", md: "1.5rem" },
+                  whiteSpace: "nowrap",
+                  letterSpacing: "-0.5px",
+                }}
+              >
                 🪙 Coin Rush Multiplayer
               </Typography>
             </Stack>
@@ -95,6 +111,9 @@ export default function GamePage({ socketRef, socketId, status }) {
                 textTransform: "none",
                 fontWeight: 700,
                 px: 2,
+                py: 0.6,
+                fontSize: { xs: "12px", sm: "13px" },
+                whiteSpace: "nowrap",
                 "&:hover": {
                   borderColor: "#6366f1",
                   color: "#6366f1",
