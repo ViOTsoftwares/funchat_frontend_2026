@@ -638,7 +638,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
 
       {/* ── ROOM / GAME ARENA CONTAINER ── */}
       {gameStatus !== "LOBBY" && (
-        <Box sx={{ position: "relative", width: "100%", mx: "auto" }}>
+        <Box className="coin-rush-game-wrapper" sx={{ position: "relative", width: "100%", mx: "auto" }}>
 
           {/* ── HUD OVERLAY: Score, Timer, Leaderboard ── */}
           <Box
@@ -1073,7 +1073,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
             sx={{
               width: "100%",
               height: { xs: "calc(100vh - 120px)", sm: "640px", md: "720px" },
-              minHeight: { xs: "480px", sm: "600px" },
+              minHeight: { xs: 0, sm: "480px", md: "600px" },
               borderRadius: { xs: "20px", sm: "28px" },
               overflow: "hidden",
               border: "1px solid rgba(99, 102, 241, 0.35)",

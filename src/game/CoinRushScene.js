@@ -204,6 +204,7 @@ export default class CoinRushScene extends Phaser.Scene {
       this.input.on("pointerdown", this.handleJoystickPointerDown, this);
       this.input.on("pointermove", this.handleJoystickPointerMove, this);
       this.input.on("pointerup", this.handleJoystickPointerUp, this);
+      this.input.on("pointerupoutside", this.handleJoystickPointerUp, this);
     }
   }
 
@@ -388,23 +389,48 @@ export default class CoinRushScene extends Phaser.Scene {
 
       // Reconcile with server target position smoothly
       const distToServer = Math.hypot(this.predictedPos.x - localSprite.targetX, this.predictedPos.y - localSprite.targetY);
+      const speedMag = Math.hypot(inputDir.dx, inputDir.dy);
+
       if (distToServer > 50) {
-        // Snap to server position if discrepancy is large
         this.predictedPos.x = localSprite.targetX;
         this.predictedPos.y = localSprite.targetY;
-      } else {
-        // Soft lerp prediction towards server position to correct drift
-        this.predictedPos.x = Phaser.Math.Linear(this.predictedPos.x, localSprite.targetX, 0.15);
-        this.predictedPos.y = Phaser.Math.Linear(this.predictedPos.y, localSprite.targetY, 0.15);
+      } else if (speedMag <= 0.05) {
+        // Soft lerp prediction towards server position when stationary
+        this.predictedPos.x = Phaser.Math.Linear(this.predictedPos.x, localSprite.targetX, 0.2);
+        this.predictedPos.y = Phaser.Math.Linear(this.predictedPos.y, localSprite.targetY, 0.2);
       }
 
       localSprite.container.x = this.predictedPos.x;
       localSprite.container.y = this.predictedPos.y;
 
-      const speedMag = Math.hypot(inputDir.dx, inputDir.dy);
       if (localSprite.trailParticles && speedMag > 0.1) {
         localSprite.trailParticles.emitParticleAt(localSprite.container.x, localSprite.container.y);
       }
+
+      // 2b. Instant Local 60 FPS Coin & Power-Up Pickup Prediction for Mobile
+      const COIN_RADIUS = 14;
+      this.coinSprites.forEach((coinData) => {
+        if (coinData.container && coinData.container.visible && !coinData.collectedLocally) {
+          const dist = Math.hypot(this.predictedPos.x - coinData.container.x, this.predictedPos.y - coinData.baseY);
+          if (dist <= PLAYER_RADIUS + COIN_RADIUS + 8) {
+            coinData.collectedLocally = true;
+            coinData.container.setVisible(false);
+            this.triggerLocalCoinPickupFx(coinData);
+          }
+        }
+      });
+
+      const POWERUP_RADIUS = 22;
+      this.powerUpSprites.forEach((pwData) => {
+        if (pwData.container && pwData.container.visible && !pwData.collectedLocally) {
+          const dist = Math.hypot(this.predictedPos.x - pwData.x, this.predictedPos.y - pwData.y);
+          if (dist <= PLAYER_RADIUS + POWERUP_RADIUS + 8) {
+            pwData.collectedLocally = true;
+            pwData.container.setVisible(false);
+            this.triggerLocalPowerUpPickupFx(pwData);
+          }
+        }
+      });
     }
 
     // 3. Interpolate & Extrapolate Remote Player Sprites
@@ -555,12 +581,15 @@ export default class CoinRushScene extends Phaser.Scene {
           const coinData = this.coinSprites.get(c.id);
           coinData.container.x = c.x;
           coinData.baseY = c.y;
+          if (coinData.collectedLocally) {
+            coinData.container.setVisible(false);
+          }
         }
       });
 
       this.coinSprites.forEach((coinData, coinId) => {
         if (!currentCoinIds.has(coinId)) {
-          coinData.container.destroy();
+          if (coinData.container) coinData.container.destroy();
           this.coinSprites.delete(coinId);
         }
       });
@@ -572,12 +601,17 @@ export default class CoinRushScene extends Phaser.Scene {
         currentPowerUpIds.add(pw.id);
         if (!this.powerUpSprites.has(pw.id)) {
           this.createPowerUpSprite(pw);
+        } else {
+          const pwData = this.powerUpSprites.get(pw.id);
+          if (pwData && pwData.collectedLocally) {
+            pwData.container.setVisible(false);
+          }
         }
       });
 
       this.powerUpSprites.forEach((pwData, pwId) => {
         if (!currentPowerUpIds.has(pwId)) {
-          pwData.container.destroy();
+          if (pwData.container) pwData.container.destroy();
           this.powerUpSprites.delete(pwId);
         }
       });
@@ -670,6 +704,9 @@ export default class CoinRushScene extends Phaser.Scene {
       glowRing,
       baseY: coin.y,
       bobOffset: Math.random() * 10,
+      type: coin.type,
+      value: coin.value || (isSuper ? 30 : 10),
+      collectedLocally: false,
     });
   }
 
@@ -707,6 +744,89 @@ export default class CoinRushScene extends Phaser.Scene {
       glow,
       x: pw.x,
       y: pw.y,
+      type: pw.type,
+      collectedLocally: false,
+    });
+  }
+
+  triggerLocalCoinPickupFx(coinData) {
+    if (!coinData) return;
+
+    const isSuper = coinData.type === "super" || coinData.value >= 20;
+    if (isSuper) {
+      playSuperCoinSound();
+      if (this.cameras.main) this.cameras.main.shake(150, 0.005);
+    } else {
+      playCoinSound();
+    }
+
+    const popX = coinData.container?.x || this.predictedPos.x;
+    const popY = coinData.baseY || coinData.container?.y || this.predictedPos.y;
+
+    const burst = this.add.particles(popX, popY, "glowParticle", {
+      speed: { min: 40, max: 120 },
+      scale: { start: 0.6, end: 0 },
+      alpha: { start: 1, end: 0 },
+      tint: isSuper ? 0xf472b6 : 0xfde047,
+      lifespan: 400,
+      blendMode: "ADD",
+      emitting: false,
+    });
+    burst.explode(12);
+    this.time.delayedCall(500, () => burst.destroy());
+
+    const pointsAdded = coinData.value || (isSuper ? 30 : 10);
+    const popText = this.add.text(popX, popY - 15, `+${pointsAdded}`, {
+      fontFamily: "Inter, Roboto, sans-serif",
+      fontSize: "20px",
+      fontWeight: "900",
+      color: isSuper ? "#f472b6" : "#fde047",
+      stroke: "#0f172a",
+      strokeThickness: 5,
+    });
+    popText.setOrigin(0.5);
+
+    this.tweens.add({
+      targets: popText,
+      y: popY - 65,
+      alpha: 0,
+      scale: 1.5,
+      duration: 850,
+      ease: "Back.easeOut",
+      onComplete: () => popText.destroy(),
+    });
+  }
+
+  triggerLocalPowerUpPickupFx(pwData) {
+    if (!pwData) return;
+    playPowerUpSound(pwData.type);
+    if (this.cameras.main) this.cameras.main.shake(200, 0.008);
+
+    const label =
+      pwData.type === "speed"
+        ? "⚡ SPEED BOOST!"
+        : pwData.type === "double"
+        ? "🪙 DOUBLE COINS!"
+        : "🧲 MAGNET!";
+
+    const pwText = this.add.text(pwData.x, pwData.y - 25, label, {
+      fontFamily: "Inter, Roboto, sans-serif",
+      fontSize: "15px",
+      fontWeight: "900",
+      color: "#38bdf8",
+      stroke: "#0f172a",
+      strokeThickness: 4,
+    });
+    pwText.setOrigin(0.5);
+
+    this.tweens.add({
+      targets: pwText,
+      y: pwData.y - 65,
+      alpha: 0,
+      scale: 1.3,
+      duration: 1000,
+      ease: "Power2",
+      onComplete: () => pwText.destroy(),
     });
   }
 
@@ -714,6 +834,15 @@ export default class CoinRushScene extends Phaser.Scene {
     if (!data) return;
 
     const isMe = data.playerId === this.socket?.id;
+    const coinData = this.coinSprites.get(data.coinId);
+
+    // If local player already picked this up locally, don't replay sound/FX
+    if (isMe && coinData && coinData.collectedLocally) {
+      if (coinData.container) coinData.container.destroy();
+      this.coinSprites.delete(data.coinId);
+      return;
+    }
+
     if (isMe) {
       if (data.pointsAdded >= 20) {
         playSuperCoinSound();
@@ -818,6 +947,7 @@ export default class CoinRushScene extends Phaser.Scene {
       this.input.off("pointerdown", this.handleJoystickPointerDown, this);
       this.input.off("pointermove", this.handleJoystickPointerMove, this);
       this.input.off("pointerup", this.handleJoystickPointerUp, this);
+      this.input.off("pointerupoutside", this.handleJoystickPointerUp, this);
     }
     if (this.joystickContainer) {
       this.joystickContainer.destroy();
