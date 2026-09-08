@@ -820,23 +820,43 @@ export default function App() {
             />
             <Route
               path="/game"
-              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+              element={
+                <ProtectedRoute>
+                  <GamePage socketRef={socketRef} socketId={socketId} status={status} />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/game/:gameId"
-              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+              element={
+                <ProtectedRoute>
+                  <GamePage socketRef={socketRef} socketId={socketId} status={status} />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/games"
-              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+              element={
+                <ProtectedRoute>
+                  <GamePage socketRef={socketRef} socketId={socketId} status={status} />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/games/:gameId"
-              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+              element={
+                <ProtectedRoute>
+                  <GamePage socketRef={socketRef} socketId={socketId} status={status} />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/coin-rush"
-              element={<GamePage socketRef={socketRef} socketId={socketId} status={status} />}
+              element={
+                <ProtectedRoute>
+                  <GamePage socketRef={socketRef} socketId={socketId} status={status} />
+                </ProtectedRoute>
+              }
             />
 
             {/* Standalone Coming Soon & Maintenance routes */}

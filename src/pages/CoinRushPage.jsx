@@ -66,12 +66,27 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
   const [leaveWarningOpen, setLeaveWarningOpen] = useState(false);
   const [joystickSettingsOpen, setJoystickSettingsOpen] = useState(false);
   const [joystickConfig, setJoystickConfig] = useState(() => {
+    const isMobile =
+      typeof window !== "undefined" &&
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        window.innerWidth <= 900);
+    const defaultMode = isMobile ? "dynamic" : "fixed";
+
     try {
       const saved = localStorage.getItem("funchat_joystick_config");
-      return saved ? JSON.parse(saved) : { theme: "neon", mode: "fixed", size: "standard" };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          theme: parsed.theme || "neon",
+          mode: parsed.mode || defaultMode,
+          size: parsed.size || "standard",
+        };
+      }
     } catch {
-      return { theme: "neon", mode: "fixed", size: "standard" };
+      // ignore
     }
+
+    return { theme: "neon", mode: defaultMode, size: "standard" };
   });
 
   // Manage body class for hiding header on mobile when joined
@@ -86,20 +101,57 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
     };
   }, [gameStatus]);
 
-  // Handle orientation changes and window resizing for Phaser scale auto-refresh
+  // Manage auto screen orientation (Lock Landscape when game starts, unlock when over) & mobile detection
+  const [isPortraitMobile, setIsPortraitMobile] = useState(false);
+
   useEffect(() => {
+    const isMobile =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      window.innerWidth <= 900;
+
     const handleResize = () => {
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setIsPortraitMobile(isMobile && isPortrait);
+
       if (phaserGameRef.current && phaserGameRef.current.scale) {
         phaserGameRef.current.scale.refresh();
       }
     };
+
+    handleResize();
     window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", handleResize);
+
+    // Auto lock orientation to landscape when game starts (COUNTDOWN or PLAYING)
+    if (isMobile && (gameStatus === "COUNTDOWN" || gameStatus === "PLAYING")) {
+      if (window.screen?.orientation?.lock) {
+        window.screen.orientation.lock("landscape").catch((err) => {
+          console.log("Landscape lock note:", err?.message || err);
+        });
+      }
+    } else if (gameStatus === "ENDED" || gameStatus === "LOBBY") {
+      // Revert/unlock orientation back to normal when game is over or in lobby
+      if (window.screen?.orientation?.unlock) {
+        try {
+          window.screen.orientation.unlock();
+        } catch (err) {
+          console.log("Orientation unlock note:", err?.message || err);
+        }
+      }
+    }
+
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("orientationchange", handleResize);
+      if (window.screen?.orientation?.unlock) {
+        try {
+          window.screen.orientation.unlock();
+        } catch (err) {
+          // ignore cleanup error
+        }
+      }
     };
-  }, []);
+  }, [gameStatus]);
 
   const handleJoystickConfigChange = (newConfig) => {
     const updated = { ...joystickConfig, ...newConfig };
@@ -639,6 +691,56 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
       {/* ── ROOM / GAME ARENA CONTAINER ── */}
       {gameStatus !== "LOBBY" && (
         <Box className="coin-rush-game-wrapper" sx={{ position: "relative", width: "100%", mx: "auto" }}>
+          {/* ── MOBILE PORTRAIT LANDSCAPE ROTATION BANNER ── */}
+          {isPortraitMobile && (gameStatus === "COUNTDOWN" || gameStatus === "PLAYING") && (
+            <Paper
+              elevation={0}
+              sx={{
+                position: "absolute",
+                top: { xs: 54, sm: 64 },
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 25,
+                p: "6px 14px",
+                borderRadius: "16px",
+                background: "rgba(245, 158, 11, 0.95)",
+                backdropFilter: "blur(12px)",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                color: "#0f172a",
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                maxWidth: "92%",
+              }}
+            >
+              <Typography variant="caption" fontWeight={900} sx={{ fontSize: "11px", display: "flex", alignItems: "center", gap: 0.5 }}>
+                📱 🔄 Rotate phone to <strong>Landscape</strong> for best controls!
+              </Typography>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => {
+                  if (window.screen?.orientation?.lock) {
+                    window.screen.orientation.lock("landscape").catch(() => {});
+                  }
+                }}
+                sx={{
+                  fontSize: "10px",
+                  fontWeight: 800,
+                  px: 1,
+                  py: 0.2,
+                  minWidth: 0,
+                  borderRadius: "8px",
+                  background: "#0f172a",
+                  color: "#fff",
+                  textTransform: "none",
+                  "&:hover": { background: "#1e293b" },
+                }}
+              >
+                Rotate
+              </Button>
+            </Paper>
+          )}
 
           {/* ── HUD OVERLAY: Score, Timer, Leaderboard ── */}
           <Box

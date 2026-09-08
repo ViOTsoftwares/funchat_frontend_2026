@@ -49,7 +49,13 @@ export default class CoinRushScene extends Phaser.Scene {
     this.localPlayerId = data.socket?.id;
     this.arenaWalls = data.arenaWalls || [];
     this.arenaSize = data.arenaSize || { width: 1200, height: 800 };
-    this.joystickConfig = data.joystickConfig || { theme: "neon", mode: "fixed", size: "standard" };
+    const isMobile =
+      typeof window !== "undefined" &&
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        (window.innerWidth && window.innerWidth <= 900));
+    const defaultMode = isMobile ? "dynamic" : "fixed";
+
+    this.joystickConfig = data.joystickConfig || { theme: "neon", mode: defaultMode, size: "standard" };
   }
 
   create() {
@@ -149,7 +155,13 @@ export default class CoinRushScene extends Phaser.Scene {
       this.joystickContainer.destroy();
     }
 
-    const { theme = "neon", mode = "fixed", size = "standard" } = this.joystickConfig || {};
+    const isMobile =
+      typeof window !== "undefined" &&
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        (window.innerWidth && window.innerWidth <= 900));
+    const defaultMode = isMobile ? "dynamic" : "fixed";
+
+    const { theme = "neon", mode = defaultMode, size = "standard" } = this.joystickConfig || {};
     const scale = size === "compact" ? 0.8 : size === "large" ? 1.25 : 1.0;
 
     const themeColors = {
