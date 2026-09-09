@@ -191,7 +191,7 @@ body.coin-rush-in-game .coin-rush-top-hud-bar {
 }
 
 body.coin-rush-in-game .coin-rush-canvas-container {
-  flex: 1 1 auto !important;
+  flex: 1 1 0% !important;
   width: 100vw !important;
   height: calc(100vh - 46px) !important;
   height: calc(100dvh - 46px) !important;
@@ -212,11 +212,10 @@ body.coin-rush-in-game .coin-rush-canvas-container {
 }
 
 body.coin-rush-in-game .coin-rush-canvas-container canvas {
-  width: 100% !important;
-  height: 100% !important;
   max-width: 100% !important;
   max-height: 100% !important;
   object-fit: contain !important;
+  margin: auto !important;
   touch-action: none !important;
   user-select: none !important;
   -webkit-user-select: none !important;

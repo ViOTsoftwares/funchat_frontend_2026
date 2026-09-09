@@ -485,234 +485,236 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
 
   return (
-    <Container maxWidth="xl" sx={{ pt: { xs: 7, sm: 10, md: 11 }, pb: { xs: 2, sm: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
+    <>
       {/* ── LOBBY VIEW: Create / Join Room / Quick Match ── */}
       {gameStatus === "LOBBY" && (
-        <Grid container spacing={{ xs: 2.5, sm: 4 }} justifyContent="center" alignItems="center">
-          <Grid item xs={12} md={7}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: 2.5, sm: 4, md: 5 },
-                borderRadius: { xs: "20px", sm: "28px" },
-                background: "rgba(15, 23, 42, 0.85)",
-                backdropFilter: "blur(24px)",
-                border: "1px solid rgba(99, 102, 241, 0.3)",
-                boxShadow: "0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(99, 102, 241, 0.15)",
-                color: "#fff",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              {/* Top Accent Gradient Bar */}
-              <Box
+        <Container maxWidth="xl" sx={{ pt: { xs: 7, sm: 10, md: 11 }, pb: { xs: 2, sm: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
+          <Grid container spacing={{ xs: 2.5, sm: 4 }} justifyContent="center" alignItems="center">
+            <Grid item xs={12} md={7}>
+              <Paper
+                elevation={0}
                 sx={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: "4px",
-                  background: "linear-gradient(90deg, #6366f1, #f59e0b, #ec4899)",
+                  p: { xs: 2.5, sm: 4, md: 5 },
+                  borderRadius: { xs: "20px", sm: "28px" },
+                  background: "rgba(15, 23, 42, 0.85)",
+                  backdropFilter: "blur(24px)",
+                  border: "1px solid rgba(99, 102, 241, 0.3)",
+                  boxShadow: "0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(99, 102, 241, 0.15)",
+                  color: "#fff",
+                  position: "relative",
+                  overflow: "hidden",
                 }}
-              />
-
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+              >
+                {/* Top Accent Gradient Bar */}
                 <Box
                   sx={{
-                    width: { xs: 44, sm: 56 },
-                    height: { xs: 44, sm: 56 },
-                    borderRadius: { xs: "14px", sm: "18px" },
-                    background: "linear-gradient(135deg, #f59e0b, #ec4899)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 10px 25px rgba(245, 158, 11, 0.4)",
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "4px",
+                    background: "linear-gradient(90deg, #6366f1, #f59e0b, #ec4899)",
                   }}
-                >
-                  <EmojiEventsIcon sx={{ fontSize: { xs: 26, sm: 34 }, color: "#fff" }} />
-                </Box>
-                <Box>
-                  <Typography variant="h4" fontWeight={900} sx={{ fontSize: { xs: "1.5rem", sm: "2.1rem" }, letterSpacing: "-0.5px", color: "#fff" }}>
-                    🪙 COIN RUSH
-                  </Typography>
-                  <Typography variant="caption" fontWeight={700} sx={{ color: "#fde047", letterSpacing: "1px" }}>
-                    REAL-TIME MULTIPLAYER ARCADE
-                  </Typography>
-                </Box>
-              </Stack>
+                />
 
-              {/* ── MODE / PLAYER CAPACITY SELECTOR (2, 4, 8) ── */}
-              <Box sx={{ mb: 3, p: { xs: 1.5, sm: 2 }, borderRadius: "18px", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                <Typography variant="caption" fontWeight={800} sx={{ color: "rgba(255,255,255,0.7)", mb: 1, display: "block" }}>
-                  SELECT PLAYER MODE / CAPACITY:
-                </Typography>
-                <ToggleButtonGroup
-                  value={playerCapacity}
-                  exclusive
-                  onChange={(e, val) => val && setPlayerCapacity(Number(val))}
-                  fullWidth
-                  sx={{
-                    gap: 1,
-                    flexDirection: { xs: "column", sm: "row" },
-                    "& .MuiToggleButton-root": {
-                      color: "#fff",
-                      borderColor: "rgba(255,255,255,0.15)",
-                      borderRadius: "12px !important",
-                      fontWeight: 800,
-                      py: 1,
-                      fontSize: { xs: "13px", sm: "14px" },
-                      textTransform: "none",
-                      "&.Mui-selected": {
-                        background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                  <Box
+                    sx={{
+                      width: { xs: 44, sm: 56 },
+                      height: { xs: 44, sm: 56 },
+                      borderRadius: { xs: "14px", sm: "18px" },
+                      background: "linear-gradient(135deg, #f59e0b, #ec4899)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 10px 25px rgba(245, 158, 11, 0.4)",
+                    }}
+                  >
+                    <EmojiEventsIcon sx={{ fontSize: { xs: 26, sm: 34 }, color: "#fff" }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight={900} sx={{ fontSize: { xs: "1.5rem", sm: "2.1rem" }, letterSpacing: "-0.5px", color: "#fff" }}>
+                      🪙 COIN RUSH
+                    </Typography>
+                    <Typography variant="caption" fontWeight={700} sx={{ color: "#fde047", letterSpacing: "1px" }}>
+                      REAL-TIME MULTIPLAYER ARCADE
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                {/* ── MODE / PLAYER CAPACITY SELECTOR (2, 4, 8) ── */}
+                <Box sx={{ mb: 3, p: { xs: 1.5, sm: 2 }, borderRadius: "18px", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                  <Typography variant="caption" fontWeight={800} sx={{ color: "rgba(255,255,255,0.7)", mb: 1, display: "block" }}>
+                    SELECT PLAYER MODE / CAPACITY:
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={playerCapacity}
+                    exclusive
+                    onChange={(e, val) => val && setPlayerCapacity(Number(val))}
+                    fullWidth
+                    sx={{
+                      gap: 1,
+                      flexDirection: { xs: "column", sm: "row" },
+                      "& .MuiToggleButton-root": {
                         color: "#fff",
-                        borderColor: "transparent",
-                        boxShadow: "0 4px 15px rgba(99, 102, 241, 0.4)",
+                        borderColor: "rgba(255,255,255,0.15)",
+                        borderRadius: "12px !important",
+                        fontWeight: 800,
+                        py: 1,
+                        fontSize: { xs: "13px", sm: "14px" },
+                        textTransform: "none",
+                        "&.Mui-selected": {
+                          background: "linear-gradient(135deg, #6366f1, #3b82f6)",
+                          color: "#fff",
+                          borderColor: "transparent",
+                          boxShadow: "0 4px 15px rgba(99, 102, 241, 0.4)",
+                        },
                       },
+                    }}
+                  >
+                    <ToggleButton value={2}>👥 2 Players (1v1)</ToggleButton>
+                    <ToggleButton value={4}>⚔️ 4 Players (Squad)</ToggleButton>
+                    <ToggleButton value={8}>🔥 8 Players (Chaos)</ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+
+                {/* ── QUICK MATCH BUTTON (RANDOM CONNECTION) ── */}
+                <Button
+                  fullWidth
+                  size="large"
+                  variant="contained"
+                  startIcon={<ShuffleIcon />}
+                  onClick={handleQuickMatch}
+                  disabled={isSearchingQuickMatch}
+                  sx={{
+                    mb: 2.5,
+                    py: { xs: 1.4, sm: 1.8 },
+                    borderRadius: "16px",
+                    fontWeight: 900,
+                    fontSize: { xs: "14.5px", sm: "16px" },
+                    background: "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
+                    boxShadow: "0 10px 30px rgba(236, 72, 153, 0.4)",
+                    textTransform: "none",
+                    transition: "all 0.25s ease",
+                    "&:hover": {
+                      background: "linear-gradient(135deg, #db2777 0%, #7c3aed 100%)",
+                      transform: "translateY(-2px)",
                     },
                   }}
                 >
-                  <ToggleButton value={2}>👥 2 Players (1v1)</ToggleButton>
-                  <ToggleButton value={4}>⚔️ 4 Players (Squad)</ToggleButton>
-                  <ToggleButton value={8}>🔥 8 Players (Chaos)</ToggleButton>
-                </ToggleButtonGroup>
-              </Box>
+                  {isSearchingQuickMatch ? "Finding Random Players..." : `⚡ Quick Match (${playerCapacity} Players Random)`}
+                </Button>
 
-              {/* ── QUICK MATCH BUTTON (RANDOM CONNECTION) ── */}
-              <Button
-                fullWidth
-                size="large"
-                variant="contained"
-                startIcon={<ShuffleIcon />}
-                onClick={handleQuickMatch}
-                disabled={isSearchingQuickMatch}
-                sx={{
-                  mb: 2.5,
-                  py: { xs: 1.4, sm: 1.8 },
-                  borderRadius: "16px",
-                  fontWeight: 900,
-                  fontSize: { xs: "14.5px", sm: "16px" },
-                  background: "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
-                  boxShadow: "0 10px 30px rgba(236, 72, 153, 0.4)",
-                  textTransform: "none",
-                  transition: "all 0.25s ease",
-                  "&:hover": {
-                    background: "linear-gradient(135deg, #db2777 0%, #7c3aed 100%)",
-                    transform: "translateY(-2px)",
-                  },
-                }}
-              >
-                {isSearchingQuickMatch ? "Finding Random Players..." : `⚡ Quick Match (${playerCapacity} Players Random)`}
-              </Button>
+                <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.4)", fontWeight: 800, display: "block", textAlign: "center", mb: 2.5 }}>
+                  — OR PRIVATE ROOM CODE —
+                </Typography>
 
-              <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.4)", fontWeight: 800, display: "block", textAlign: "center", mb: 2.5 }}>
-                — OR PRIVATE ROOM CODE —
-              </Typography>
-
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<SportsEsportsIcon />}
-                    onClick={handleCreateRoom}
-                    sx={{
-                      py: 1.5,
-                      borderRadius: "16px",
-                      fontWeight: 800,
-                      color: "#818cf8",
-                      borderColor: "rgba(129, 140, 248, 0.4)",
-                      textTransform: "none",
-                      fontSize: { xs: "13px", sm: "14px" },
-                    }}
-                  >
-                    Create Custom ({playerCapacity}P) Room
-                  </Button>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <Stack direction="row" spacing={1}>
-                    <TextField
-                      fullWidth
-                      placeholder="Room Code"
-                      value={joinCodeInput}
-                      onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
-                      inputProps={{ style: { color: "#fff", fontWeight: 800, textAlign: "center", letterSpacing: "2px" } }}
-                      sx={{
-                        background: "rgba(255, 255, 255, 0.05)",
-                        borderRadius: "16px",
-                        "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255, 255, 255, 0.15)" },
-                      }}
-                    />
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
                     <Button
-                      variant="contained"
-                      onClick={handleJoinRoom}
-                      disabled={!joinCodeInput.trim()}
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<SportsEsportsIcon />}
+                      onClick={handleCreateRoom}
                       sx={{
-                        px: 3,
+                        py: 1.5,
                         borderRadius: "16px",
                         fontWeight: 800,
-                        background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                        color: "#fff",
+                        color: "#818cf8",
+                        borderColor: "rgba(129, 140, 248, 0.4)",
                         textTransform: "none",
+                        fontSize: { xs: "13px", sm: "14px" },
                       }}
                     >
-                      Join
+                      Create Custom ({playerCapacity}P) Room
                     </Button>
-                  </Stack>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <Stack direction="row" spacing={1}>
+                      <TextField
+                        fullWidth
+                        placeholder="Room Code"
+                        value={joinCodeInput}
+                        onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+                        inputProps={{ style: { color: "#fff", fontWeight: 800, textAlign: "center", letterSpacing: "2px" } }}
+                        sx={{
+                          background: "rgba(255, 255, 255, 0.05)",
+                          borderRadius: "16px",
+                          "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255, 255, 255, 0.15)" },
+                        }}
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={handleJoinRoom}
+                        disabled={!joinCodeInput.trim()}
+                        sx={{
+                          px: 3,
+                          borderRadius: "16px",
+                          fontWeight: 800,
+                          background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                          color: "#fff",
+                          textTransform: "none",
+                        }}
+                      >
+                        Join
+                      </Button>
+                    </Stack>
+                  </Grid>
                 </Grid>
-              </Grid>
-            </Paper>
+              </Paper>
+            </Grid>
+
+            {/* Controls Quick Guide */}
+            <Grid item xs={12} md={5}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: 2.5, sm: 4 },
+                  borderRadius: { xs: "20px", sm: "28px" },
+                  background: "rgba(15, 23, 42, 0.75)",
+                  backdropFilter: "blur(20px)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  color: "#fff",
+                }}
+              >
+                <Typography variant="h6" fontWeight={800} sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                  🎮 CONTROLS GUIDE
+                </Typography>
+
+                <Stack spacing={2}>
+                  <Paper sx={{ p: 2, borderRadius: "16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <KeyboardIcon sx={{ color: "#38bdf8" }} />
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#fff" }}>
+                          Desktop Controls
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)" }}>
+                          WASD Keys or Arrow Keys to move in 8 directions
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Paper>
+
+                  <Paper sx={{ p: 2, borderRadius: "16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <SmartphoneIcon sx={{ color: "#ec4899" }} />
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#fff" }}>
+                          Mobile Controls
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)" }}>
+                          Virtual Touch Joystick on bottom-left screen
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </Stack>
+              </Paper>
+            </Grid>
           </Grid>
-
-          {/* Controls Quick Guide */}
-          <Grid item xs={12} md={5}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: 2.5, sm: 4 },
-                borderRadius: { xs: "20px", sm: "28px" },
-                background: "rgba(15, 23, 42, 0.75)",
-                backdropFilter: "blur(20px)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                color: "#fff",
-              }}
-            >
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
-                🎮 CONTROLS GUIDE
-              </Typography>
-
-              <Stack spacing={2}>
-                <Paper sx={{ p: 2, borderRadius: "16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <KeyboardIcon sx={{ color: "#38bdf8" }} />
-                    <Box>
-                      <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#fff" }}>
-                        Desktop Controls
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)" }}>
-                        WASD Keys or Arrow Keys to move in 8 directions
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </Paper>
-
-                <Paper sx={{ p: 2, borderRadius: "16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <SmartphoneIcon sx={{ color: "#ec4899" }} />
-                    <Box>
-                      <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#fff" }}>
-                        Mobile Controls
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)" }}>
-                        Virtual Touch Joystick on bottom-left screen
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </Paper>
-              </Stack>
-            </Paper>
-          </Grid>
-        </Grid>
+        </Container>
       )}
 
       {/* ── ROOM / GAME ARENA CONTAINER ── */}
@@ -720,195 +722,202 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
         <Box
           className="coin-rush-game-wrapper"
           sx={{
-            position: "relative",
-            width: "100%",
-            height: "100%",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: "100vw",
+            height: "100dvh",
             display: "flex",
             flexDirection: "column",
-            mx: "auto",
+            background: "#090d16",
             overflow: "hidden",
+            zIndex: 9999,
           }}
         >
-
-
-          {/* ── DEDICATED TOP HUD BAR (Sits strictly ABOVE Phaser Canvas) ── */}
-          {(gameStatus === "COUNTDOWN" || gameStatus === "PLAYING" || gameStatus === "ENDED") && (
-            <Box
-              className="coin-rush-top-hud-bar"
-              sx={{
-                width: "100%",
-                px: { xs: 1, sm: 2 },
-                py: { xs: 0.5, sm: 0.8 },
-                background: "rgba(9, 13, 22, 0.95)",
-                backdropFilter: "blur(14px)",
-                borderBottom: "1px solid rgba(99, 102, 241, 0.25)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                zIndex: 30,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.6)",
-                flexShrink: 0,
-              }}
-            >
-              {/* Left Stack: Actions & Score */}
-              <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} alignItems="center">
-                <Tooltip title="Leave Game / Exit Room">
-                  <IconButton
-                    onClick={() => setLeaveWarningOpen(true)}
-                    size="small"
-                    sx={{
-                      color: "#f87171",
-                      background: "rgba(239, 68, 68, 0.15)",
-                      border: "1px solid rgba(239, 68, 68, 0.3)",
-                      p: { xs: "4px", sm: "6px" },
-                    }}
-                  >
-                    <ArrowBackIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                  </IconButton>
-                </Tooltip>
-
-                <Tooltip title="Customize Virtual Joystick">
-                  <IconButton
-                    onClick={() => setJoystickSettingsOpen(true)}
-                    size="small"
-                    sx={{
-                      color: "#818cf8",
-                      background: "rgba(99, 102, 241, 0.15)",
-                      border: "1px solid rgba(99, 102, 241, 0.3)",
-                      p: { xs: "4px", sm: "6px" },
-                    }}
-                  >
-                    <TuneIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                  </IconButton>
-                </Tooltip>
-
-                <Tooltip title={!isMicOn ? "Enable Mic Voice Chat" : isMuted ? "Unmute Mic" : "Mute Mic"}>
-                  <IconButton
-                    onClick={!isMicOn ? startMic : toggleMute}
-                    size="small"
-                    sx={{
-                      color: !isMicOn ? "rgba(255,255,255,0.6)" : isMuted ? "#f87171" : "#4ade80",
-                      background: isSpeaking ? "rgba(34, 197, 94, 0.3)" : "rgba(255,255,255,0.08)",
-                      border: isMuted ? "1px solid rgba(239, 68, 68, 0.4)" : "1px solid rgba(34, 197, 94, 0.4)",
-                      boxShadow: isSpeaking ? "0 0 12px rgba(34, 197, 94, 0.6)" : "none",
-                      p: { xs: "4px", sm: "6px" },
-                    }}
-                  >
-                    {!isMicOn || isMuted ? (
-                      <MicOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                    ) : (
-                      <MicIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                    )}
-                  </IconButton>
-                </Tooltip>
-
-                <Tooltip title="Fullscreen Landscape Mode">
-                  <IconButton
-                    onClick={handleToggleFullscreenLandscape}
-                    size="small"
-                    sx={{
-                      color: "#f59e0b",
-                      background: "rgba(245, 158, 11, 0.15)",
-                      border: "1px solid rgba(245, 158, 11, 0.3)",
-                      p: { xs: "4px", sm: "6px" },
-                    }}
-                  >
-                    <FullscreenIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                  </IconButton>
-                </Tooltip>
-
-                <Paper
-                  elevation={0}
+          {/* ── DEDICATED TOP HUD BAR ── */}
+          <Box
+            className="coin-rush-top-hud-bar"
+            sx={{
+              width: "100%",
+              px: { xs: 1, sm: 2 },
+              py: { xs: 0.5, sm: 0.8 },
+              background: "rgba(9, 13, 22, 0.95)",
+              backdropFilter: "blur(14px)",
+              borderBottom: "1px solid rgba(99, 102, 241, 0.25)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              zIndex: 30,
+              boxShadow: "0 4px 20px rgba(0,0,0,0.6)",
+              flexShrink: 0,
+            }}
+          >
+            {/* Left Stack: Actions & Score */}
+            <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} alignItems="center">
+              <Tooltip title="Leave Game / Exit Room">
+                <IconButton
+                  onClick={() => setLeaveWarningOpen(true)}
+                  size="small"
                   sx={{
-                    px: { xs: 1, sm: 1.5 },
-                    py: 0.3,
-                    borderRadius: "10px",
-                    background: "rgba(245, 158, 11, 0.15)",
-                    border: "1px solid rgba(245, 158, 11, 0.4)",
-                    color: "#fde047",
-                    fontWeight: 900,
-                    fontSize: { xs: "11px", sm: "14px" },
-                    display: "flex",
-                    alignItems: "center",
+                    color: "#f87171",
+                    background: "rgba(239, 68, 68, 0.15)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    p: { xs: "4px", sm: "6px" },
                   }}
                 >
-                  🪙 {myScore} pts
-                </Paper>
-              </Stack>
+                  <ArrowBackIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                </IconButton>
+              </Tooltip>
 
-              {/* Center Stack: Round Timer */}
-              <Paper
-                elevation={0}
-                sx={{
-                  px: { xs: 1.2, sm: 2 },
-                  py: 0.3,
-                  borderRadius: "12px",
-                  background: "rgba(15, 23, 42, 0.9)",
-                  border: timeRemaining <= 10 ? "1px solid #ef4444" : "1px solid rgba(99, 102, 241, 0.4)",
-                  color: timeRemaining <= 10 ? "#ef4444" : "#fff",
-                  fontWeight: 900,
-                  fontSize: { xs: "12px", sm: "16px" },
-                  fontFamily: "monospace",
-                }}
-              >
-                <Stack direction="row" spacing={0.6} alignItems="center">
-                  <Box
-                    sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      bgcolor: timeRemaining <= 10 ? "#ef4444" : "#22c55e",
-                      boxShadow: timeRemaining <= 10 ? "0 0 8px #ef4444" : "0 0 8px #22c55e",
-                    }}
-                  />
-                  <TimerIcon sx={{ fontSize: { xs: 15, sm: 18 }, color: timeRemaining <= 10 ? "#ef4444" : "#818cf8" }} />
-                  <span>
-                    {(() => {
-                      const s = Math.max(0, Number(timeRemaining) || 0);
-                      const mins = Math.floor(s / 60);
-                      const rem = s % 60;
-                      return `${mins < 10 ? '0' + mins : mins}:${rem < 10 ? '0' + rem : rem}`;
-                    })()}
-                  </span>
-                </Stack>
-              </Paper>
+              <Tooltip title="Customize Virtual Joystick">
+                <IconButton
+                  onClick={() => setJoystickSettingsOpen(true)}
+                  size="small"
+                  sx={{
+                    color: "#818cf8",
+                    background: "rgba(99, 102, 241, 0.15)",
+                    border: "1px solid rgba(99, 102, 241, 0.3)",
+                    p: { xs: "4px", sm: "6px" },
+                  }}
+                >
+                  <TuneIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                </IconButton>
+              </Tooltip>
 
-              {/* Right Stack: Leaderboard Rank */}
+              <Tooltip title={!isMicOn ? "Enable Mic Voice Chat" : isMuted ? "Unmute Mic" : "Mute Mic"}>
+                <IconButton
+                  onClick={!isMicOn ? startMic : toggleMute}
+                  size="small"
+                  sx={{
+                    color: !isMicOn ? "rgba(255,255,255,0.6)" : isMuted ? "#f87171" : "#4ade80",
+                    background: isSpeaking ? "rgba(34, 197, 94, 0.3)" : "rgba(255,255,255,0.08)",
+                    border: isMuted ? "1px solid rgba(239, 68, 68, 0.4)" : "1px solid rgba(34, 197, 94, 0.4)",
+                    boxShadow: isSpeaking ? "0 0 12px rgba(34, 197, 94, 0.6)" : "none",
+                    p: { xs: "4px", sm: "6px" },
+                  }}
+                >
+                  {!isMicOn || isMuted ? (
+                    <MicOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                  ) : (
+                    <MicIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                  )}
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Fullscreen Landscape Mode">
+                <IconButton
+                  onClick={handleToggleFullscreenLandscape}
+                  size="small"
+                  sx={{
+                    color: "#f59e0b",
+                    background: "rgba(245, 158, 11, 0.15)",
+                    border: "1px solid rgba(245, 158, 11, 0.3)",
+                    p: { xs: "4px", sm: "6px" },
+                  }}
+                >
+                  <FullscreenIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                </IconButton>
+              </Tooltip>
+
               <Paper
                 elevation={0}
                 sx={{
                   px: { xs: 1, sm: 1.5 },
                   py: 0.3,
                   borderRadius: "10px",
-                  background: "rgba(15, 23, 42, 0.85)",
-                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                  background: "rgba(245, 158, 11, 0.15)",
+                  border: "1px solid rgba(245, 158, 11, 0.4)",
+                  color: "#fde047",
+                  fontWeight: 900,
+                  fontSize: { xs: "11px", sm: "14px" },
+                  display: "flex",
+                  alignItems: "center",
                 }}
               >
-                <Stack direction="row" spacing={0.8} alignItems="center">
-                  <Typography variant="caption" fontWeight={900} sx={{ color: "#fde047", fontSize: { xs: "10.5px", sm: "12px" } }}>
-                    🏆 #{(() => {
-                      const myIdx = sortedPlayers.findIndex((p) => p.id === socketRef.current?.id);
-                      return myIdx >= 0 ? myIdx + 1 : 1;
-                    })()}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.6)", fontSize: { xs: "10px", sm: "11px" } }}>
-                    ({sortedPlayers.length} Players)
-                  </Typography>
-                </Stack>
+                🪙 {myScore} pts
               </Paper>
-            </Box>
-          )}
+            </Stack>
 
-          {/* ── PHASER GAME CANVAS CONTAINER (Renders Below Top HUD Bar) ── */}
+            {/* Center Stack: Round Timer */}
+            <Paper
+              elevation={0}
+              sx={{
+                px: { xs: 1.2, sm: 2 },
+                py: 0.3,
+                borderRadius: "12px",
+                background: "rgba(15, 23, 42, 0.9)",
+                border: timeRemaining <= 10 ? "1px solid #ef4444" : "1px solid rgba(99, 102, 241, 0.4)",
+                color: timeRemaining <= 10 ? "#ef4444" : "#fff",
+                fontWeight: 900,
+                fontSize: { xs: "12px", sm: "16px" },
+                fontFamily: "monospace",
+              }}
+            >
+              <Stack direction="row" spacing={0.6} alignItems="center">
+                <Box
+                  sx={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    bgcolor: timeRemaining <= 10 ? "#ef4444" : "#22c55e",
+                    boxShadow: timeRemaining <= 10 ? "0 0 8px #ef4444" : "0 0 8px #22c55e",
+                  }}
+                />
+                <TimerIcon sx={{ fontSize: { xs: 15, sm: 18 }, color: timeRemaining <= 10 ? "#ef4444" : "#818cf8" }} />
+                <span>
+                  {(() => {
+                    const s = Math.max(0, Number(timeRemaining) || 0);
+                    const mins = Math.floor(s / 60);
+                    const rem = s % 60;
+                    return `${mins < 10 ? '0' + mins : mins}:${rem < 10 ? '0' + rem : rem}`;
+                  })()}
+                </span>
+              </Stack>
+            </Paper>
+
+            {/* Right Stack: Leaderboard Rank */}
+            <Paper
+              elevation={0}
+              sx={{
+                px: { xs: 1, sm: 1.5 },
+                py: 0.3,
+                borderRadius: "10px",
+                background: "rgba(15, 23, 42, 0.85)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+              }}
+            >
+              <Stack direction="row" spacing={0.8} alignItems="center">
+                <Typography variant="caption" fontWeight={900} sx={{ color: "#fde047", fontSize: { xs: "10.5px", sm: "12px" } }}>
+                  🏆 #{(() => {
+                    const myIdx = sortedPlayers.findIndex((p) => p.id === socketRef.current?.id);
+                    return myIdx >= 0 ? myIdx + 1 : 1;
+                  })()}
+                </Typography>
+                <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.6)", fontSize: { xs: "10px", sm: "11px" } }}>
+                  ({sortedPlayers.length} Players)
+                </Typography>
+              </Stack>
+            </Paper>
+          </Box>
+
+          {/* ── SINGLE PHASER GAME CANVAS CONTAINER ── */}
           <Box
             ref={canvasContainerRef}
             className="coin-rush-canvas-container"
             sx={{
               position: "relative",
-              flex: 1,
+              flex: "1 1 0%",
               width: "100%",
+              height: "100%",
               minHeight: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               overflow: "hidden",
+              background: "#090d16",
+              touchAction: "none",
             }}
           />
 
@@ -1229,7 +1238,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
               sx={{
                 position: "absolute",
                 inset: 0,
-                zIndex: 30,
+                zIndex: 50,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1326,23 +1335,6 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
               </Paper>
             </Box>
           )}
-
-          {/* ── PHASER CANVAS MOUNT CONTAINER ── */}
-          <Box
-            ref={canvasContainerRef}
-            className="coin-rush-canvas-container"
-            sx={{
-              width: "100%",
-              height: { xs: "calc(100vh - 120px)", sm: "640px", md: "720px" },
-              minHeight: { xs: 0, sm: "480px", md: "600px" },
-              borderRadius: { xs: "20px", sm: "28px" },
-              overflow: "hidden",
-              border: "1px solid rgba(99, 102, 241, 0.35)",
-              boxShadow: "0 25px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(99, 102, 241, 0.15)",
-              background: "#090d16",
-              touchAction: "none",
-            }}
-          />
         </Box>
       )}
 
@@ -1559,6 +1551,6 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </>
   );
 }
