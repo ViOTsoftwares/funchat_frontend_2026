@@ -1242,69 +1242,73 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "rgba(15, 23, 42, 0.9)",
-                backdropFilter: "blur(16px)",
+                background: "rgba(9, 13, 22, 0.94)",
+                backdropFilter: "blur(18px)",
+                p: { xs: 1.5, sm: 3 },
+                overflowY: "auto",
               }}
             >
               <Paper
                 elevation={0}
                 sx={{
-                  width: "92%",
-                  maxWidth: 540,
-                  p: 4,
-                  borderRadius: "28px",
-                  background: "rgba(30, 41, 59, 0.96)",
+                  width: "100%",
+                  maxWidth: 520,
+                  maxHeight: "92vh",
+                  overflowY: "auto",
+                  p: { xs: 2, sm: 3.5 },
+                  borderRadius: { xs: "20px", sm: "28px" },
+                  background: "linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94))",
                   border: "1px solid rgba(245, 158, 11, 0.5)",
                   color: "#fff",
                   textAlign: "center",
-                  boxShadow: "0 25px 70px rgba(0, 0, 0, 0.7), 0 0 40px rgba(245, 158, 11, 0.25)",
+                  boxShadow: "0 25px 70px rgba(0, 0, 0, 0.8), 0 0 40px rgba(245, 158, 11, 0.25)",
                 }}
               >
-                <EmojiEventsIcon sx={{ fontSize: 68, color: "#f59e0b", mb: 1 }} />
-                <Typography variant="h4" fontWeight={900} sx={{ color: "#fff", mb: 0.5, letterSpacing: "-0.5px" }}>
+                <EmojiEventsIcon sx={{ fontSize: { xs: 44, sm: 64 }, color: "#f59e0b", mb: 0.5 }} />
+                <Typography variant="h4" fontWeight={900} sx={{ color: "#fff", mb: 0.5, letterSpacing: "-0.5px", fontSize: { xs: "1.25rem", sm: "1.8rem" } }}>
                   ROUND COMPLETE!
                 </Typography>
 
                 {winner && (
-                  <Box sx={{ my: 2.5, p: 2.5, borderRadius: "20px", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(236, 72, 153, 0.2))", border: "1px solid rgba(245, 158, 11, 0.4)" }}>
-                    <Typography variant="caption" fontWeight={900} sx={{ color: "#fde047", letterSpacing: "1px" }}>
+                  <Box sx={{ my: { xs: 1.5, sm: 2.5 }, p: { xs: 1.5, sm: 2.5 }, borderRadius: "20px", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(236, 72, 153, 0.2))", border: "1px solid rgba(245, 158, 11, 0.4)" }}>
+                    <Typography variant="caption" fontWeight={900} sx={{ color: "#fde047", letterSpacing: "1px", fontSize: { xs: "10px", sm: "12px" } }}>
                       🏆 COIN RUSH CHAMPION
                     </Typography>
-                    <Typography variant="h4" fontWeight={900} sx={{ color: "#fff", my: 0.5 }}>
+                    <Typography variant="h4" fontWeight={900} sx={{ color: "#fff", my: 0.3, fontSize: { xs: "1.3rem", sm: "1.8rem" } }}>
                       {winner.name}
                     </Typography>
-                    <Typography variant="subtitle1" fontWeight={900} sx={{ color: "#fde047" }}>
+                    <Typography variant="subtitle1" fontWeight={900} sx={{ color: "#fde047", fontSize: { xs: "12px", sm: "15px" } }}>
                       {winner.score} Total Coins Collected!
                     </Typography>
                   </Box>
                 )}
 
                 {/* Final Leaderboard */}
-                <Typography variant="caption" fontWeight={900} sx={{ color: "rgba(255, 255, 255, 0.6)", mt: 2, mb: 1, display: "block", letterSpacing: "1px" }}>
+                <Typography variant="caption" fontWeight={900} sx={{ color: "rgba(255, 255, 255, 0.6)", mt: { xs: 1, sm: 2 }, mb: 0.8, display: "block", letterSpacing: "1px", fontSize: { xs: "10px", sm: "12px" } }}>
                   FINAL LEADERBOARD
                 </Typography>
-                <Table size="small" sx={{ mb: 3.5 }}>
+                <Table size="small" sx={{ mb: { xs: 2, sm: 3 } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 800 }}>Rank</TableCell>
-                      <TableCell sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 800 }}>Player</TableCell>
-                      <TableCell align="right" sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 800 }}>Score</TableCell>
+                      <TableCell sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 800, fontSize: { xs: "11px", sm: "13px" }, py: 0.8 }}>Rank</TableCell>
+                      <TableCell sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 800, fontSize: { xs: "11px", sm: "13px" }, py: 0.8 }}>Player</TableCell>
+                      <TableCell align="right" sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 800, fontSize: { xs: "11px", sm: "13px" }, py: 0.8 }}>Score</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {endLeaderboard.map((p, idx) => (
                       <TableRow key={p.id}>
-                        <TableCell sx={{ color: "#fff", fontWeight: 800 }}>
+                        <TableCell sx={{ color: "#fff", fontWeight: 800, fontSize: { xs: "11.5px", sm: "13.5px" }, py: 0.8 }}>
                           {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`}
                         </TableCell>
-                        <TableCell sx={{ color: "#fff", fontWeight: 800 }}>{p.name}</TableCell>
-                        <TableCell align="right" sx={{ color: "#fde047", fontWeight: 900 }}>{p.score} pts</TableCell>
+                        <TableCell sx={{ color: "#fff", fontWeight: 800, fontSize: { xs: "11.5px", sm: "13.5px" }, py: 0.8 }}>{p.name}</TableCell>
+                        <TableCell align="right" sx={{ color: "#fde047", fontWeight: 900, fontSize: { xs: "11.5px", sm: "13.5px" }, py: 0.8 }}>{p.score} pts</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
 
-                <Stack direction="row" spacing={2} justifyContent="center">
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} justifyContent="center">
                   {isHost && (
                     <Button
                       variant="contained"
@@ -1315,8 +1319,9 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                         fontWeight: 800,
                         background: "linear-gradient(135deg, #6366f1, #3b82f6)",
                         boxShadow: "0 8px 25px rgba(99, 102, 241, 0.4)",
-                        px: 4,
-                        py: 1.2,
+                        px: 3,
+                        py: 1,
+                        fontSize: { xs: "13px", sm: "14px" },
                       }}
                     >
                       Play Again
@@ -1327,7 +1332,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                     color="error"
                     startIcon={<ExitToAppIcon />}
                     onClick={handleLeaveRoom}
-                    sx={{ borderRadius: "14px", textTransform: "none", px: 3 }}
+                    sx={{ borderRadius: "14px", textTransform: "none", px: 2.5, py: 1, fontSize: { xs: "13px", sm: "14px" } }}
                   >
                     Leave Room
                   </Button>
