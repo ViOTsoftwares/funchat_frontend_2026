@@ -105,53 +105,52 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
     };
   }, [gameStatus]);
 
-  // Manage auto screen orientation (Lock Landscape when game starts, unlock when over) & mobile detection
-  const [isPortraitMobile, setIsPortraitMobile] = useState(false);
-
+  // Silent automatic screen orientation lock (Landscape mode when in game)
   useEffect(() => {
-    const isMobile =
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-      window.innerWidth <= 900;
-
     const handleResize = () => {
-      const isPortrait = window.innerHeight > window.innerWidth;
-      setIsPortraitMobile(isMobile && isPortrait);
-
       if (phaserGameRef.current && phaserGameRef.current.scale) {
         phaserGameRef.current.scale.refresh();
       }
     };
 
-    handleResize();
     window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", handleResize);
 
-    // Auto lock orientation to landscape when game starts (COUNTDOWN or PLAYING)
-    if (isMobile && (gameStatus === "COUNTDOWN" || gameStatus === "PLAYING")) {
+    // Automatically attempt landscape lock when joining room or game starting
+    if (gameStatus !== "LOBBY") {
       if (window.screen?.orientation?.lock) {
-        window.screen.orientation.lock("landscape").catch((err) => {
-          console.log("Landscape lock note:", err?.message || err);
-        });
+        window.screen.orientation.lock("landscape").catch(() => {});
       }
-    } else if (gameStatus === "ENDED" || gameStatus === "LOBBY") {
-      // Revert/unlock orientation back to normal when game is over or in lobby
+    } else {
       if (window.screen?.orientation?.unlock) {
         try {
           window.screen.orientation.unlock();
-        } catch (err) {
-          console.log("Orientation unlock note:", err?.message || err);
+        } catch {
+          // ignore
         }
       }
     }
 
+    // Silent user gesture trigger: automatically lock to landscape on first touch/tap
+    const onFirstTouchAutoRotate = () => {
+      if (gameStatus !== "LOBBY" && window.screen?.orientation?.lock) {
+        window.screen.orientation.lock("landscape").catch(() => {});
+      }
+    };
+
+    window.addEventListener("touchstart", onFirstTouchAutoRotate, { once: true });
+    window.addEventListener("click", onFirstTouchAutoRotate, { once: true });
+
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("orientationchange", handleResize);
-      if (window.screen?.orientation?.unlock) {
+      window.removeEventListener("touchstart", onFirstTouchAutoRotate);
+      window.removeEventListener("click", onFirstTouchAutoRotate);
+      if (window.screen?.orientation?.unlock && gameStatus === "LOBBY") {
         try {
           window.screen.orientation.unlock();
-        } catch (err) {
-          // ignore cleanup error
+        } catch {
+          // ignore
         }
       }
     };
@@ -726,271 +725,200 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
 
       {/* ── ROOM / GAME ARENA CONTAINER ── */}
       {gameStatus !== "LOBBY" && (
-        <Box className="coin-rush-game-wrapper" sx={{ position: "relative", width: "100%", mx: "auto" }}>
-          {/* ── MOBILE PORTRAIT LANDSCAPE ROTATION BANNER ── */}
-          {isPortraitMobile && (gameStatus === "COUNTDOWN" || gameStatus === "PLAYING") && (
-            <Paper
-              elevation={0}
+        <Box
+          className="coin-rush-game-wrapper"
+          sx={{
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            mx: "auto",
+            overflow: "hidden",
+          }}
+        >
+
+
+          {/* ── DEDICATED TOP HUD BAR (Sits strictly ABOVE Phaser Canvas) ── */}
+          {(gameStatus === "COUNTDOWN" || gameStatus === "PLAYING" || gameStatus === "ENDED") && (
+            <Box
+              className="coin-rush-top-hud-bar"
               sx={{
-                position: "absolute",
-                top: { xs: 54, sm: 64 },
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 25,
-                p: "6px 14px",
-                borderRadius: "16px",
-                background: "rgba(245, 158, 11, 0.95)",
-                backdropFilter: "blur(12px)",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-                color: "#0f172a",
+                width: "100%",
+                px: { xs: 1, sm: 2 },
+                py: { xs: 0.5, sm: 0.8 },
+                background: "rgba(9, 13, 22, 0.95)",
+                backdropFilter: "blur(14px)",
+                borderBottom: "1px solid rgba(99, 102, 241, 0.25)",
                 display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
-                gap: 1,
-                maxWidth: "92%",
+                zIndex: 30,
+                boxShadow: "0 4px 20px rgba(0,0,0,0.6)",
+                flexShrink: 0,
               }}
             >
-              <Typography variant="caption" fontWeight={900} sx={{ fontSize: "11px", display: "flex", alignItems: "center", gap: 0.5 }}>
-                📱 🔄 Rotate phone to <strong>Landscape</strong> for best controls!
-              </Typography>
-              <Button
-                size="small"
-                variant="contained"
-                onClick={handleToggleFullscreenLandscape}
-                sx={{
-                  fontSize: "10px",
-                  fontWeight: 800,
-                  px: 1,
-                  py: 0.2,
-                  minWidth: 0,
-                  borderRadius: "8px",
-                  background: "#0f172a",
-                  color: "#fff",
-                  textTransform: "none",
-                  "&:hover": { background: "#1e293b" },
-                }}
-              >
-                Rotate
-              </Button>
-            </Paper>
-          )}
+              {/* Left Stack: Actions & Score */}
+              <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} alignItems="center">
+                <Tooltip title="Leave Game / Exit Room">
+                  <IconButton
+                    onClick={() => setLeaveWarningOpen(true)}
+                    size="small"
+                    sx={{
+                      color: "#f87171",
+                      background: "rgba(239, 68, 68, 0.15)",
+                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                      p: { xs: "4px", sm: "6px" },
+                    }}
+                  >
+                    <ArrowBackIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                  </IconButton>
+                </Tooltip>
 
-          {/* ── HUD OVERLAY: Score, Timer, Leaderboard ── */}
-          <Box
-            sx={{
-              position: "absolute",
-              top: { xs: 8, sm: 14 },
-              left: { xs: 8, sm: 14 },
-              right: { xs: 8, sm: 14 },
-              zIndex: 10,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              pointerEvents: "none",
-            }}
-          >
-            {/* Top-Left: Mobile Back Arrow, Joystick Tune Icon & Player Score */}
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ pointerEvents: "auto" }}>
-              <Tooltip title="Leave Game / Exit Room">
-                <IconButton
-                  onClick={() => setLeaveWarningOpen(true)}
-                  sx={{
-                    color: "#f87171",
-                    background: "rgba(15, 23, 42, 0.9)",
-                    backdropFilter: "blur(16px)",
-                    border: "1px solid rgba(239, 68, 68, 0.4)",
-                    boxShadow: "0 8px 20px rgba(0,0,0,0.5)",
-                    p: { xs: "6px", sm: "8px" },
-                    "&:hover": {
-                      background: "rgba(239, 68, 68, 0.25)",
-                      transform: "scale(1.05)",
-                    },
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
-                </IconButton>
-              </Tooltip>
+                <Tooltip title="Customize Virtual Joystick">
+                  <IconButton
+                    onClick={() => setJoystickSettingsOpen(true)}
+                    size="small"
+                    sx={{
+                      color: "#818cf8",
+                      background: "rgba(99, 102, 241, 0.15)",
+                      border: "1px solid rgba(99, 102, 241, 0.3)",
+                      p: { xs: "4px", sm: "6px" },
+                    }}
+                  >
+                    <TuneIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                  </IconButton>
+                </Tooltip>
 
-              <Tooltip title="Customize Virtual Joystick">
-                <IconButton
-                  onClick={() => setJoystickSettingsOpen(true)}
-                  sx={{
-                    color: "#818cf8",
-                    background: "rgba(15, 23, 42, 0.9)",
-                    backdropFilter: "blur(16px)",
-                    border: "1px solid rgba(99, 102, 241, 0.4)",
-                    boxShadow: "0 8px 20px rgba(0,0,0,0.5)",
-                    p: { xs: "6px", sm: "8px" },
-                    "&:hover": {
-                      background: "rgba(99, 102, 241, 0.25)",
-                      transform: "scale(1.05)",
-                    },
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <TuneIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
-                </IconButton>
-              </Tooltip>
+                <Tooltip title={!isMicOn ? "Enable Mic Voice Chat" : isMuted ? "Unmute Mic" : "Mute Mic"}>
+                  <IconButton
+                    onClick={!isMicOn ? startMic : toggleMute}
+                    size="small"
+                    sx={{
+                      color: !isMicOn ? "rgba(255,255,255,0.6)" : isMuted ? "#f87171" : "#4ade80",
+                      background: isSpeaking ? "rgba(34, 197, 94, 0.3)" : "rgba(255,255,255,0.08)",
+                      border: isMuted ? "1px solid rgba(239, 68, 68, 0.4)" : "1px solid rgba(34, 197, 94, 0.4)",
+                      boxShadow: isSpeaking ? "0 0 12px rgba(34, 197, 94, 0.6)" : "none",
+                      p: { xs: "4px", sm: "6px" },
+                    }}
+                  >
+                    {!isMicOn || isMuted ? (
+                      <MicOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                    ) : (
+                      <MicIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                    )}
+                  </IconButton>
+                </Tooltip>
 
-              <Tooltip title={!isMicOn ? "Enable In-Game Mic Voice Chat" : isMuted ? "Unmute Microphone" : "Mute Microphone"}>
-                <IconButton
-                  onClick={!isMicOn ? startMic : toggleMute}
-                  sx={{
-                    color: !isMicOn ? "rgba(255,255,255,0.6)" : isMuted ? "#f87171" : "#4ade80",
-                    background: isSpeaking ? "rgba(34, 197, 94, 0.35)" : "rgba(15, 23, 42, 0.9)",
-                    backdropFilter: "blur(16px)",
-                    border: !isMicOn
-                      ? "1px solid rgba(255, 255, 255, 0.2)"
-                      : isMuted
-                      ? "1px solid rgba(239, 68, 68, 0.5)"
-                      : "1px solid rgba(34, 197, 94, 0.5)",
-                    boxShadow: isSpeaking ? "0 0 15px rgba(34, 197, 94, 0.6)" : "0 8px 20px rgba(0,0,0,0.5)",
-                    p: { xs: "6px", sm: "8px" },
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      transform: "scale(1.05)",
-                    },
-                  }}
-                >
-                  {!isMicOn || isMuted ? (
-                    <MicOffIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
-                  ) : (
-                    <MicIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
-                  )}
-                </IconButton>
-              </Tooltip>
+                <Tooltip title="Fullscreen Landscape Mode">
+                  <IconButton
+                    onClick={handleToggleFullscreenLandscape}
+                    size="small"
+                    sx={{
+                      color: "#f59e0b",
+                      background: "rgba(245, 158, 11, 0.15)",
+                      border: "1px solid rgba(245, 158, 11, 0.3)",
+                      p: { xs: "4px", sm: "6px" },
+                    }}
+                  >
+                    <FullscreenIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                  </IconButton>
+                </Tooltip>
 
-              <Tooltip title="Fullscreen Landscape Mode">
-                <IconButton
-                  onClick={handleToggleFullscreenLandscape}
+                <Paper
+                  elevation={0}
                   sx={{
-                    color: "#f59e0b",
-                    background: "rgba(15, 23, 42, 0.9)",
-                    backdropFilter: "blur(16px)",
+                    px: { xs: 1, sm: 1.5 },
+                    py: 0.3,
+                    borderRadius: "10px",
+                    background: "rgba(245, 158, 11, 0.15)",
                     border: "1px solid rgba(245, 158, 11, 0.4)",
-                    boxShadow: "0 8px 20px rgba(0,0,0,0.5)",
-                    p: { xs: "6px", sm: "8px" },
-                    "&:hover": {
-                      background: "rgba(245, 158, 11, 0.25)",
-                      transform: "scale(1.05)",
-                    },
-                    transition: "all 0.2s ease",
+                    color: "#fde047",
+                    fontWeight: 900,
+                    fontSize: { xs: "11px", sm: "14px" },
+                    display: "flex",
+                    alignItems: "center",
                   }}
                 >
-                  <FullscreenIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
-                </IconButton>
-              </Tooltip>
+                  🪙 {myScore} pts
+                </Paper>
+              </Stack>
 
+              {/* Center Stack: Round Timer */}
               <Paper
                 elevation={0}
                 sx={{
-                  p: { xs: "5px 10px", sm: "8px 18px" },
-                  borderRadius: { xs: "12px", sm: "16px" },
-                  background: "rgba(15, 23, 42, 0.88)",
-                  backdropFilter: "blur(16px)",
-                  border: "1px solid rgba(245, 158, 11, 0.5)",
-                  boxShadow: "0 10px 25px rgba(0,0,0,0.5), 0 0 20px rgba(245, 158, 11, 0.2)",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
+                  px: { xs: 1.2, sm: 2 },
+                  py: 0.3,
+                  borderRadius: "12px",
+                  background: "rgba(15, 23, 42, 0.9)",
+                  border: timeRemaining <= 10 ? "1px solid #ef4444" : "1px solid rgba(99, 102, 241, 0.4)",
+                  color: timeRemaining <= 10 ? "#ef4444" : "#fff",
+                  fontWeight: 900,
+                  fontSize: { xs: "12px", sm: "16px" },
+                  fontFamily: "monospace",
                 }}
               >
-                <Typography variant="h6" fontWeight={900} sx={{ fontSize: { xs: "12px", sm: "17px" }, color: "#fde047", letterSpacing: "0.5px" }}>
-                  🪙 {myScore} pts
-                </Typography>
-              </Paper>
-            </Stack>
-
-            {/* Top-Center: Round Timer */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: "5px 14px", sm: "8px 24px" },
-                borderRadius: { xs: "14px", sm: "18px" },
-                background: "rgba(15, 23, 42, 0.9)",
-                backdropFilter: "blur(16px)",
-                border: timeRemaining <= 10 ? "1px solid #ef4444" : "1px solid rgba(99, 102, 241, 0.5)",
-                boxShadow: timeRemaining <= 10 ? "0 0 25px rgba(239, 68, 68, 0.4)" : "0 10px 25px rgba(0,0,0,0.5)",
-                color: timeRemaining <= 10 ? "#ef4444" : "#fff",
-                pointerEvents: "auto",
-                textAlign: "center",
-              }}
-            >
-              <Stack direction="row" spacing={0.8} alignItems="center">
-                <Box
-                  sx={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: timeRemaining <= 10 ? "#ef4444" : "#22c55e",
-                    boxShadow: timeRemaining <= 10 ? "0 0 10px #ef4444" : "0 0 10px #22c55e",
-                  }}
-                />
-                <TimerIcon sx={{ fontSize: { xs: 16, sm: 20 }, color: timeRemaining <= 10 ? "#ef4444" : "#818cf8" }} />
-                <Typography variant="h6" fontWeight={900} sx={{ fontSize: { xs: "13px", sm: "18px" }, fontFamily: "monospace" }}>
-                  {(() => {
-                    const s = Math.max(0, Number(timeRemaining) || 0);
-                    const mins = Math.floor(s / 60);
-                    const rem = s % 60;
-                    return `${mins < 10 ? '0' + mins : mins}:${rem < 10 ? '0' + rem : rem}`;
-                  })()}
-                </Typography>
-              </Stack>
-            </Paper>
-
-            {/* Top-Right: Live Leaderboard */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: 1.2, sm: 2 },
-                borderRadius: { xs: "14px", sm: "18px" },
-                background: "rgba(15, 23, 42, 0.88)",
-                backdropFilter: "blur(16px)",
-                border: "1px solid rgba(255, 255, 255, 0.12)",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
-                color: "#fff",
-                pointerEvents: "auto",
-                minWidth: { xs: 120, sm: 180 },
-              }}
-            >
-              <Typography variant="caption" fontWeight={900} sx={{ fontSize: { xs: "10px", sm: "12px" }, color: "rgba(255, 255, 255, 0.6)", mb: 0.8, display: "block", letterSpacing: "0.5px" }}>
-                🏆 LEADERBOARD ({players.length}/{activeMaxCapacity})
-              </Typography>
-              {sortedPlayers.slice(0, typeof window !== "undefined" && window.innerWidth < 600 ? 2 : 5).map((p, idx) => {
-                const isMe = p.id === socketRef.current?.id;
-                return (
-                  <Stack
-                    key={p.id}
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="center"
+                <Stack direction="row" spacing={0.6} alignItems="center">
+                  <Box
                     sx={{
-                      py: 0.3,
-                      px: 0.8,
-                      mb: 0.3,
-                      borderRadius: "8px",
-                      background: isMe ? "rgba(99, 102, 241, 0.3)" : idx === 0 ? "rgba(245, 158, 11, 0.15)" : "transparent",
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      bgcolor: timeRemaining <= 10 ? "#ef4444" : "#22c55e",
+                      boxShadow: timeRemaining <= 10 ? "0 0 8px #ef4444" : "0 0 8px #22c55e",
                     }}
-                  >
-                    <Typography variant="caption" fontWeight={700} sx={{ fontSize: { xs: "10.5px", sm: "12px" }, color: p.color || "#fff", display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <span>{idx === 0 ? "👑" : `${idx + 1}.`} {p.name} {isMe ? "(You)" : ""}</span>
-                      {(() => {
-                        const isPlayerMuted = isMe ? isMuted : remoteMutes[p.id] ?? p.isMuted;
-                        const isPlayerSpeaking = isMe ? isSpeaking : false;
-                        if (!isMicOn && isMe) return <span style={{ fontSize: "10px", opacity: 0.5 }}>🔇</span>;
-                        if (isPlayerSpeaking) return <span style={{ fontSize: "10px" }}>🎙️</span>;
-                        if (isPlayerMuted) return <span style={{ fontSize: "10px", color: "#f87171" }}>🔇</span>;
-                        return <span style={{ fontSize: "10px", color: "#4ade80" }}>🎤</span>;
-                      })()}
-                    </Typography>
-                    <Typography variant="caption" fontWeight={900} sx={{ fontSize: { xs: "10.5px", sm: "12px" }, color: "#fde047", ml: 0.5 }}>
-                      {p.score}
-                    </Typography>
-                  </Stack>
-                );
-              })}
-            </Paper>
-          </Box>
+                  />
+                  <TimerIcon sx={{ fontSize: { xs: 15, sm: 18 }, color: timeRemaining <= 10 ? "#ef4444" : "#818cf8" }} />
+                  <span>
+                    {(() => {
+                      const s = Math.max(0, Number(timeRemaining) || 0);
+                      const mins = Math.floor(s / 60);
+                      const rem = s % 60;
+                      return `${mins < 10 ? '0' + mins : mins}:${rem < 10 ? '0' + rem : rem}`;
+                    })()}
+                  </span>
+                </Stack>
+              </Paper>
+
+              {/* Right Stack: Leaderboard Rank */}
+              <Paper
+                elevation={0}
+                sx={{
+                  px: { xs: 1, sm: 1.5 },
+                  py: 0.3,
+                  borderRadius: "10px",
+                  background: "rgba(15, 23, 42, 0.85)",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                }}
+              >
+                <Stack direction="row" spacing={0.8} alignItems="center">
+                  <Typography variant="caption" fontWeight={900} sx={{ color: "#fde047", fontSize: { xs: "10.5px", sm: "12px" } }}>
+                    🏆 #{(() => {
+                      const myIdx = sortedPlayers.findIndex((p) => p.id === socketRef.current?.id);
+                      return myIdx >= 0 ? myIdx + 1 : 1;
+                    })()}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.6)", fontSize: { xs: "10px", sm: "11px" } }}>
+                    ({sortedPlayers.length} Players)
+                  </Typography>
+                </Stack>
+              </Paper>
+            </Box>
+          )}
+
+          {/* ── PHASER GAME CANVAS CONTAINER (Renders Below Top HUD Bar) ── */}
+          <Box
+            ref={canvasContainerRef}
+            className="coin-rush-canvas-container"
+            sx={{
+              position: "relative",
+              flex: 1,
+              width: "100%",
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          />
 
           {/* Bottom-Right: Active Power-up indicator */}
           {myPowerUp && powerUpTimeLeft > 0 && (
@@ -1000,9 +928,9 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                 position: "absolute",
                 bottom: 24,
                 right: 24,
-                zIndex: 10,
-                p: "10px 20px",
-                borderRadius: "16px",
+                zIndex: 20,
+                p: "8px 16px",
+                borderRadius: "14px",
                 background: "rgba(15, 23, 42, 0.9)",
                 backdropFilter: "blur(16px)",
                 border: "1px solid #38bdf8",
@@ -1010,7 +938,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                 color: "#fff",
                 display: "flex",
                 alignItems: "center",
-                gap: 1.2,
+                gap: 1,
               }}
             >
               <FlashOnIcon sx={{ color: "#38bdf8" }} />
@@ -1026,7 +954,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
               sx={{
                 position: "absolute",
                 inset: 0,
-                zIndex: 20,
+                zIndex: 40,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1048,131 +976,258 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
             </Box>
           )}
 
-          {/* ── ROOM WAITING LOBBY OVERLAY ── */}
+          {/* ── RESPONSIVE GLASSMORPHISM LOBBY WAITING ROOM OVERLAY ── */}
           {gameStatus === "WAITING" && (
             <Box
               sx={{
                 position: "absolute",
-                top: 70,
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 15,
-                width: "92%",
-                maxWidth: 580,
-                p: 4,
-                borderRadius: "24px",
-                background: "rgba(15, 23, 42, 0.94)",
-                backdropFilter: "blur(20px)",
-                border: "1px solid rgba(99, 102, 241, 0.35)",
-                boxShadow: "0 25px 60px rgba(0, 0, 0, 0.7)",
-                color: "#fff",
-                textAlign: "center",
+                inset: 0,
+                zIndex: 50,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(9, 13, 22, 0.94)",
+                backdropFilter: "blur(18px)",
+                p: { xs: 1.5, sm: 3 },
+                overflowY: "auto",
               }}
             >
-              <Stack direction="row" justifyContent="center" alignItems="center" spacing={1.5} sx={{ mb: 1 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  width: "100%",
+                  maxWidth: 540,
+                  maxHeight: "92vh",
+                  overflowY: "auto",
+                  p: { xs: 2.5, sm: 3.5 },
+                  borderRadius: { xs: "20px", sm: "28px" },
+                  background: "linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94))",
+                  border: "1px solid rgba(99, 102, 241, 0.4)",
+                  boxShadow: "0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(99, 102, 241, 0.2)",
+                  color: "#fff",
+                  textAlign: "center",
+                }}
+              >
+                {/* Live Status Badge */}
                 <Chip
-                  label={activeMaxCapacity === 2 ? "👥 2 Players (1v1)" : activeMaxCapacity === 4 ? "⚔️ 4 Players Mode" : "🔥 8 Players Mode"}
-                  color="primary"
+                  icon={<Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#22c55e", boxShadow: "0 0 10px #22c55e", animation: "pulse 1.5s infinite" }} />}
+                  label="🟢 WAITING FOR PLAYERS TO JOIN"
                   size="small"
-                  sx={{ fontWeight: 800 }}
-                />
-                <Typography variant="h6" fontWeight={800}>
-                  ROOM: <span style={{ color: "#818cf8", letterSpacing: "2px" }}>{roomId}</span>
-                </Typography>
-                <Tooltip title="Copy Room Code">
-                  <IconButton size="small" onClick={copyRoomCode} sx={{ color: "#818cf8", background: "rgba(129, 140, 248, 0.15)" }}>
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-
-              <Typography variant="body2" sx={{ color: "rgba(255, 255, 255, 0.7)", mb: 3 }}>
-                Waiting for players ({players.length}/{activeMaxCapacity}). Auto-starts when full!
-              </Typography>
-
-              {/* Player List Grid */}
-              <Grid container spacing={1.5} justifyContent="center" sx={{ mb: 3.5 }}>
-                {players.map((p) => (
-                  <Grid item key={p.id}>
-                    <Chip
-                      avatar={<Avatar sx={{ bgcolor: p.color || "#38bdf8", color: "#fff", fontWeight: 800 }}>{p.name.charAt(0)}</Avatar>}
-                      label={`${p.name} ${p.isHost ? "👑 Host" : ""}`}
-                      sx={{
-                        fontWeight: 800,
-                        color: "#fff",
-                        background: "rgba(255, 255, 255, 0.08)",
-                        border: `1px solid ${p.color || "#38bdf8"}`,
-                        px: 1,
-                        py: 2.2,
-                        borderRadius: "14px",
-                      }}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-
-              <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-                <Button
-                  variant="outlined"
-                  size="large"
-                  startIcon={!isMicOn || isMuted ? <MicOffIcon /> : <MicIcon />}
-                  onClick={!isMicOn ? startMic : toggleMute}
                   sx={{
-                    borderRadius: "14px",
                     fontWeight: 800,
-                    px: 2.5,
-                    py: 1.4,
-                    borderColor: !isMicOn ? "rgba(255,255,255,0.2)" : isMuted ? "#f87171" : "#22c55e",
-                    color: !isMicOn ? "#fff" : isMuted ? "#f87171" : "#4ade80",
-                    background: isSpeaking ? "rgba(34, 197, 94, 0.2)" : "rgba(15, 23, 42, 0.6)",
-                    textTransform: "none",
-                    "&:hover": {
-                      borderColor: "#4ade80",
-                      background: "rgba(34, 197, 94, 0.15)",
-                    },
+                    fontSize: { xs: "11px", sm: "12px" },
+                    color: "#86efac",
+                    background: "rgba(34, 197, 94, 0.15)",
+                    border: "1px solid rgba(34, 197, 94, 0.4)",
+                    mb: 1.8,
+                    px: 1,
                   }}
-                >
-                  {!isMicOn ? "Enable Mic" : isMuted ? "Unmute Mic" : "Mic On"}
-                </Button>
+                />
 
-                {isHost ? (
+                {/* Title & Mode */}
+                <Typography variant="h5" fontWeight={900} sx={{ color: "#fff", mb: 0.5, fontSize: { xs: "1.2rem", sm: "1.5rem" } }}>
+                  Coin Rush Multiplayer Lobby
+                </Typography>
+
+                <Stack direction="row" justifyContent="center" alignItems="center" spacing={1} sx={{ mb: 2.5 }}>
+                  <Chip
+                    label={activeMaxCapacity === 2 ? "👥 2 Players (1v1)" : activeMaxCapacity === 4 ? "⚔️ 4 Players Mode" : "🔥 8 Players Mode"}
+                    size="small"
+                    sx={{ fontWeight: 800, background: "rgba(99, 102, 241, 0.25)", color: "#a5b4fc", border: "1px solid rgba(99, 102, 241, 0.4)" }}
+                  />
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#e2e8f0" }}>
+                    ROOM: <span style={{ color: "#fde047", letterSpacing: "2px", fontWeight: 900 }}>{roomId}</span>
+                  </Typography>
+                  <Tooltip title="Copy Room Code">
+                    <IconButton size="small" onClick={copyRoomCode} sx={{ color: "#818cf8", background: "rgba(99, 102, 241, 0.2)", "&:hover": { background: "rgba(99, 102, 241, 0.4)" } }}>
+                      <ContentCopyIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+
+                {/* Responsive Slots Grid */}
+                <Grid container spacing={1.5} justifyContent="center" sx={{ mb: 3 }}>
+                  {Array.from({ length: activeMaxCapacity }).map((_, index) => {
+                    const player = players[index];
+                    if (player) {
+                      const isMe = player.id === socketId;
+                      const playerIsMuted = isMe ? isMuted : remoteMutes[player.id] ?? player.isMuted;
+                      return (
+                        <Grid item xs={12} sm={6} key={player.id || index}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 1.2,
+                              borderRadius: "14px",
+                              background: "rgba(255, 255, 255, 0.06)",
+                              border: `1px solid ${player.color || "#6366f1"}`,
+                              boxShadow: `0 4px 15px rgba(0,0,0,0.3), 0 0 10px ${player.color || "#6366f1"}33`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Avatar sx={{ bgcolor: player.color || "#6366f1", width: 34, height: 34, fontWeight: 900, color: "#fff", fontSize: "13px" }}>
+                                {player.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Box sx={{ textAlign: "left" }}>
+                                <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#fff", fontSize: "12.5px", lineHeight: 1.2 }}>
+                                  {player.name} {isMe ? "(You)" : ""}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: player.isHost ? "#fde047" : "#a5b4fc", fontWeight: 700, fontSize: "10px" }}>
+                                  {player.isHost ? "👑 Room Host" : "Player"}
+                                </Typography>
+                              </Box>
+                            </Stack>
+
+                            <Chip
+                              icon={playerIsMuted ? <MicOffIcon sx={{ fontSize: "13px !important", color: "#f87171 !important" }} /> : <MicIcon sx={{ fontSize: "13px !important", color: "#4ade80 !important" }} />}
+                              label={playerIsMuted ? "Muted" : "Voice On"}
+                              size="small"
+                              sx={{
+                                fontSize: "9.5px",
+                                fontWeight: 800,
+                                height: 22,
+                                background: playerIsMuted ? "rgba(239, 68, 68, 0.15)" : "rgba(34, 197, 94, 0.15)",
+                                color: playerIsMuted ? "#f87171" : "#4ade80",
+                                border: playerIsMuted ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(34, 197, 94, 0.3)",
+                              }}
+                            />
+                          </Paper>
+                        </Grid>
+                      );
+                    } else {
+                      return (
+                        <Grid item xs={12} sm={6} key={`empty_${index}`}>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 1.2,
+                              borderRadius: "14px",
+                              background: "rgba(255, 255, 255, 0.02)",
+                              border: "1px dashed rgba(255, 255, 255, 0.2)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 1,
+                              minHeight: 48,
+                            }}
+                          >
+                            <CircularProgress size={13} sx={{ color: "#a5b4fc" }} />
+                            <Typography variant="caption" fontWeight={700} sx={{ color: "rgba(255,255,255,0.5)", fontSize: "11px" }}>
+                              Slot {index + 1}: Waiting...
+                            </Typography>
+                          </Paper>
+                        </Grid>
+                      );
+                    }
+                  })}
+                </Grid>
+
+                {/* Interactive Action Buttons Bar */}
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} justifyContent="center" alignItems="stretch">
                   <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<PlayArrowIcon />}
-                    onClick={handleStartGame}
-                    disabled={players.length < 2}
+                    variant="outlined"
+                    size="medium"
+                    startIcon={!isMicOn || isMuted ? <MicOffIcon /> : <MicIcon />}
+                    onClick={!isMicOn ? startMic : toggleMute}
                     sx={{
                       borderRadius: "14px",
                       fontWeight: 800,
-                      px: 4,
-                      py: 1.4,
-                      background: "linear-gradient(135deg, #22c55e, #16a34a)",
-                      boxShadow: "0 8px 25px rgba(34, 197, 94, 0.4)",
+                      py: 1.2,
+                      px: 2,
+                      borderColor: !isMicOn ? "rgba(255,255,255,0.25)" : isMuted ? "#f87171" : "#22c55e",
+                      color: !isMicOn ? "#ffffff" : isMuted ? "#f87171" : "#4ade80",
+                      background: isSpeaking ? "rgba(34, 197, 94, 0.25)" : "rgba(15, 23, 42, 0.6)",
                       textTransform: "none",
-                      "&:hover": { background: "#16a34a" },
+                      fontSize: "13px",
+                      "&:hover": {
+                        borderColor: "#4ade80",
+                        background: "rgba(34, 197, 94, 0.2)",
+                      },
                     }}
                   >
-                    Start Round ({players.length >= 2 ? "Ready to Launch" : "Need 2+ Players"})
+                    {!isMicOn ? "Enable Mic" : isMuted ? "Unmute Mic" : "Mic Active"}
                   </Button>
-                ) : (
-                  <Chip
-                    icon={<CheckCircleIcon sx={{ color: "#86efac !important" }} />}
-                    label="Waiting for room host to start..."
-                    sx={{ background: "rgba(34, 197, 94, 0.15)", color: "#86efac", fontWeight: 800, py: 2, borderRadius: "14px" }}
-                  />
-                )}
 
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<ExitToAppIcon />}
-                  onClick={handleLeaveRoom}
-                  sx={{ borderRadius: "14px", textTransform: "none", px: 3 }}
-                >
-                  Leave Room
-                </Button>
-              </Stack>
+                  {isHost ? (
+                    <Button
+                      variant="contained"
+                      size="medium"
+                      startIcon={<PlayArrowIcon />}
+                      onClick={handleStartGame}
+                      disabled={players.length < 2}
+                      sx={{
+                        borderRadius: "14px",
+                        fontWeight: 900,
+                        py: 1.2,
+                        px: 2.5,
+                        textTransform: "none",
+                        fontSize: "13.5px",
+                        color: "#ffffff !important",
+                        background: players.length >= 2
+                          ? "linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important"
+                          : "rgba(255, 255, 255, 0.15) !important",
+                        boxShadow: players.length >= 2 ? "0 8px 25px rgba(34, 197, 94, 0.4)" : "none",
+                        "&.Mui-disabled": {
+                          color: "rgba(255, 255, 255, 0.6) !important",
+                          background: "rgba(255, 255, 255, 0.15) !important",
+                        },
+                        "&:hover": {
+                          background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important",
+                        },
+                      }}
+                    >
+                      {players.length >= 2 ? "Launch Match Now 🚀" : `Waiting for Players (${players.length}/${activeMaxCapacity})`}
+                    </Button>
+                  ) : (
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: "10px 16px",
+                        borderRadius: "14px",
+                        background: "rgba(34, 197, 94, 0.15)",
+                        border: "1px solid rgba(34, 197, 94, 0.3)",
+                        color: "#86efac",
+                        fontWeight: 800,
+                        fontSize: "12.5px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 0.8,
+                      }}
+                    >
+                      <CheckCircleIcon sx={{ fontSize: 17, color: "#86efac" }} />
+                      Host will start match shortly...
+                    </Paper>
+                  )}
+
+                  <Button
+                    variant="outlined"
+                    size="medium"
+                    startIcon={<ExitToAppIcon />}
+                    onClick={handleLeaveRoom}
+                    sx={{
+                      borderRadius: "14px",
+                      fontWeight: 800,
+                      py: 1.2,
+                      px: 2,
+                      borderColor: "rgba(239, 68, 68, 0.4)",
+                      color: "#f87171",
+                      background: "rgba(239, 68, 68, 0.1)",
+                      textTransform: "none",
+                      fontSize: "13px",
+                      "&:hover": {
+                        borderColor: "#ef4444",
+                        background: "rgba(239, 68, 68, 0.25)",
+                      },
+                    }}
+                  >
+                    Leave Room
+                  </Button>
+                </Stack>
+              </Paper>
             </Box>
           )}
 

@@ -163,6 +163,8 @@ body.fullscreen-lock {
   }
 
   body.coin-rush-in-game .coin-rush-game-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
     height: 100vh !important;
     height: 100dvh !important;
     width: 100vw !important;
@@ -172,13 +174,17 @@ body.fullscreen-lock {
     overflow: hidden !important;
   }
 
-  body.coin-rush-in-game .coin-rush-canvas-container {
-    height: 100vh !important;
-    height: 100dvh !important;
+  body.coin-rush-in-game .coin-rush-top-hud-bar {
+    flex-shrink: 0 !important;
     width: 100vw !important;
+    z-index: 30 !important;
+  }
+
+  body.coin-rush-in-game .coin-rush-canvas-container {
+    flex: 1 !important;
+    width: 100vw !important;
+    height: auto !important;
     min-height: 0 !important;
-    max-height: 100vh !important;
-    max-height: 100dvh !important;
     border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
@@ -186,6 +192,8 @@ body.fullscreen-lock {
     user-select: none !important;
     -webkit-user-select: none !important;
     -webkit-touch-callout: none !important;
+    position: relative !important;
+    overflow: hidden !important;
   }
 
   body.coin-rush-in-game .coin-rush-canvas-container canvas {
@@ -193,6 +201,7 @@ body.fullscreen-lock {
     user-select: none !important;
     -webkit-user-select: none !important;
     -webkit-touch-callout: none !important;
+    display: block !important;
   }
 }
 
