@@ -4,6 +4,10 @@ import Phaser from "phaser";
 import CoinRushScene from "../game/CoinRushScene.js";
 import { playCountdownSound, playGameOverSound } from "../game/soundEffects.js";
 import { toastMessage } from "../lib/toast.message.js";
+import { useGameVoice } from "../hooks/useGameVoice.js";
+import MicIcon from "@mui/icons-material/Mic";
+import MicOffIcon from "@mui/icons-material/MicOff";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
 
 import {
   Box,
@@ -182,6 +186,38 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
   const [powerUpTimeLeft, setPowerUpTimeLeft] = useState(0);
   const [winner, setWinner] = useState(null);
   const [endLeaderboard, setEndLeaderboard] = useState([]);
+
+  // In-Game Room Voice Chat Hook
+  const {
+    isMicOn,
+    isMuted,
+    isSpeaking,
+    permissionError,
+    remoteMutes,
+    startMic,
+    toggleMute,
+    cleanupVoice,
+  } = useGameVoice(socketRef, roomId, players, socketId);
+
+  const handleToggleFullscreenLandscape = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+          await elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          await elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+          await elem.msRequestFullscreen();
+        }
+      }
+      if (window.screen?.orientation?.lock) {
+        await window.screen.orientation.lock("landscape");
+      }
+    } catch (err) {
+      console.log("Landscape lock attempt note:", err?.message || err);
+    }
+  };
 
   // Phaser instance reference
   const phaserGameRef = useRef(null);
@@ -719,11 +755,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
               <Button
                 size="small"
                 variant="contained"
-                onClick={() => {
-                  if (window.screen?.orientation?.lock) {
-                    window.screen.orientation.lock("landscape").catch(() => {});
-                  }
-                }}
+                onClick={handleToggleFullscreenLandscape}
                 sx={{
                   fontSize: "10px",
                   fontWeight: 800,
@@ -797,6 +829,55 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                   }}
                 >
                   <TuneIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title={!isMicOn ? "Enable In-Game Mic Voice Chat" : isMuted ? "Unmute Microphone" : "Mute Microphone"}>
+                <IconButton
+                  onClick={!isMicOn ? startMic : toggleMute}
+                  sx={{
+                    color: !isMicOn ? "rgba(255,255,255,0.6)" : isMuted ? "#f87171" : "#4ade80",
+                    background: isSpeaking ? "rgba(34, 197, 94, 0.35)" : "rgba(15, 23, 42, 0.9)",
+                    backdropFilter: "blur(16px)",
+                    border: !isMicOn
+                      ? "1px solid rgba(255, 255, 255, 0.2)"
+                      : isMuted
+                      ? "1px solid rgba(239, 68, 68, 0.5)"
+                      : "1px solid rgba(34, 197, 94, 0.5)",
+                    boxShadow: isSpeaking ? "0 0 15px rgba(34, 197, 94, 0.6)" : "0 8px 20px rgba(0,0,0,0.5)",
+                    p: { xs: "6px", sm: "8px" },
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      transform: "scale(1.05)",
+                    },
+                  }}
+                >
+                  {!isMicOn || isMuted ? (
+                    <MicOffIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
+                  ) : (
+                    <MicIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
+                  )}
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Fullscreen Landscape Mode">
+                <IconButton
+                  onClick={handleToggleFullscreenLandscape}
+                  sx={{
+                    color: "#f59e0b",
+                    background: "rgba(15, 23, 42, 0.9)",
+                    backdropFilter: "blur(16px)",
+                    border: "1px solid rgba(245, 158, 11, 0.4)",
+                    boxShadow: "0 8px 20px rgba(0,0,0,0.5)",
+                    p: { xs: "6px", sm: "8px" },
+                    "&:hover": {
+                      background: "rgba(245, 158, 11, 0.25)",
+                      transform: "scale(1.05)",
+                    },
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <FullscreenIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
                 </IconButton>
               </Tooltip>
 
@@ -891,8 +972,16 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                       background: isMe ? "rgba(99, 102, 241, 0.3)" : idx === 0 ? "rgba(245, 158, 11, 0.15)" : "transparent",
                     }}
                   >
-                    <Typography variant="caption" fontWeight={700} sx={{ fontSize: { xs: "10.5px", sm: "12px" }, color: p.color || "#fff" }}>
-                      {idx === 0 ? "👑" : `${idx + 1}.`} {p.name} {isMe ? "(You)" : ""}
+                    <Typography variant="caption" fontWeight={700} sx={{ fontSize: { xs: "10.5px", sm: "12px" }, color: p.color || "#fff", display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <span>{idx === 0 ? "👑" : `${idx + 1}.`} {p.name} {isMe ? "(You)" : ""}</span>
+                      {(() => {
+                        const isPlayerMuted = isMe ? isMuted : remoteMutes[p.id] ?? p.isMuted;
+                        const isPlayerSpeaking = isMe ? isSpeaking : false;
+                        if (!isMicOn && isMe) return <span style={{ fontSize: "10px", opacity: 0.5 }}>🔇</span>;
+                        if (isPlayerSpeaking) return <span style={{ fontSize: "10px" }}>🎙️</span>;
+                        if (isPlayerMuted) return <span style={{ fontSize: "10px", color: "#f87171" }}>🔇</span>;
+                        return <span style={{ fontSize: "10px", color: "#4ade80" }}>🎤</span>;
+                      })()}
                     </Typography>
                     <Typography variant="caption" fontWeight={900} sx={{ fontSize: { xs: "10.5px", sm: "12px" }, color: "#fde047", ml: 0.5 }}>
                       {p.score}
@@ -1022,7 +1111,30 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                 ))}
               </Grid>
 
-              <Stack direction="row" spacing={2} justifyContent="center">
+              <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
+                <Button
+                  variant="outlined"
+                  size="large"
+                  startIcon={!isMicOn || isMuted ? <MicOffIcon /> : <MicIcon />}
+                  onClick={!isMicOn ? startMic : toggleMute}
+                  sx={{
+                    borderRadius: "14px",
+                    fontWeight: 800,
+                    px: 2.5,
+                    py: 1.4,
+                    borderColor: !isMicOn ? "rgba(255,255,255,0.2)" : isMuted ? "#f87171" : "#22c55e",
+                    color: !isMicOn ? "#fff" : isMuted ? "#f87171" : "#4ade80",
+                    background: isSpeaking ? "rgba(34, 197, 94, 0.2)" : "rgba(15, 23, 42, 0.6)",
+                    textTransform: "none",
+                    "&:hover": {
+                      borderColor: "#4ade80",
+                      background: "rgba(34, 197, 94, 0.15)",
+                    },
+                  }}
+                >
+                  {!isMicOn ? "Enable Mic" : isMuted ? "Unmute Mic" : "Mic On"}
+                </Button>
+
                 {isHost ? (
                   <Button
                     variant="contained"
