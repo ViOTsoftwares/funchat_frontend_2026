@@ -106,7 +106,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
     };
   }, [gameStatus]);
 
-  // Silent automatic screen orientation lock (Landscape mode when in game)
+  // Automatic screen orientation lock (Fullscreen + Landscape mode when in game)
   useEffect(() => {
     const handleResize = () => {
       if (phaserGameRef.current && phaserGameRef.current.scale) {
@@ -117,43 +117,34 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
     window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", handleResize);
 
-    // Automatically attempt landscape lock when joining room or game starting
-    if (gameStatus !== "LOBBY") {
-      if (window.screen?.orientation?.lock) {
-        window.screen.orientation.lock("landscape").catch(() => {});
+    const autoLandscape = () => {
+      if (gameStatus !== "LOBBY") {
+        handleToggleFullscreenLandscape();
       }
+    };
+
+    if (gameStatus !== "LOBBY") {
+      handleToggleFullscreenLandscape();
+      window.addEventListener("touchstart", autoLandscape, { passive: true });
+      window.addEventListener("click", autoLandscape);
     } else {
       if (window.screen?.orientation?.unlock) {
         try {
           window.screen.orientation.unlock();
-        } catch {
-          // ignore
-        }
+        } catch {}
+      }
+      if (document.fullscreenElement && document.exitFullscreen) {
+        try {
+          document.exitFullscreen().catch(() => {});
+        } catch {}
       }
     }
-
-    // Silent user gesture trigger: automatically lock to landscape on first touch/tap
-    const onFirstTouchAutoRotate = () => {
-      if (gameStatus !== "LOBBY" && window.screen?.orientation?.lock) {
-        window.screen.orientation.lock("landscape").catch(() => {});
-      }
-    };
-
-    window.addEventListener("touchstart", onFirstTouchAutoRotate, { once: true });
-    window.addEventListener("click", onFirstTouchAutoRotate, { once: true });
 
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("orientationchange", handleResize);
-      window.removeEventListener("touchstart", onFirstTouchAutoRotate);
-      window.removeEventListener("click", onFirstTouchAutoRotate);
-      if (window.screen?.orientation?.unlock && gameStatus === "LOBBY") {
-        try {
-          window.screen.orientation.unlock();
-        } catch {
-          // ignore
-        }
-      }
+      window.removeEventListener("touchstart", autoLandscape);
+      window.removeEventListener("click", autoLandscape);
     };
   }, [gameStatus]);
 

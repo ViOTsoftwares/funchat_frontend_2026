@@ -121,6 +121,7 @@ body.fullscreen-lock {
 @media (max-width: 950px), (orientation: landscape) and (max-height: 650px), (hover: none) and (pointer: coarse) {
   html.coin-rush-in-game,
   body.coin-rush-in-game {
+    background: #090d16 !important;
     overflow: hidden !important;
     overscroll-behavior: none !important;
     touch-action: none !important;
@@ -141,6 +142,7 @@ body.fullscreen-lock {
   }
 
   body.coin-rush-in-game .app {
+    background: #090d16 !important;
     padding-top: 0 !important;
     height: 100vh !important;
     height: 100dvh !important;
@@ -152,6 +154,7 @@ body.fullscreen-lock {
   }
 
   body.coin-rush-in-game .MuiContainer-root {
+    background: #090d16 !important;
     padding: 0 !important;
     margin: 0 !important;
     max-width: 100% !important;
@@ -163,6 +166,7 @@ body.fullscreen-lock {
   }
 
   body.coin-rush-in-game .coin-rush-game-wrapper {
+    background: #090d16 !important;
     display: flex !important;
     flex-direction: column !important;
     height: 100vh !important;
@@ -178,13 +182,18 @@ body.fullscreen-lock {
     flex-shrink: 0 !important;
     width: 100vw !important;
     z-index: 30 !important;
+    background: rgba(9, 13, 22, 0.96) !important;
   }
 
   body.coin-rush-in-game .coin-rush-canvas-container {
-    flex: 1 !important;
+    flex: 1 1 auto !important;
     width: 100vw !important;
-    height: auto !important;
+    height: 100% !important;
     min-height: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #090d16 !important;
     border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
@@ -197,6 +206,9 @@ body.fullscreen-lock {
   }
 
   body.coin-rush-in-game .coin-rush-canvas-container canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
     touch-action: none !important;
     user-select: none !important;
     -webkit-user-select: none !important;
