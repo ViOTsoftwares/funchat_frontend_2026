@@ -132,6 +132,7 @@ body.coin-rush-in-game {
   width: 100vw !important;
   height: 100vh !important;
   height: 100dvh !important;
+  height: var(--visual-vh, 100dvh) !important;
   margin: 0 !important;
   padding: 0 !important;
 }
@@ -148,6 +149,7 @@ body.coin-rush-in-game .app {
   margin: 0 !important;
   height: 100vh !important;
   height: 100dvh !important;
+  height: var(--visual-vh, 100dvh) !important;
   width: 100vw !important;
   overflow: hidden !important;
   position: fixed !important;
@@ -163,6 +165,7 @@ body.coin-rush-in-game .MuiContainer-root {
   width: 100vw !important;
   height: 100vh !important;
   height: 100dvh !important;
+  height: var(--visual-vh, 100dvh) !important;
   min-height: 0 !important;
   overflow: hidden !important;
 }
@@ -173,10 +176,12 @@ body.coin-rush-in-game .coin-rush-game-wrapper {
   flex-direction: column !important;
   height: 100vh !important;
   height: 100dvh !important;
+  height: var(--visual-vh, 100dvh) !important;
   width: 100vw !important;
   min-height: 0 !important;
   max-height: 100vh !important;
   max-height: 100dvh !important;
+  max-height: var(--visual-vh, 100dvh) !important;
   overflow: hidden !important;
   position: fixed !important;
   top: 0 !important;
@@ -188,13 +193,15 @@ body.coin-rush-in-game .coin-rush-top-hud-bar {
   width: 100vw !important;
   z-index: 30 !important;
   background: rgba(9, 13, 22, 0.96) !important;
+  padding-top: max(4px, env(safe-area-inset-top, 0px)) !important;
+  padding-left: max(8px, env(safe-area-inset-left, 0px)) !important;
+  padding-right: max(8px, env(safe-area-inset-right, 0px)) !important;
 }
 
 body.coin-rush-in-game .coin-rush-canvas-container {
   flex: 1 1 0% !important;
   width: 100vw !important;
-  height: calc(100vh - 46px) !important;
-  height: calc(100dvh - 46px) !important;
+  height: 0 !important;
   min-height: 0 !important;
   display: flex !important;
   align-items: center !important;
@@ -209,6 +216,9 @@ body.coin-rush-in-game .coin-rush-canvas-container {
   -webkit-touch-callout: none !important;
   position: relative !important;
   overflow: hidden !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  padding-left: env(safe-area-inset-left, 0px) !important;
+  padding-right: env(safe-area-inset-right, 0px) !important;
 }
 
 body.coin-rush-in-game .coin-rush-canvas-container canvas {

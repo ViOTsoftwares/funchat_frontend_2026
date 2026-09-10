@@ -117,6 +117,14 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
     window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", handleResize);
 
+    const observer = new ResizeObserver(() => {
+      handleResize();
+    });
+
+    if (canvasContainerRef.current) {
+      observer.observe(canvasContainerRef.current);
+    }
+
     const autoLandscape = () => {
       if (gameStatus !== "LOBBY") {
         handleToggleFullscreenLandscape();
@@ -145,6 +153,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
       window.removeEventListener("orientationchange", handleResize);
       window.removeEventListener("touchstart", autoLandscape);
       window.removeEventListener("click", autoLandscape);
+      observer.disconnect();
     };
   }, [gameStatus]);
 
