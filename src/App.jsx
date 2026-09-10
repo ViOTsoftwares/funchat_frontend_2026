@@ -96,6 +96,25 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const isChatOrVideoOrCommunity =
+    location.pathname === "/chat" ||
+    location.pathname === "/video" ||
+    location.pathname.startsWith("/community");
+
+  const isCurrentFeatureLive = (() => {
+    if (location.pathname === "/chat") return (featureControl.chat ?? "live") === "live";
+    if (location.pathname === "/video") return (featureControl.video ?? "live") === "live";
+    if (location.pathname.startsWith("/community")) return (featureControl.community ?? "live") === "live";
+    return false;
+  })();
+
+  const isFullscreenChat = isChatOrVideoOrCommunity && isCurrentFeatureLive;
+  const isFullscreenChatRef = useRef(isFullscreenChat);
+
+  useEffect(() => {
+    isFullscreenChatRef.current = isFullscreenChat;
+  }, [isFullscreenChat]);
+
   useEffect(() => {
     // ── Visual Viewport / Keyboard tracking ──────────────────────────────────
     // On Android Chrome & iOS Safari the keyboard OVERLAPS the page when the
@@ -117,10 +136,12 @@ export default function App() {
       document.documentElement.style.setProperty("--keyboard-offset", `${keyboardHeight}px`);
       document.documentElement.style.setProperty("--visual-viewport-offset-y", `${offsetTop}px`);
 
-      // Always reset scroll so the page never drifts under the keyboard
-      window.scrollTo(0, 0);
-      document.body.scrollTop = 0;
-      document.documentElement.scrollTop = 0;
+      // Only reset scroll on fixed fullscreen chat/video shells to keep fixed layout anchored above keyboard
+      if (isFullscreenChatRef.current) {
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+      }
     };
 
     if (window.visualViewport) {
@@ -133,20 +154,6 @@ export default function App() {
       };
     }
   }, []);
-
-  const isChatOrVideoOrCommunity =
-    location.pathname === "/chat" ||
-    location.pathname === "/video" ||
-    location.pathname.startsWith("/community");
-
-  const isCurrentFeatureLive = (() => {
-    if (location.pathname === "/chat") return (featureControl.chat ?? "live") === "live";
-    if (location.pathname === "/video") return (featureControl.video ?? "live") === "live";
-    if (location.pathname.startsWith("/community")) return (featureControl.community ?? "live") === "live";
-    return false;
-  })();
-
-  const isFullscreenChat = isChatOrVideoOrCommunity && isCurrentFeatureLive;
 
   useEffect(() => {
     const handleScroll = () => {
