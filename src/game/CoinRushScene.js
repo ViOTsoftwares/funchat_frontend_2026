@@ -3,6 +3,9 @@ import {
   playCoinSound,
   playSuperCoinSound,
   playPowerUpSound,
+  playBumpSound,
+  playBlueCoinSound,
+  playRedCoinSound,
 } from "./soundEffects.js";
 
 const BASE_SPEED = 220; // units / sec
@@ -123,14 +126,17 @@ export default class CoinRushScene extends Phaser.Scene {
       this.boundHandleGameState = (state) => this.handleGameState(state);
       this.boundHandleCoinCollected = (data) => this.handleCoinCollected(data);
       this.boundHandlePowerUpCollected = (data) => this.handlePowerUpCollected(data);
+      this.boundHandlePlayerBump = (data) => this.handlePlayerBump(data);
 
       this.socket.off("coinRush_gameState", this.boundHandleGameState);
       this.socket.off("coinRush_coinCollected", this.boundHandleCoinCollected);
       this.socket.off("coinRush_powerUpCollected", this.boundHandlePowerUpCollected);
+      this.socket.off("coinRush_playerBump", this.boundHandlePlayerBump);
 
       this.socket.on("coinRush_gameState", this.boundHandleGameState);
       this.socket.on("coinRush_coinCollected", this.boundHandleCoinCollected);
       this.socket.on("coinRush_powerUpCollected", this.boundHandlePowerUpCollected);
+      this.socket.on("coinRush_playerBump", this.boundHandlePlayerBump);
     }
 
     // 8. Register Lifecycle Cleanup Hooks for Phaser Shutdown & Destroy
@@ -466,6 +472,27 @@ export default class CoinRushScene extends Phaser.Scene {
           }
         }
       });
+
+      // 2c. Instant 60 FPS Client-Side Player Collision Nudge Prediction
+      this.playerSprites.forEach((remoteSprite, remoteId) => {
+        if (remoteId === myId) return;
+        const dx = remoteSprite.container.x - this.predictedPos.x;
+        const dy = remoteSprite.container.y - this.predictedPos.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = PLAYER_RADIUS * 2; // 40px
+        if (dist > 0 && dist < minDist) {
+          const overlap = minDist - dist;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const nudgeX = this.predictedPos.x - nx * overlap * 0.5;
+          const nudgeY = this.predictedPos.y - ny * overlap * 0.5;
+
+          if (!this.isPointCollidingWithWalls(nudgeX, nudgeY, PLAYER_RADIUS)) {
+            this.predictedPos.x = Math.max(PLAYER_RADIUS + 20, Math.min(this.arenaSize.width - PLAYER_RADIUS - 20, nudgeX));
+            this.predictedPos.y = Math.max(PLAYER_RADIUS + 20, Math.min(this.arenaSize.height - PLAYER_RADIUS - 20, nudgeY));
+          }
+        }
+      });
     }
 
     // 3. Interpolate & Extrapolate Remote Player Sprites
@@ -492,12 +519,37 @@ export default class CoinRushScene extends Phaser.Scene {
       }
     });
 
-    // 4. Animate Spinning & Floating Coins
+    // 4. Animate Spinning, Floating & Moving Physics Coins
     this.coinSprites.forEach((coinData) => {
+      if (coinData.vx || coinData.vy) {
+        let nextX = coinData.container.x + coinData.vx * dt;
+        let nextY = coinData.baseY + coinData.vy * dt;
+
+        if (this.isPointCollidingWithWalls(nextX, coinData.baseY, 12)) {
+          coinData.vx = -coinData.vx * 0.82;
+        } else {
+          coinData.container.x = nextX;
+        }
+
+        if (this.isPointCollidingWithWalls(coinData.container.x, nextY, 12)) {
+          coinData.vy = -coinData.vy * 0.82;
+        } else {
+          coinData.baseY = nextY;
+        }
+
+        coinData.vx *= 0.94;
+        coinData.vy *= 0.94;
+
+        if (Math.hypot(coinData.vx, coinData.vy) < 3) {
+          coinData.vx = 0;
+          coinData.vy = 0;
+        }
+      }
+
       coinData.bobOffset += 0.06;
-      const bobY = Math.sin(coinData.bobOffset) * 5;
+      const bobY = Math.sin(coinData.bobOffset) * (coinData.type === "mini_scatter" ? 2 : 5);
       coinData.container.y = coinData.baseY + bobY;
-      coinData.outer.rotation += 0.04;
+      coinData.outer.rotation += coinData.type === "blue" ? 0.08 : 0.04;
       if (coinData.glowRing) {
         coinData.glowRing.scale = 1 + Math.sin(coinData.bobOffset * 1.5) * 0.15;
       }
@@ -628,6 +680,8 @@ export default class CoinRushScene extends Phaser.Scene {
           const coinData = this.coinSprites.get(c.id);
           coinData.container.x = c.x;
           coinData.baseY = c.y;
+          coinData.vx = c.vx || 0;
+          coinData.vy = c.vy || 0;
           if (coinData.collectedLocally) {
             coinData.container.setVisible(false);
           }
@@ -691,20 +745,27 @@ export default class CoinRushScene extends Phaser.Scene {
     });
 
     const aura = this.add.arc(0, 0, 28, 0, 360, false);
-    aura.setStrokeStyle(4, 0xf59e0b, 0.9);
-    aura.setVisible(false);
+    const auraColor = player.teamId === "blue" ? 0x38bdf8 : player.teamId === "red" ? 0xf43f5e : 0xf59e0b;
+    aura.setStrokeStyle(4, auraColor, 0.9);
+    if (player.teamId) {
+      aura.setVisible(true);
+    } else {
+      aura.setVisible(false);
+    }
 
     const glowCircle = this.add.circle(0, 0, 24, colorHex, 0.35);
     const bodyCircle = this.add.circle(0, 0, 20, colorHex);
-    bodyCircle.setStrokeStyle(3, 0xffffff, 0.95);
+    const strokeColor = player.teamId === "blue" ? 0x38bdf8 : player.teamId === "red" ? 0xf43f5e : 0xffffff;
+    bodyCircle.setStrokeStyle(3.5, strokeColor, 0.95);
     const innerCircle = this.add.circle(-5, -5, 6, 0xffffff, 0.45);
 
-    const displayName = isMe ? `${player.name} (You)` : player.name;
+    const teamPrefix = player.teamId === "blue" ? "[BLUE] " : player.teamId === "red" ? "[RED] " : "";
+    const displayName = isMe ? `${teamPrefix}${player.name} (You)` : `${teamPrefix}${player.name}`;
     const nameText = this.add.text(0, -34, displayName, {
       fontFamily: "Inter, Roboto, sans-serif",
       fontSize: "12px",
       fontWeight: "900",
-      color: isMe ? "#fde047" : "#ffffff",
+      color: player.teamId === "blue" ? "#38bdf8" : player.teamId === "red" ? "#f43f5e" : isMe ? "#fde047" : "#ffffff",
       stroke: "#0f172a",
       strokeThickness: 4,
     });
@@ -722,24 +783,74 @@ export default class CoinRushScene extends Phaser.Scene {
       targetY: player.y,
       vx: player.vx || 0,
       vy: player.vy || 0,
+      teamId: player.teamId || null,
       isMe,
       hasSpeedPowerUp: false,
     });
   }
 
+  triggerPlayerSquish(playerSprite, intensity = 1.0) {
+    if (!playerSprite || !playerSprite.container || !this.tweens) return;
+    this.tweens.killTweensOf(playerSprite.container);
+    const clampedInt = Math.min(Math.max(intensity, 0.5), 1.8);
+    playerSprite.container.setScale(1.0, 1.0);
+    this.tweens.add({
+      targets: playerSprite.container,
+      scaleX: 1.35 * clampedInt,
+      scaleY: 0.68 / clampedInt,
+      duration: 85,
+      yoyo: true,
+      ease: "Quad.easeOut",
+      onComplete: () => {
+        if (playerSprite && playerSprite.container) playerSprite.container.setScale(1.0, 1.0);
+      },
+    });
+  }
+
   createCoinSprite(coin) {
     const container = this.add.container(coin.x, coin.y);
-    const isSuper = coin.type === "super";
+    const type = coin.type || "normal";
 
-    const outerColor = isSuper ? 0xa855f7 : 0xf59e0b;
-    const glowColor = isSuper ? 0xc084fc : 0xfde047;
+    let outerColor = 0xf59e0b; // Gold
+    let glowColor = 0xfde047;
+    let symbolChar = "🪙";
+    let strokeColor = 0xffffff;
+    let radius = 14;
+    let glowRadius = 18;
+    let fontSize = "12px";
 
-    const glowRing = this.add.circle(0, 0, 18, glowColor, 0.3);
-    const outer = this.add.circle(0, 0, 14, outerColor);
-    outer.setStrokeStyle(2, 0xffffff, 0.95);
+    if (type === "super") {
+      outerColor = 0xa855f7; // Purple Super Coin
+      glowColor = 0xc084fc;
+      symbolChar = "★";
+      fontSize = "14px";
+    } else if (type === "blue") {
+      outerColor = 0x0ea5e9; // Ice Sapphire Blue
+      glowColor = 0x38bdf8;
+      strokeColor = 0x93c5fd;
+      symbolChar = "🧊";
+      fontSize = "13px";
+    } else if (type === "red") {
+      outerColor = 0xe11d48; // Ruby Flame Red
+      glowColor = 0xf43f5e;
+      strokeColor = 0xfecdd3;
+      symbolChar = "🔥";
+      fontSize = "13px";
+    } else if (type === "mini_scatter") {
+      outerColor = 0xf59e0b;
+      glowColor = 0xfde047;
+      radius = 9;
+      glowRadius = 12;
+      symbolChar = "🪙";
+      fontSize = "9px";
+    }
 
-    const symbol = this.add.text(0, 0, isSuper ? "★" : "🪙", {
-      fontSize: isSuper ? "14px" : "12px",
+    const glowRing = this.add.circle(0, 0, glowRadius, glowColor, 0.35);
+    const outer = this.add.circle(0, 0, radius, outerColor);
+    outer.setStrokeStyle(2, strokeColor, 0.95);
+
+    const symbol = this.add.text(0, 0, symbolChar, {
+      fontSize,
     });
     symbol.setOrigin(0.5);
 
@@ -750,9 +861,11 @@ export default class CoinRushScene extends Phaser.Scene {
       outer,
       glowRing,
       baseY: coin.y,
+      vx: coin.vx || 0,
+      vy: coin.vy || 0,
       bobOffset: Math.random() * 10,
-      type: coin.type,
-      value: coin.value || (isSuper ? 30 : 10),
+      type,
+      value: coin.value || (type === "red" ? 50 : type === "blue" ? 25 : type === "super" ? 30 : type === "mini_scatter" ? 5 : 10),
       collectedLocally: false,
     });
   }
@@ -799,49 +912,147 @@ export default class CoinRushScene extends Phaser.Scene {
   triggerLocalCoinPickupFx(coinData) {
     if (!coinData) return;
 
-    const isSuper = coinData.type === "super" || coinData.value >= 20;
-    if (isSuper) {
-      playSuperCoinSound();
-      if (this.cameras.main) this.cameras.main.shake(150, 0.005);
-    } else {
-      playCoinSound();
-    }
-
     const popX = coinData.container?.x || this.predictedPos.x;
     const popY = coinData.baseY || coinData.container?.y || this.predictedPos.y;
+    const type = coinData.type || "normal";
+    const pointsAdded = coinData.value || 10;
 
-    const burst = this.add.particles(popX, popY, "glowParticle", {
-      speed: { min: 40, max: 120 },
-      scale: { start: 0.6, end: 0 },
-      alpha: { start: 1, end: 0 },
-      tint: isSuper ? 0xf472b6 : 0xfde047,
-      lifespan: 400,
-      blendMode: "ADD",
-      emitting: false,
-    });
-    burst.explode(12);
-    this.time.delayedCall(500, () => burst.destroy());
+    const localSprite = this.playerSprites.get(this.socket?.id);
+    if (localSprite) {
+      this.triggerPlayerSquish(localSprite, type === "red" ? 1.4 : type === "blue" ? 1.2 : 0.9);
+    }
 
-    const pointsAdded = coinData.value || (isSuper ? 30 : 10);
-    const popText = this.add.text(popX, popY - 15, `+${pointsAdded}`, {
-      fontFamily: "Inter, Roboto, sans-serif",
-      fontSize: "20px",
-      fontWeight: "900",
-      color: isSuper ? "#f472b6" : "#fde047",
-      stroke: "#0f172a",
-      strokeThickness: 5,
-    });
-    popText.setOrigin(0.5);
+    if (type === "blue") {
+      playBlueCoinSound();
+      if (this.cameras.main) this.cameras.main.shake(180, 0.007);
 
-    this.tweens.add({
-      targets: popText,
-      y: popY - 65,
-      alpha: 0,
-      scale: 1.5,
-      duration: 850,
-      ease: "Back.easeOut",
-      onComplete: () => popText.destroy(),
-    });
+      const shockwave = this.add.circle(popX, popY, 15, 0x38bdf8, 0.65);
+      shockwave.setStrokeStyle(4, 0x93c5fd, 0.9);
+      this.tweens.add({
+        targets: shockwave,
+        radius: 200,
+        alpha: 0,
+        duration: 400,
+        ease: "Cubic.easeOut",
+        onComplete: () => shockwave.destroy(),
+      });
+
+      const burst = this.add.particles(popX, popY, "glowParticle", {
+        speed: { min: 60, max: 180 },
+        scale: { start: 0.7, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: [0x38bdf8, 0x0ea5e9, 0xffffff],
+        lifespan: 450,
+        blendMode: "ADD",
+        emitting: false,
+      });
+      burst.explode(18);
+      this.time.delayedCall(550, () => burst.destroy());
+
+      const popText = this.add.text(popX, popY - 20, `🧊 ICE SHOCKWAVE! +${pointsAdded}`, {
+        fontFamily: "Inter, Roboto, sans-serif",
+        fontSize: "17px",
+        fontWeight: "900",
+        color: "#38bdf8",
+        stroke: "#0f172a",
+        strokeThickness: 5,
+      });
+      popText.setOrigin(0.5);
+
+      this.tweens.add({
+        targets: popText,
+        y: popY - 70,
+        alpha: 0,
+        scale: 1.4,
+        duration: 900,
+        ease: "Back.easeOut",
+        onComplete: () => popText.destroy(),
+      });
+    } else if (type === "red") {
+      playRedCoinSound();
+      if (this.cameras.main) this.cameras.main.shake(260, 0.014);
+
+      const dx = this.predictedPos.x - popX;
+      const dy = this.predictedPos.y - popY;
+      let dist = Math.hypot(dx, dy);
+      if (dist === 0) dist = 0.01;
+      const nx = dx / dist;
+      const ny = dy / dist;
+
+      this.predictedPos.x += nx * 140;
+      this.predictedPos.y += ny * 140;
+
+      const burst = this.add.particles(popX, popY, "glowParticle", {
+        speed: { min: 80, max: 240 },
+        scale: { start: 0.9, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: [0xf43f5e, 0xf59e0b, 0xffffff],
+        lifespan: 500,
+        blendMode: "ADD",
+        emitting: false,
+      });
+      burst.explode(24);
+      this.time.delayedCall(600, () => burst.destroy());
+
+      const popText = this.add.text(popX, popY - 20, `🔥 KINETIC BLAST! +${pointsAdded}`, {
+        fontFamily: "Inter, Roboto, sans-serif",
+        fontSize: "18px",
+        fontWeight: "900",
+        color: "#f43f5e",
+        stroke: "#0f172a",
+        strokeThickness: 5,
+      });
+      popText.setOrigin(0.5);
+
+      this.tweens.add({
+        targets: popText,
+        y: popY - 75,
+        alpha: 0,
+        scale: 1.5,
+        duration: 900,
+        ease: "Back.easeOut",
+        onComplete: () => popText.destroy(),
+      });
+    } else {
+      if (type === "super") {
+        playSuperCoinSound();
+        if (this.cameras.main) this.cameras.main.shake(150, 0.005);
+      } else {
+        playCoinSound();
+      }
+
+      const burst = this.add.particles(popX, popY, "glowParticle", {
+        speed: { min: 40, max: 120 },
+        scale: { start: 0.6, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: type === "super" ? 0xc084fc : 0xfde047,
+        lifespan: 400,
+        blendMode: "ADD",
+        emitting: false,
+      });
+      burst.explode(12);
+      this.time.delayedCall(500, () => burst.destroy());
+
+      const popText = this.add.text(popX, popY - 15, `+${pointsAdded}`, {
+        fontFamily: "Inter, Roboto, sans-serif",
+        fontSize: type === "mini_scatter" ? "15px" : "20px",
+        fontWeight: "900",
+        color: type === "super" ? "#c084fc" : "#fde047",
+        stroke: "#0f172a",
+        strokeThickness: 5,
+      });
+      popText.setOrigin(0.5);
+
+      this.tweens.add({
+        targets: popText,
+        y: popY - 65,
+        alpha: 0,
+        scale: 1.4,
+        duration: 850,
+        ease: "Back.easeOut",
+        onComplete: () => popText.destroy(),
+      });
+    }
   }
 
   triggerLocalPowerUpPickupFx(pwData) {
@@ -883,32 +1094,137 @@ export default class CoinRushScene extends Phaser.Scene {
     const isMe = data.playerId === this.socket?.id;
     const coinData = this.coinSprites.get(data.coinId);
 
-    // If local player already picked this up locally, don't replay sound/FX
+    if (data.newScatterCoins && Array.isArray(data.newScatterCoins)) {
+      data.newScatterCoins.forEach((c) => {
+        if (!this.coinSprites.has(c.id)) {
+          this.createCoinSprite(c);
+        }
+      });
+    }
+
+    if (data.affectedPlayers && Array.isArray(data.affectedPlayers)) {
+      data.affectedPlayers.forEach((aff) => {
+        const sprite = this.playerSprites.get(aff.id);
+        if (sprite) {
+          sprite.targetX += aff.pushVx * 0.2;
+          sprite.targetY += aff.pushVy * 0.2;
+          if (aff.id === this.socket?.id) {
+            this.predictedPos.x += aff.pushVx * 0.2;
+            this.predictedPos.y += aff.pushVy * 0.2;
+          }
+        }
+      });
+    }
+
     if (isMe && coinData && coinData.collectedLocally) {
       if (coinData.container) coinData.container.destroy();
       this.coinSprites.delete(data.coinId);
       return;
     }
 
-    if (isMe) {
-      if (data.pointsAdded >= 20) {
-        playSuperCoinSound();
-        this.cameras.main.shake(150, 0.005);
-      } else {
-        playCoinSound();
-      }
-    }
+    const coinType = data.coinType || coinData?.type || "normal";
+    const popX = data.impactX || coinData?.container?.x || 600;
+    const popY = data.impactY || coinData?.baseY || 400;
 
     const playerSprite = this.playerSprites.get(data.playerId);
     if (playerSprite) {
-      const popX = playerSprite.container.x;
-      const popY = playerSprite.container.y - 25;
+      this.triggerPlayerSquish(playerSprite, coinType === "red" ? 1.4 : coinType === "blue" ? 1.2 : 0.9);
+    }
+
+    if (coinType === "blue") {
+      playBlueCoinSound();
+      if (isMe && this.cameras.main) this.cameras.main.shake(180, 0.007);
+
+      const shockwave = this.add.circle(popX, popY, 15, 0x38bdf8, 0.65);
+      shockwave.setStrokeStyle(4, 0x93c5fd, 0.9);
+      this.tweens.add({
+        targets: shockwave,
+        radius: 200,
+        alpha: 0,
+        duration: 400,
+        ease: "Cubic.easeOut",
+        onComplete: () => shockwave.destroy(),
+      });
+
+      const burst = this.add.particles(popX, popY, "glowParticle", {
+        speed: { min: 60, max: 180 },
+        scale: { start: 0.7, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: [0x38bdf8, 0x0ea5e9, 0xffffff],
+        lifespan: 450,
+        blendMode: "ADD",
+        emitting: false,
+      });
+      burst.explode(18);
+      this.time.delayedCall(550, () => burst.destroy());
+
+      const popText = this.add.text(popX, popY - 20, `🧊 ICE SHOCKWAVE! +${data.pointsAdded}`, {
+        fontFamily: "Inter, Roboto, sans-serif",
+        fontSize: "17px",
+        fontWeight: "900",
+        color: "#38bdf8",
+        stroke: "#0f172a",
+        strokeThickness: 5,
+      });
+      popText.setOrigin(0.5);
+
+      this.tweens.add({
+        targets: popText,
+        y: popY - 70,
+        alpha: 0,
+        scale: 1.4,
+        duration: 900,
+        ease: "Back.easeOut",
+        onComplete: () => popText.destroy(),
+      });
+    } else if (coinType === "red") {
+      playRedCoinSound();
+      if (isMe && this.cameras.main) this.cameras.main.shake(260, 0.014);
+
+      const burst = this.add.particles(popX, popY, "glowParticle", {
+        speed: { min: 80, max: 240 },
+        scale: { start: 0.9, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: [0xf43f5e, 0xf59e0b, 0xffffff],
+        lifespan: 500,
+        blendMode: "ADD",
+        emitting: false,
+      });
+      burst.explode(24);
+      this.time.delayedCall(600, () => burst.destroy());
+
+      const popText = this.add.text(popX, popY - 20, `🔥 KINETIC BLAST! +${data.pointsAdded}`, {
+        fontFamily: "Inter, Roboto, sans-serif",
+        fontSize: "18px",
+        fontWeight: "900",
+        color: "#f43f5e",
+        stroke: "#0f172a",
+        strokeThickness: 5,
+      });
+      popText.setOrigin(0.5);
+
+      this.tweens.add({
+        targets: popText,
+        y: popY - 75,
+        alpha: 0,
+        scale: 1.5,
+        duration: 900,
+        ease: "Back.easeOut",
+        onComplete: () => popText.destroy(),
+      });
+    } else {
+      if (data.pointsAdded >= 30) {
+        playSuperCoinSound();
+        if (isMe && this.cameras.main) this.cameras.main.shake(150, 0.005);
+      } else {
+        playCoinSound();
+      }
 
       const burst = this.add.particles(popX, popY, "glowParticle", {
         speed: { min: 40, max: 120 },
         scale: { start: 0.6, end: 0 },
         alpha: { start: 1, end: 0 },
-        tint: data.pointsAdded >= 20 ? 0xf472b6 : 0xfde047,
+        tint: data.pointsAdded >= 30 ? 0xc084fc : 0xfde047,
         lifespan: 400,
         blendMode: "ADD",
         emitting: false,
@@ -916,11 +1232,11 @@ export default class CoinRushScene extends Phaser.Scene {
       burst.explode(12);
       this.time.delayedCall(500, () => burst.destroy());
 
-      const popText = this.add.text(popX, popY, `+${data.pointsAdded}`, {
+      const popText = this.add.text(popX, popY - 15, `+${data.pointsAdded}`, {
         fontFamily: "Inter, Roboto, sans-serif",
         fontSize: "20px",
         fontWeight: "900",
-        color: data.pointsAdded >= 20 ? "#f472b6" : "#fde047",
+        color: data.pointsAdded >= 30 ? "#c084fc" : "#fde047",
         stroke: "#0f172a",
         strokeThickness: 5,
       });
@@ -930,11 +1246,16 @@ export default class CoinRushScene extends Phaser.Scene {
         targets: popText,
         y: popY - 50,
         alpha: 0,
-        scale: 1.5,
+        scale: 1.4,
         duration: 850,
         ease: "Back.easeOut",
         onComplete: () => popText.destroy(),
       });
+    }
+
+    if (coinData && coinData.container) {
+      coinData.container.destroy();
+      this.coinSprites.delete(data.coinId);
     }
   }
 
@@ -978,6 +1299,49 @@ export default class CoinRushScene extends Phaser.Scene {
     }
   }
 
+  handlePlayerBump(data) {
+    if (!data) return;
+
+    const intensity = data.intensity || 1.0;
+    playBumpSound(intensity);
+
+    if (this.cameras.main) {
+      this.cameras.main.shake(120 * Math.min(intensity, 1.5), 0.005 * Math.min(intensity, 1.5));
+    }
+
+    const bumpX = data.x || 600;
+    const bumpY = data.y || 400;
+
+    // Spark explosion effect at collision point
+    const sparkBurst = this.add.particles(bumpX, bumpY, "glowParticle", {
+      speed: { min: 80, max: 240 * Math.min(intensity, 1.5) },
+      scale: { start: 0.8, end: 0 },
+      alpha: { start: 1, end: 0 },
+      tint: [0xffffff, 0xf59e0b, 0x38bdf8, 0xec4899],
+      lifespan: 350,
+      blendMode: "ADD",
+      emitting: false,
+    });
+    sparkBurst.explode(16);
+    this.time.delayedCall(450, () => sparkBurst.destroy());
+
+    // Pulse scale micro-animation for colliding player sprites
+    [data.player1Id, data.player2Id].forEach((id) => {
+      if (!id) return;
+      const playerSprite = this.playerSprites.get(id);
+      if (playerSprite && playerSprite.container && this.tweens) {
+        this.tweens.add({
+          targets: playerSprite.container,
+          scaleX: 1.25,
+          scaleY: 1.25,
+          duration: 80,
+          yoyo: true,
+          ease: "Quad.easeOut",
+        });
+      }
+    });
+  }
+
   // ── Complete Lifecycle Clean Up (Prevents Duplicate Socket Handlers & Memory Leaks) ──
   cleanUpScene() {
     if (this.onKeyDown) window.removeEventListener("keydown", this.onKeyDown);
@@ -988,6 +1352,7 @@ export default class CoinRushScene extends Phaser.Scene {
       if (this.boundHandleGameState) this.socket.off("coinRush_gameState", this.boundHandleGameState);
       if (this.boundHandleCoinCollected) this.socket.off("coinRush_coinCollected", this.boundHandleCoinCollected);
       if (this.boundHandlePowerUpCollected) this.socket.off("coinRush_powerUpCollected", this.boundHandlePowerUpCollected);
+      if (this.boundHandlePlayerBump) this.socket.off("coinRush_playerBump", this.boundHandlePlayerBump);
     }
 
     if (this.input) {

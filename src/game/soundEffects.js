@@ -144,3 +144,85 @@ export function playGameOverSound() {
     });
   } catch {}
 }
+
+export function playBumpSound(intensity = 1.0) {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "triangle";
+    const now = ctx.currentTime;
+
+    const startFreq = 180 * Math.min(intensity, 2.0);
+    const endFreq = 40;
+    const duration = Math.min(0.2, 0.08 + intensity * 0.08);
+
+    osc.frequency.setValueAtTime(startFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+
+    gain.gain.setValueAtTime(Math.min(0.4, 0.25 * intensity), now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + duration);
+  } catch {}
+}
+
+export function playBlueCoinSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    const now = ctx.currentTime;
+
+    osc.frequency.setValueAtTime(1174.66, now); // D6
+    osc.frequency.exponentialRampToValueAtTime(1760.0, now + 0.12); // A6
+    osc.frequency.exponentialRampToValueAtTime(2093.0, now + 0.25); // C7
+
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.35);
+  } catch {}
+}
+
+export function playRedCoinSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sawtooth";
+    const now = ctx.currentTime;
+
+    osc.frequency.setValueAtTime(320.0, now);
+    osc.frequency.exponentialRampToValueAtTime(35.0, now + 0.35);
+
+    gain.gain.setValueAtTime(0.45, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.4);
+  } catch {}
+}
+
+

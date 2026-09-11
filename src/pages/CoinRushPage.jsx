@@ -176,15 +176,19 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
 
   // Player capacity selection (2, 4, 8)
   const [playerCapacity, setPlayerCapacity] = useState(2); // default 2 players mode
+  const [playMode, setPlayMode] = useState("SOLO"); // SOLO or TEAM
   const [isSearchingQuickMatch, setIsSearchingQuickMatch] = useState(false);
 
-  // Scoreboard & Leaderboard
+  // Team & Scoreboard State
   const [players, setPlayers] = useState([]);
   const [maxPlayers, setMaxPlayers] = useState(2);
+  const [teamScores, setTeamScores] = useState({ blue: 0, red: 0 });
   const [myScore, setMyScore] = useState(0);
   const [myPowerUp, setMyPowerUp] = useState(null);
   const [powerUpTimeLeft, setPowerUpTimeLeft] = useState(0);
   const [winner, setWinner] = useState(null);
+  const [winningTeam, setWinningTeam] = useState(null);
+  const [mvp, setMvp] = useState(null);
   const [endLeaderboard, setEndLeaderboard] = useState([]);
 
   // In-Game Room Voice Chat Hook
@@ -235,6 +239,12 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
       setPlayers(state.players || []);
       if (state.maxPlayers) {
         setMaxPlayers(Number(state.maxPlayers));
+      }
+      if (state.playMode) {
+        setPlayMode(state.playMode);
+      }
+      if (state.teamScores) {
+        setTeamScores(state.teamScores);
       }
       setIsSearchingQuickMatch(false);
       const me = (state.players || []).find((p) => p.id === socket.id);
@@ -291,12 +301,16 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
       if (!state) return;
       const now = Date.now();
       
-      // Immediate timer update
       if (typeof state.timeRemaining === "number") {
         setTimeRemaining(state.timeRemaining);
       }
+      if (state.playMode) {
+        setPlayMode(state.playMode);
+      }
+      if (state.teamScores) {
+        setTeamScores(state.teamScores);
+      }
 
-      // Immediate player score & leaderboard update
       if (state.players) {
         setPlayers(state.players);
         const myId = socket.id || socketId || socketRef.current?.id;
@@ -314,9 +328,12 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
       }
     };
 
-    const onGameEnded = ({ winner, leaderboard }) => {
+    const onGameEnded = ({ winner, winningTeam, teamScores, mvp, leaderboard }) => {
       setGameStatus("ENDED");
       setWinner(winner);
+      setWinningTeam(winningTeam || null);
+      if (teamScores) setTeamScores(teamScores);
+      if (mvp) setMvp(mvp);
       setEndLeaderboard(leaderboard || []);
       playGameOverSound();
     };
@@ -399,6 +416,19 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
   }, [gameStatus, roomState, socketRef]);
 
   // ── 3. Actions ──
+  const handleTogglePlayMode = (mode) => {
+    const socket = socketRef.current;
+    if (!socket || !roomId) return;
+    setPlayMode(mode);
+    socket.emit("coinRush_togglePlayMode", { roomId, playMode: mode });
+  };
+
+  const handleToggleTeam = (teamId) => {
+    const socket = socketRef.current;
+    if (!socket || !roomId) return;
+    socket.emit("coinRush_toggleTeam", { roomId, teamId });
+  };
+
   const handleQuickMatch = () => {
     const socket = socketRef.current;
     if (!socket) return;
@@ -406,12 +436,13 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
     setIsSearchingQuickMatch(true);
     const name = localStorage.getItem("funchat_profile_name") || "Player";
     const selectedCap = Number(playerCapacity) || 2;
-    socket.emit("coinRush_quickMatch", { name, maxPlayers: selectedCap }, (res) => {
+    socket.emit("coinRush_quickMatch", { name, maxPlayers: selectedCap, playMode }, (res) => {
       if (res?.ok) {
         if (res.roomState) {
           setRoomState(res.roomState);
           setPlayers(res.roomState.players || []);
           setMaxPlayers(Number(res.roomState.maxPlayers) || selectedCap);
+          if (res.roomState.playMode) setPlayMode(res.roomState.playMode);
         }
         setRoomId(res.roomId);
         setIsHost(Boolean(res.isHost));
@@ -427,12 +458,13 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
     if (!socket.connected) socket.connect();
     const name = localStorage.getItem("funchat_profile_name") || "Player 1";
     const selectedCap = Number(playerCapacity) || 2;
-    socket.emit("coinRush_createRoom", { name, maxPlayers: selectedCap, isPublic: false }, (res) => {
+    socket.emit("coinRush_createRoom", { name, maxPlayers: selectedCap, playMode, isPublic: false }, (res) => {
       if (res?.ok) {
         if (res.roomState) {
           setRoomState(res.roomState);
           setPlayers(res.roomState.players || []);
           setMaxPlayers(Number(res.roomState.maxPlayers) || selectedCap);
+          if (res.roomState.playMode) setPlayMode(res.roomState.playMode);
         }
         setRoomId(res.roomId);
         setIsHost(true);
@@ -452,6 +484,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
           setRoomState(res.roomState);
           setPlayers(res.roomState.players || []);
           setMaxPlayers(Number(res.roomState.maxPlayers) || 8);
+          if (res.roomState.playMode) setPlayMode(res.roomState.playMode);
         }
         setRoomId(res.roomId);
         setIsHost(Boolean(res.isHost));
@@ -559,10 +592,16 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                   <ToggleButtonGroup
                     value={playerCapacity}
                     exclusive
-                    onChange={(e, val) => val && setPlayerCapacity(Number(val))}
+                    onChange={(e, val) => {
+                      if (!val) return;
+                      const num = Number(val);
+                      setPlayerCapacity(num);
+                      if (num === 2) setPlayMode("SOLO");
+                    }}
                     fullWidth
                     sx={{
                       gap: 1,
+                      mb: playerCapacity > 2 ? 1.5 : 0,
                       flexDirection: { xs: "column", sm: "row" },
                       "& .MuiToggleButton-root": {
                         color: "#fff",
@@ -585,6 +624,44 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                     <ToggleButton value={4}>⚔️ 4 Players (Squad)</ToggleButton>
                     <ToggleButton value={8}>🔥 8 Players (Chaos)</ToggleButton>
                   </ToggleButtonGroup>
+
+                  {playerCapacity > 2 && (
+                    <Box sx={{ mt: 1, pt: 1.5, borderTop: "1px dashed rgba(255, 255, 255, 0.15)" }}>
+                      <Typography variant="caption" fontWeight={800} sx={{ color: "rgba(255,255,255,0.7)", mb: 1, display: "block" }}>
+                        BATTLE STYLE:
+                      </Typography>
+                      <ToggleButtonGroup
+                        value={playMode}
+                        exclusive
+                        onChange={(e, val) => val && setPlayMode(val)}
+                        fullWidth
+                        size="small"
+                        sx={{
+                          gap: 1,
+                          "& .MuiToggleButton-root": {
+                            color: "#fff",
+                            borderColor: "rgba(255,255,255,0.15)",
+                            borderRadius: "10px !important",
+                            fontWeight: 800,
+                            py: 0.8,
+                            fontSize: { xs: "12px", sm: "13px" },
+                            textTransform: "none",
+                            "&.Mui-selected": {
+                              background: playMode === "TEAM" ? "linear-gradient(135deg, #0284c7, #ef4444)" : "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                              color: "#fff",
+                              borderColor: "transparent",
+                              boxShadow: "0 4px 15px rgba(2, 132, 199, 0.4)",
+                            },
+                          },
+                        }}
+                      >
+                        <ToggleButton value="SOLO">👤 Solo FFA (Free For All)</ToggleButton>
+                        <ToggleButton value="TEAM">
+                          {playerCapacity === 4 ? "🛡️ 2v2 Team Battle" : "🛡️ 4v4 Team Battle"}
+                        </ToggleButton>
+                      </ToggleButtonGroup>
+                    </Box>
+                  )}
                 </Box>
 
                 {/* ── QUICK MATCH BUTTON (RANDOM CONNECTION) ── */}
@@ -719,6 +796,18 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                       </Box>
                     </Stack>
                   </Paper>
+
+                  <Paper sx={{ p: 2, borderRadius: "16px", background: "rgba(14, 165, 233, 0.08)", border: "1px solid rgba(56, 189, 248, 0.25)" }}>
+                    <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#38bdf8", mb: 0.5, display: "flex", alignItems: "center", gap: 0.5 }}>
+                      🧊 & 🔥 DYNAMIC COIN PHYSICS
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.75)", display: "block" }}>
+                      • 🧊 <b>Blue Sapphire Coin (+25):</b> Radial Ice Shockwave pushes nearby opponents outward + Hydro Drift!
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.75)", display: "block", mt: 0.5 }}>
+                      • 🔥 <b>Red Ruby Coin (+50):</b> Explosive Recoil Blast pushes player back + scatters 3 mini bouncy coins!
+                    </Typography>
+                  </Paper>
                 </Stack>
               </Paper>
             </Grid>
@@ -849,42 +938,70 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
               </Paper>
             </Stack>
 
-            {/* Center Stack: Round Timer */}
-            <Paper
-              elevation={0}
-              sx={{
-                px: { xs: 1.2, sm: 2 },
-                py: 0.3,
-                borderRadius: "12px",
-                background: "rgba(15, 23, 42, 0.9)",
-                border: timeRemaining <= 10 ? "1px solid #ef4444" : "1px solid rgba(99, 102, 241, 0.4)",
-                color: timeRemaining <= 10 ? "#ef4444" : "#fff",
-                fontWeight: 900,
-                fontSize: { xs: "12px", sm: "16px" },
-                fontFamily: "monospace",
-              }}
-            >
-              <Stack direction="row" spacing={0.6} alignItems="center">
-                <Box
+            {/* Center Stack: Round Timer & Team Scores */}
+            <Stack direction="row" spacing={1} alignItems="center">
+              {playMode === "TEAM" && (
+                <Paper
+                  elevation={0}
                   sx={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    bgcolor: timeRemaining <= 10 ? "#ef4444" : "#22c55e",
-                    boxShadow: timeRemaining <= 10 ? "0 0 8px #ef4444" : "0 0 8px #22c55e",
+                    px: { xs: 1, sm: 1.8 },
+                    py: 0.3,
+                    borderRadius: "12px",
+                    background: "rgba(15, 23, 42, 0.95)",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.2,
                   }}
-                />
-                <TimerIcon sx={{ fontSize: { xs: 15, sm: 18 }, color: timeRemaining <= 10 ? "#ef4444" : "#818cf8" }} />
-                <span>
-                  {(() => {
-                    const s = Math.max(0, Number(timeRemaining) || 0);
-                    const mins = Math.floor(s / 60);
-                    const rem = s % 60;
-                    return `${mins < 10 ? '0' + mins : mins}:${rem < 10 ? '0' + rem : rem}`;
-                  })()}
-                </span>
-              </Stack>
-            </Paper>
+                >
+                  <Typography variant="caption" fontWeight={900} sx={{ color: "#38bdf8", fontSize: { xs: "11px", sm: "13px" } }}>
+                    🟦 {teamScores.blue || 0}
+                  </Typography>
+                  <Typography variant="caption" fontWeight={800} sx={{ color: "rgba(255,255,255,0.4)", fontSize: "11px" }}>
+                    VS
+                  </Typography>
+                  <Typography variant="caption" fontWeight={900} sx={{ color: "#f43f5e", fontSize: { xs: "11px", sm: "13px" } }}>
+                    {teamScores.red || 0} 🟥
+                  </Typography>
+                </Paper>
+              )}
+
+              <Paper
+                elevation={0}
+                sx={{
+                  px: { xs: 1.2, sm: 2 },
+                  py: 0.3,
+                  borderRadius: "12px",
+                  background: "rgba(15, 23, 42, 0.9)",
+                  border: timeRemaining <= 10 ? "1px solid #ef4444" : "1px solid rgba(99, 102, 241, 0.4)",
+                  color: timeRemaining <= 10 ? "#ef4444" : "#fff",
+                  fontWeight: 900,
+                  fontSize: { xs: "12px", sm: "16px" },
+                  fontFamily: "monospace",
+                }}
+              >
+                <Stack direction="row" spacing={0.6} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      bgcolor: timeRemaining <= 10 ? "#ef4444" : "#22c55e",
+                      boxShadow: timeRemaining <= 10 ? "0 0 8px #ef4444" : "0 0 8px #22c55e",
+                    }}
+                  />
+                  <TimerIcon sx={{ fontSize: { xs: 15, sm: 18 }, color: timeRemaining <= 10 ? "#ef4444" : "#818cf8" }} />
+                  <span>
+                    {(() => {
+                      const s = Math.max(0, Number(timeRemaining) || 0);
+                      const mins = Math.floor(s / 60);
+                      const rem = s % 60;
+                      return `${mins < 10 ? '0' + mins : mins}:${rem < 10 ? '0' + rem : rem}`;
+                    })()}
+                  </span>
+                </Stack>
+              </Paper>
+            </Stack>
 
             {/* Right Stack: Leaderboard Rank */}
             <Paper
@@ -1019,27 +1136,42 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                 }}
               >
                 {/* Live Status Badge */}
-                <Chip
-                  icon={<Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#22c55e", boxShadow: "0 0 10px #22c55e", animation: "pulse 1.5s infinite" }} />}
-                  label="🟢 WAITING FOR PLAYERS TO JOIN"
-                  size="small"
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: { xs: "11px", sm: "12px" },
-                    color: "#86efac",
-                    background: "rgba(34, 197, 94, 0.15)",
-                    border: "1px solid rgba(34, 197, 94, 0.4)",
-                    mb: 1.8,
-                    px: 1,
-                  }}
-                />
+                <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 1.8 }}>
+                  <Chip
+                    icon={<Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#22c55e", boxShadow: "0 0 10px #22c55e", animation: "pulse 1.5s infinite" }} />}
+                    label="🟢 WAITING LOBBY"
+                    size="small"
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: { xs: "11px", sm: "12px" },
+                      color: "#86efac",
+                      background: "rgba(34, 197, 94, 0.15)",
+                      border: "1px solid rgba(34, 197, 94, 0.4)",
+                      px: 0.5,
+                    }}
+                  />
+                  {playMode === "TEAM" && (
+                    <Chip
+                      label="🛡️ TEAM BATTLE"
+                      size="small"
+                      sx={{
+                        fontWeight: 900,
+                        fontSize: { xs: "11px", sm: "12px" },
+                        color: "#38bdf8",
+                        background: "rgba(14, 165, 233, 0.2)",
+                        border: "1px solid rgba(56, 189, 248, 0.4)",
+                        px: 0.5,
+                      }}
+                    />
+                  )}
+                </Stack>
 
                 {/* Title & Mode */}
                 <Typography variant="h5" fontWeight={900} sx={{ color: "#fff", mb: 0.5, fontSize: { xs: "1.2rem", sm: "1.5rem" } }}>
                   Coin Rush Multiplayer Lobby
                 </Typography>
 
-                <Stack direction="row" justifyContent="center" alignItems="center" spacing={1} sx={{ mb: 2.5 }}>
+                <Stack direction="row" justifyContent="center" alignItems="center" spacing={1} sx={{ mb: 2 }}>
                   <Chip
                     label={activeMaxCapacity === 2 ? "👥 2 Players (1v1)" : activeMaxCapacity === 4 ? "⚔️ 4 Players Mode" : "🔥 8 Players Mode"}
                     size="small"
@@ -1055,6 +1187,86 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                   </Tooltip>
                 </Stack>
 
+                {/* Host Mode Selector if > 2 players */}
+                {isHost && activeMaxCapacity > 2 && (
+                  <Box sx={{ mb: 2.5, p: 1.2, borderRadius: "14px", background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                    <Typography variant="caption" fontWeight={800} sx={{ color: "rgba(255, 255, 255, 0.7)", mb: 0.8, display: "block" }}>
+                      ROOM BATTLE MODE:
+                    </Typography>
+                    <ToggleButtonGroup
+                      value={playMode}
+                      exclusive
+                      onChange={(e, val) => val && handleTogglePlayMode(val)}
+                      size="small"
+                      fullWidth
+                      sx={{
+                        "& .MuiToggleButton-root": {
+                          color: "#fff",
+                          borderColor: "rgba(255,255,255,0.15)",
+                          borderRadius: "10px !important",
+                          fontWeight: 800,
+                          py: 0.6,
+                          fontSize: "12px",
+                          textTransform: "none",
+                          "&.Mui-selected": {
+                            background: playMode === "TEAM" ? "linear-gradient(135deg, #0284c7, #ef4444)" : "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                            color: "#fff",
+                            borderColor: "transparent",
+                          },
+                        },
+                      }}
+                    >
+                      <ToggleButton value="SOLO">👤 Solo Free-For-All</ToggleButton>
+                      <ToggleButton value="TEAM">🛡️ Team Battle (Blue vs Red)</ToggleButton>
+                    </ToggleButtonGroup>
+                  </Box>
+                )}
+
+                {/* Team Switcher Action for Current Player */}
+                {playMode === "TEAM" && (
+                  <Paper sx={{ mb: 2.5, p: 1.2, borderRadius: "14px", background: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography variant="caption" fontWeight={800} sx={{ color: "rgba(255,255,255,0.8)" }}>
+                        YOUR TEAM:
+                      </Typography>
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          size="small"
+                          variant={players.find((p) => p.id === socketId)?.teamId === "blue" ? "contained" : "outlined"}
+                          onClick={() => handleToggleTeam("blue")}
+                          sx={{
+                            borderRadius: "10px",
+                            fontWeight: 800,
+                            fontSize: "11px",
+                            textTransform: "none",
+                            background: players.find((p) => p.id === socketId)?.teamId === "blue" ? "linear-gradient(135deg, #0284c7, #0369a1)" : "transparent",
+                            color: "#38bdf8",
+                            borderColor: "rgba(56, 189, 248, 0.4)",
+                          }}
+                        >
+                          🟦 Team Blue
+                        </Button>
+                        <Button
+                          size="small"
+                          variant={players.find((p) => p.id === socketId)?.teamId === "red" ? "contained" : "outlined"}
+                          onClick={() => handleToggleTeam("red")}
+                          sx={{
+                            borderRadius: "10px",
+                            fontWeight: 800,
+                            fontSize: "11px",
+                            textTransform: "none",
+                            background: players.find((p) => p.id === socketId)?.teamId === "red" ? "linear-gradient(135deg, #e11d48, #be123c)" : "transparent",
+                            color: "#f43f5e",
+                            borderColor: "rgba(244, 63, 94, 0.4)",
+                          }}
+                        >
+                          🟥 Team Red
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                )}
+
                 {/* Responsive Slots Grid */}
                 <Grid container spacing={1.5} justifyContent="center" sx={{ mb: 3 }}>
                   {Array.from({ length: activeMaxCapacity }).map((_, index) => {
@@ -1062,6 +1274,8 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                     if (player) {
                       const isMe = player.id === socketId;
                       const playerIsMuted = isMe ? isMuted : remoteMutes[player.id] ?? player.isMuted;
+                      const isTeamMode = playMode === "TEAM";
+                      const teamColor = player.teamId === "red" ? "#f43f5e" : player.teamId === "blue" ? "#38bdf8" : player.color || "#6366f1";
                       return (
                         <Grid item xs={12} sm={6} key={player.id || index}>
                           <Paper
@@ -1069,24 +1283,33 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                             sx={{
                               p: 1.2,
                               borderRadius: "14px",
-                              background: "rgba(255, 255, 255, 0.06)",
-                              border: `1px solid ${player.color || "#6366f1"}`,
-                              boxShadow: `0 4px 15px rgba(0,0,0,0.3), 0 0 10px ${player.color || "#6366f1"}33`,
+                              background: isTeamMode
+                                ? player.teamId === "red"
+                                  ? "rgba(244, 63, 94, 0.08)"
+                                  : "rgba(56, 189, 248, 0.08)"
+                                : "rgba(255, 255, 255, 0.06)",
+                              border: `1px solid ${teamColor}`,
+                              boxShadow: `0 4px 15px rgba(0,0,0,0.3), 0 0 10px ${teamColor}33`,
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "space-between",
                             }}
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
-                              <Avatar sx={{ bgcolor: player.color || "#6366f1", width: 34, height: 34, fontWeight: 900, color: "#fff", fontSize: "13px" }}>
+                              <Avatar sx={{ bgcolor: teamColor, width: 34, height: 34, fontWeight: 900, color: "#fff", fontSize: "13px" }}>
                                 {player.name.charAt(0).toUpperCase()}
                               </Avatar>
                               <Box sx={{ textAlign: "left" }}>
                                 <Typography variant="subtitle2" fontWeight={800} sx={{ color: "#fff", fontSize: "12.5px", lineHeight: 1.2 }}>
+                                  {isTeamMode && (
+                                    <span style={{ color: player.teamId === "red" ? "#f43f5e" : "#38bdf8", marginRight: "4px" }}>
+                                      [{player.teamId ? player.teamId.toUpperCase() : "BLUE"}]
+                                    </span>
+                                  )}
                                   {player.name} {isMe ? "(You)" : ""}
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: player.isHost ? "#fde047" : "#a5b4fc", fontWeight: 700, fontSize: "10px" }}>
-                                  {player.isHost ? "👑 Room Host" : "Player"}
+                                  {player.isHost ? "👑 Room Host" : isTeamMode ? `Team ${player.teamId === "red" ? "Red" : "Blue"}` : "Player"}
                                 </Typography>
                               </Box>
                             </Stack>
@@ -1161,6 +1384,28 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                     {!isMicOn ? "Enable Mic" : isMuted ? "Unmute Mic" : "Mic Active"}
                   </Button>
 
+                  {isHost && (
+                    <Button
+                      variant="contained"
+                      size="medium"
+                      startIcon={<ShuffleIcon />}
+                      onClick={handleQuickMatch}
+                      disabled={isSearchingQuickMatch}
+                      sx={{
+                        borderRadius: "14px",
+                        fontWeight: 900,
+                        py: 1.2,
+                        px: 2,
+                        textTransform: "none",
+                        fontSize: "13px",
+                        background: "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
+                        boxShadow: "0 4px 15px rgba(236, 72, 153, 0.3)",
+                      }}
+                    >
+                      {isSearchingQuickMatch ? "Searching Opponents..." : "⚡ Find Opponents"}
+                    </Button>
+                  )}
+
                   {isHost ? (
                     <Button
                       variant="contained"
@@ -1189,7 +1434,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                         },
                       }}
                     >
-                      {players.length >= 2 ? "Launch Match Now 🚀" : `Waiting for Players (${players.length}/${activeMaxCapacity})`}
+                      {players.length >= 2 ? "Launch Match Now 🚀" : `Waiting (${players.length}/${activeMaxCapacity})`}
                     </Button>
                   ) : (
                     <Paper
@@ -1278,18 +1523,45 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                   ROUND COMPLETE!
                 </Typography>
 
-                {winner && (
-                  <Box sx={{ my: { xs: 1.5, sm: 2.5 }, p: { xs: 1.5, sm: 2.5 }, borderRadius: "20px", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(236, 72, 153, 0.2))", border: "1px solid rgba(245, 158, 11, 0.4)" }}>
-                    <Typography variant="caption" fontWeight={900} sx={{ color: "#fde047", letterSpacing: "1px", fontSize: { xs: "10px", sm: "12px" } }}>
-                      🏆 COIN RUSH CHAMPION
+                {playMode === "TEAM" ? (
+                  <Box sx={{ my: { xs: 1.5, sm: 2.5 }, p: { xs: 1.5, sm: 2.5 }, borderRadius: "20px", background: winningTeam === "blue" ? "linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(3, 105, 161, 0.2))" : winningTeam === "red" ? "linear-gradient(135deg, rgba(225, 29, 72, 0.3), rgba(190, 18, 60, 0.2))" : "linear-gradient(135deg, rgba(147, 51, 234, 0.3), rgba(126, 34, 206, 0.2))", border: `1px solid ${winningTeam === "blue" ? "#38bdf8" : winningTeam === "red" ? "#f43f5e" : "#c084fc"}` }}>
+                    <Typography variant="caption" fontWeight={900} sx={{ color: winningTeam === "blue" ? "#38bdf8" : winningTeam === "red" ? "#f43f5e" : "#c084fc", letterSpacing: "1.5px", fontSize: { xs: "11px", sm: "13px" } }}>
+                      {winningTeam === "blue" ? "🟦 TEAM BLUE VICTORIOUS!" : winningTeam === "red" ? "🟥 TEAM RED VICTORIOUS!" : "🤝 MATCH DRAW!"}
                     </Typography>
-                    <Typography variant="h4" fontWeight={900} sx={{ color: "#fff", my: 0.3, fontSize: { xs: "1.3rem", sm: "1.8rem" } }}>
-                      {winner.name}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={900} sx={{ color: "#fde047", fontSize: { xs: "12px", sm: "15px" } }}>
-                      {winner.score} Total Coins Collected!
-                    </Typography>
+                    <Stack direction="row" spacing={3} justifyContent="center" sx={{ my: 1 }}>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: "#38bdf8", fontWeight: 800 }}>TEAM BLUE</Typography>
+                        <Typography variant="h5" fontWeight={900} sx={{ color: "#fff" }}>{teamScores.blue || 0} pts</Typography>
+                      </Box>
+                      <Box sx={{ borderRight: "1px solid rgba(255,255,255,0.2)" }} />
+                      <Box>
+                        <Typography variant="caption" sx={{ color: "#f43f5e", fontWeight: 800 }}>TEAM RED</Typography>
+                        <Typography variant="h5" fontWeight={900} sx={{ color: "#fff" }}>{teamScores.red || 0} pts</Typography>
+                      </Box>
+                    </Stack>
+                    {mvp && (
+                      <Chip
+                        icon={<EmojiEventsIcon sx={{ fontSize: "16px !important", color: "#fde047 !important" }} />}
+                        label={`🌟 MATCH MVP: ${mvp.name} (${mvp.score} coins)`}
+                        size="small"
+                        sx={{ fontWeight: 800, background: "rgba(253, 224, 71, 0.15)", color: "#fde047", border: "1px solid rgba(253, 224, 71, 0.4)" }}
+                      />
+                    )}
                   </Box>
+                ) : (
+                  winner && (
+                    <Box sx={{ my: { xs: 1.5, sm: 2.5 }, p: { xs: 1.5, sm: 2.5 }, borderRadius: "20px", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(236, 72, 153, 0.2))", border: "1px solid rgba(245, 158, 11, 0.4)" }}>
+                      <Typography variant="caption" fontWeight={900} sx={{ color: "#fde047", letterSpacing: "1px", fontSize: { xs: "10px", sm: "12px" } }}>
+                        🏆 COIN RUSH CHAMPION
+                      </Typography>
+                      <Typography variant="h4" fontWeight={900} sx={{ color: "#fff", my: 0.3, fontSize: { xs: "1.3rem", sm: "1.8rem" } }}>
+                        {winner.name}
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={900} sx={{ color: "#fde047", fontSize: { xs: "12px", sm: "15px" } }}>
+                        {winner.score} Total Coins Collected!
+                      </Typography>
+                    </Box>
+                  )
                 )}
 
                 {/* Final Leaderboard */}
@@ -1310,7 +1582,14 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                         <TableCell sx={{ color: "#fff", fontWeight: 800, fontSize: { xs: "11.5px", sm: "13.5px" }, py: 0.8 }}>
                           {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`}
                         </TableCell>
-                        <TableCell sx={{ color: "#fff", fontWeight: 800, fontSize: { xs: "11.5px", sm: "13.5px" }, py: 0.8 }}>{p.name}</TableCell>
+                        <TableCell sx={{ color: "#fff", fontWeight: 800, fontSize: { xs: "11.5px", sm: "13.5px" }, py: 0.8 }}>
+                          {playMode === "TEAM" && (
+                            <span style={{ color: p.teamId === "red" ? "#f43f5e" : "#38bdf8", marginRight: "4px" }}>
+                              [{p.teamId ? p.teamId.toUpperCase() : "BLUE"}]
+                            </span>
+                          )}
+                          {p.name}
+                        </TableCell>
                         <TableCell align="right" sx={{ color: "#fde047", fontWeight: 900, fontSize: { xs: "11.5px", sm: "13.5px" }, py: 0.8 }}>{p.score} pts</TableCell>
                       </TableRow>
                     ))}
