@@ -9,6 +9,7 @@ import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StarOutlinedIcon from "@mui/icons-material/StarOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import GroupsIcon from "@mui/icons-material/Groups";
+import DirectionsRunIcon from "@mui/icons-material/DirectionsRun";
 import { useAuth } from "../context/AuthContext.jsx";
 import AdBanner from "../components/AdBanner.jsx";
 import AdPopup from "../components/AdPopup.jsx";
@@ -272,6 +273,44 @@ export default function LandingPage({
           >
             <span>Explore Communities</span>
             {getStatusBadge(communityStatus)}
+          </Button>
+
+          <Button
+            id="lp-play-lastrunner-btn"
+            size="large"
+            variant="contained"
+            className="lp-btn-primary"
+            startIcon={<DirectionsRunIcon />}
+            onClick={() => navigate("/game/last-runner")}
+            sx={{
+              background: "linear-gradient(135deg, #ef4444 0%, #f59e0b 100%) !important",
+              color: "#fff !important",
+              fontWeight: 800,
+              boxShadow: "0 10px 25px rgba(239, 68, 68, 0.4) !important",
+              border: "1px solid rgba(255, 255, 255, 0.2) !important",
+              "&:hover": {
+                transform: "translateY(-2px) !important",
+                boxShadow: "0 15px 35px rgba(239, 68, 68, 0.55) !important",
+              },
+            }}
+          >
+            <span>Play Last Runner 1v1</span>
+            <Box
+              component="span"
+              sx={{
+                ml: 1,
+                fontSize: "10px",
+                fontWeight: 900,
+                px: 1,
+                py: 0.2,
+                borderRadius: "6px",
+                background: "rgba(0, 0, 0, 0.25)",
+                color: "#fef08a",
+                letterSpacing: "0.5px",
+              }}
+            >
+              LIVE ⚡
+            </Box>
           </Button>
         </Stack>
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Phaser from "phaser";
 import CoinRushScene from "../game/CoinRushScene.js";
+import LeaderboardWidget from "../components/LeaderboardWidget.jsx";
 import { playCountdownSound, playGameOverSound } from "../game/soundEffects.js";
 import { toastMessage } from "../lib/toast.message.js";
 import { useGameVoice } from "../hooks/useGameVoice.js";
@@ -66,6 +67,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
   const [gameStatus, setGameStatus] = useState("LOBBY"); // LOBBY, WAITING, COUNTDOWN, PLAYING, ENDED
   const [countdownVal, setCountdownVal] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(60);
+  const [rightPanelTab, setRightPanelTab] = useState("LEADERBOARD"); // "LEADERBOARD" | "CONTROLS"
 
   // Leave Warning & Joystick Customization States
   const [leaveWarningOpen, setLeaveWarningOpen] = useState(false);
@@ -751,8 +753,78 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
               </Paper>
             </Grid>
 
-            {/* Controls Quick Guide */}
+            {/* Controls & Top 10 Leaderboard Tabbed Panel */}
             <Grid item xs={12} md={5}>
+              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                <Button
+                  size="small"
+                  variant={rightPanelTab === "LEADERBOARD" ? "contained" : "outlined"}
+                  startIcon={<EmojiEventsIcon />}
+                  onClick={() => setRightPanelTab("LEADERBOARD")}
+                  sx={{
+                    borderRadius: "14px",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    px: 2,
+                    py: 0.8,
+                    fontSize: "13px",
+                    background:
+                      rightPanelTab === "LEADERBOARD"
+                        ? "linear-gradient(135deg, #f59e0b, #ec4899)"
+                        : "rgba(255,255,255,0.06)",
+                    color: "#fff",
+                    borderColor:
+                      rightPanelTab === "LEADERBOARD"
+                        ? "transparent"
+                        : "rgba(255,255,255,0.15)",
+                    boxShadow:
+                      rightPanelTab === "LEADERBOARD"
+                        ? "0 4px 15px rgba(245, 158, 11, 0.4)"
+                        : "none",
+                  }}
+                >
+                  🏆 Top 10 Players
+                </Button>
+
+                <Button
+                  size="small"
+                  variant={rightPanelTab === "CONTROLS" ? "contained" : "outlined"}
+                  startIcon={<SportsEsportsIcon />}
+                  onClick={() => setRightPanelTab("CONTROLS")}
+                  sx={{
+                    borderRadius: "14px",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    px: 2,
+                    py: 0.8,
+                    fontSize: "13px",
+                    background:
+                      rightPanelTab === "CONTROLS"
+                        ? "linear-gradient(135deg, #6366f1, #3b82f6)"
+                        : "rgba(255,255,255,0.06)",
+                    color: "#fff",
+                    borderColor:
+                      rightPanelTab === "CONTROLS"
+                        ? "transparent"
+                        : "rgba(255,255,255,0.15)",
+                    boxShadow:
+                      rightPanelTab === "CONTROLS"
+                        ? "0 4px 15px rgba(99, 102, 241, 0.4)"
+                        : "none",
+                  }}
+                >
+                  🎮 Controls Guide
+                </Button>
+              </Stack>
+
+              {rightPanelTab === "LEADERBOARD" ? (
+                <LeaderboardWidget
+                  gameSlug="coin-rush"
+                  title="🏆 Top 10 Coin Rush Players"
+                  subtitle="ALL-TIME HALL OF FAME"
+                  compact={true}
+                />
+              ) : (
               <Paper
                 elevation={0}
                 sx={{
@@ -810,6 +882,7 @@ export default function CoinRushPage({ socketRef, socketId, status }) {
                   </Paper>
                 </Stack>
               </Paper>
+              )}
             </Grid>
           </Grid>
         </Container>

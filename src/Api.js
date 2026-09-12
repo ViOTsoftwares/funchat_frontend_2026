@@ -248,6 +248,61 @@ export const UpdateProfileApi = async (payload) => {
   }
 };
 
+// ==========================================
+// Games & Status Control API
+// ==========================================
+
+export const GetPublicGamesApi = async () => {
+  try {
+    const { data } = await baseApi.get("/api/public/games");
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      message: error?.response?.data?.message || "Failed to fetch games",
+      result: [],
+    };
+  }
+};
+
+export const GetPublicGameBySlugApi = async (slug) => {
+  try {
+    const { data } = await baseApi.get(`/api/public/game/${slug}`);
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      message: error?.response?.data?.message || "Failed to fetch game details",
+      result: null,
+    };
+  }
+};
+
+export const GetGameLeaderboardApi = async (slug) => {
+  try {
+    const { data } = await baseApi.get(`/api/public/game/${slug}/leaderboard`);
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      message: error?.response?.data?.message || "Failed to fetch leaderboard",
+      result: [],
+    };
+  }
+};
+
+export const SubmitGameScoreApi = async (slug, body) => {
+  try {
+    const { data } = await baseApi.post(`/api/public/game/${slug}/score`, body);
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      message: error?.response?.data?.message || "Failed to submit score",
+    };
+  }
+};
+
 export default {
   GetSettingApi,
   GetFeatureControlApi,
@@ -264,5 +319,9 @@ export default {
   GoogleLoginApi,
   GetMeApi,
   UpdateProfileApi,
+  GetPublicGamesApi,
+  GetPublicGameBySlugApi,
+  GetGameLeaderboardApi,
+  SubmitGameScoreApi,
 };
 

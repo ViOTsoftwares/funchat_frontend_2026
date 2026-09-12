@@ -865,6 +865,14 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/last-runner"
+              element={
+                <ProtectedRoute>
+                  <GamePage socketRef={socketRef} socketId={socketId} status={status} />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Standalone Coming Soon & Maintenance routes */}
             <Route path="/coming-soon" element={<ComingSoonPage />} />
