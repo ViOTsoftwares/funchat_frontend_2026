@@ -9,7 +9,7 @@ import PeopleAltOutlinedIcon from "@mui/icons-material/PeopleAltOutlined";
 import StarOutlinedIcon from "@mui/icons-material/StarOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import GroupsIcon from "@mui/icons-material/Groups";
-import DirectionsRunIcon from "@mui/icons-material/DirectionsRun";
+import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import { useAuth } from "../context/AuthContext.jsx";
 import AdBanner from "../components/AdBanner.jsx";
 import AdPopup from "../components/AdPopup.jsx";
@@ -276,12 +276,12 @@ export default function LandingPage({
           </Button>
 
           <Button
-            id="lp-play-lastrunner-btn"
+            id="lp-play-games-btn"
             size="large"
             variant="contained"
             className="lp-btn-primary"
-            startIcon={<DirectionsRunIcon />}
-            onClick={() => navigate("/game/last-runner")}
+            startIcon={<SportsEsportsIcon />}
+            onClick={() => navigate("/game")}
             sx={{
               background: "linear-gradient(135deg, #ef4444 0%, #f59e0b 100%) !important",
               color: "#fff !important",
@@ -294,7 +294,7 @@ export default function LandingPage({
               },
             }}
           >
-            <span>Play Last Runner 1v1</span>
+            <span>Play Multiplayer Games</span>
             <Box
               component="span"
               sx={{
